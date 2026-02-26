@@ -32,6 +32,10 @@ export function printInfo(message: string): void {
   console.log(chalk.cyan(message));
 }
 
+export function printWarning(message: string): void {
+  console.log(chalk.yellow(message));
+}
+
 export function printCount(count: number): void {
   console.log(chalk.dim(`Count: ${count}`));
 }

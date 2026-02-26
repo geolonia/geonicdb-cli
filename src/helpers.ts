@@ -1,6 +1,6 @@
 import { Command } from "commander";
-import { loadConfig } from "./config.js";
-import { GdbClient } from "./client.js";
+import { loadConfig, saveConfig } from "./config.js";
+import { GdbClient, GdbClientError } from "./client.js";
 import { printError, printOutput, printCount } from "./output.js";
 import type { ApiVersion, ClientResponse, GlobalOptions, OutputFormat } from "./types.js";
 
@@ -9,7 +9,7 @@ import type { ApiVersion, ClientResponse, GlobalOptions, OutputFormat } from "./
  */
 export function resolveOptions(cmd: Command): GlobalOptions {
   const opts = cmd.optsWithGlobals() as GlobalOptions;
-  const config = loadConfig();
+  const config = loadConfig(opts.profile);
   return {
     url: opts.url ?? config.url,
     service: opts.service ?? config.service,
@@ -19,6 +19,8 @@ export function resolveOptions(cmd: Command): GlobalOptions {
     format: opts.format ?? config.format ?? "json",
     color: opts.color,
     verbose: opts.verbose,
+    profile: opts.profile,
+    apiKey: opts.apiKey ?? process.env.GDB_API_KEY ?? config.apiKey,
   };
 }
 
@@ -31,12 +33,21 @@ export function createClient(cmd: Command): GdbClient {
     printError("No URL configured. Use `gdb config set url <url>` or pass --url.");
     process.exit(1);
   }
+  const config = loadConfig(opts.profile);
   return new GdbClient({
     baseUrl: opts.url,
     service: opts.service,
     servicePath: opts.servicePath,
     api: opts.api as ApiVersion,
     token: opts.token,
+    refreshToken: config.refreshToken,
+    apiKey: opts.apiKey,
+    onTokenRefresh: (token, refreshToken) => {
+      const cfg = loadConfig(opts.profile);
+      cfg.token = token;
+      if (refreshToken) cfg.refreshToken = refreshToken;
+      saveConfig(cfg, opts.profile);
+    },
     verbose: opts.verbose,
   });
 }
@@ -73,7 +84,9 @@ export function withErrorHandler(fn: (...args: unknown[]) => Promise<void>) {
     try {
       await fn(...args);
     } catch (err: unknown) {
-      if (err instanceof Error) {
+      if (err instanceof GdbClientError && err.status === 401) {
+        printError("Authentication failed. Please run `gdb login` to re-authenticate.");
+      } else if (err instanceof Error) {
         printError(err.message);
       } else {
         printError(String(err));
