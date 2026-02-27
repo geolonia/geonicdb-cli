@@ -27,7 +27,7 @@ Feature: Login authentication
   Scenario: Login sends correct credentials to server
     Given a mock auth server that accepts login
     When I run login with credentials
-    Then the auth server should have received a POST to "/auth/tokens"
+    Then the auth server should have received a POST to "/auth/login"
     And the auth request body should contain email "user@example.com"
 
   Scenario: Login without credentials shows error
@@ -41,7 +41,7 @@ Feature: Login authentication
     Given a mock auth server that rejects login
     When I run login with credentials
     Then the exit code should be 1
-    And the output should contain "Invalid credentials"
+    And the output should contain "Authentication failed"
 
   Scenario: Login with server error
     Given a mock auth server with server error

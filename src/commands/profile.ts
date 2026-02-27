@@ -1,89 +1,87 @@
-import type { Command } from "commander";
-import { loadFullConfig, saveFullConfig } from "../config.js";
-import { printOutput, printSuccess, printError } from "../output.js";
+import { Command } from "commander";
+import {
+  listProfiles,
+  getCurrentProfile,
+  setCurrentProfile,
+  createProfile,
+  deleteProfile,
+  loadConfig,
+} from "../config.js";
+import { printSuccess, printInfo, printError } from "../output.js";
 
-export function registerProfileCommand(program: Command): void {
-  const profile = program
-    .command("profile")
-    .description("Manage connection profiles");
+export function registerProfileCommands(program: Command): void {
+  const profile = program.command("profile").description("Manage connection profiles");
 
   profile
     .command("list")
     .description("List all profiles")
     .action(() => {
-      const config = loadFullConfig();
-      const names = Object.keys(config.profiles);
-      for (const name of names) {
-        const marker = name === config.activeProfile ? "* " : "  ";
-        console.log(`${marker}${name}`);
+      const profiles = listProfiles();
+      for (const p of profiles) {
+        const marker = p.active ? " *" : "";
+        console.log(`${p.name}${marker}`);
       }
     });
 
   profile
-    .command("create")
-    .description("Create a new profile")
-    .argument("<name>", "Profile name")
-    .action((name: string) => {
-      const config = loadFullConfig();
-      if (config.profiles[name]) {
-        printError(`Profile "${name}" already exists.`);
-        process.exit(1);
-      }
-      config.profiles[name] = {};
-      saveFullConfig(config);
-      printSuccess(`Created profile "${name}".`);
-    });
-
-  profile
-    .command("use")
+    .command("use <name>")
     .description("Switch active profile")
-    .argument("<name>", "Profile name")
     .action((name: string) => {
-      const config = loadFullConfig();
-      if (!config.profiles[name]) {
-        printError(`Profile "${name}" does not exist.`);
+      try {
+        setCurrentProfile(name);
+        printSuccess(`Switched to profile "${name}".`);
+      } catch (err) {
+        printError((err as Error).message);
         process.exit(1);
       }
-      config.activeProfile = name;
-      saveFullConfig(config);
-      printSuccess(`Switched to profile "${name}".`);
     });
 
   profile
-    .command("show")
-    .description("Show profile configuration")
-    .argument("<name>", "Profile name")
+    .command("create <name>")
+    .description("Create a new profile")
     .action((name: string) => {
-      const config = loadFullConfig();
-      if (!config.profiles[name]) {
-        printError(`Profile "${name}" does not exist.`);
+      try {
+        createProfile(name);
+        printSuccess(`Profile "${name}" created.`);
+      } catch (err) {
+        printError((err as Error).message);
         process.exit(1);
       }
-      printOutput(config.profiles[name], "json");
     });
 
   profile
-    .command("delete")
+    .command("delete <name>")
     .description("Delete a profile")
-    .argument("<name>", "Profile name")
     .action((name: string) => {
-      const config = loadFullConfig();
-      if (name === "default") {
-        printError('Cannot delete the "default" profile.');
+      try {
+        deleteProfile(name);
+        printSuccess(`Profile "${name}" deleted.`);
+      } catch (err) {
+        printError((err as Error).message);
         process.exit(1);
       }
-      if (!config.profiles[name]) {
-        printError(`Profile "${name}" does not exist.`);
-        process.exit(1);
+    });
+
+  profile
+    .command("show [name]")
+    .description("Show profile settings")
+    .action((name?: string) => {
+      const profileName = name ?? getCurrentProfile();
+      const config = loadConfig(profileName);
+      const entries = Object.entries(config).filter(([, v]) => v !== undefined);
+      if (entries.length === 0) {
+        printInfo(`Profile "${profileName}" has no settings.`);
+        return;
       }
-      if (name === config.activeProfile) {
-        printError(
-          `Cannot delete the active profile "${name}". Switch to another profile first.`,
-        );
-        process.exit(1);
+      for (const [key, value] of entries) {
+        if (
+          (key === "token" || key === "refreshToken" || key === "apiKey") &&
+          typeof value === "string"
+        ) {
+          console.log(`${key}: ${value.slice(0, 10)}...`);
+        } else {
+          console.log(`${key}: ${value}`);
+        }
       }
-      delete config.profiles[name];
-      saveFullConfig(config);
-      printSuccess(`Deleted profile "${name}".`);
     });
 }

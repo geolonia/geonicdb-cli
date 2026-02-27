@@ -5,7 +5,7 @@ import type { GdbWorld } from "../support/world.js";
 
 Given("a mock auth server that accepts login", function (this: GdbWorld) {
   this.writeConfig({ url: this.serverUrl });
-  mockServer.addRoute("POST", "/auth/tokens", (_req, body) => {
+  mockServer.addRoute("POST", "/auth/login", (_req, body) => {
     const { email, password } = JSON.parse(body);
     if (email && password) {
       return {
@@ -19,7 +19,7 @@ Given("a mock auth server that accepts login", function (this: GdbWorld) {
 
 Given("a mock auth server that rejects login", function (this: GdbWorld) {
   this.writeConfig({ url: this.serverUrl });
-  mockServer.addRoute("POST", "/auth/tokens", () => ({
+  mockServer.addRoute("POST", "/auth/login", () => ({
     status: 401,
     body: { error: "Unauthorized", description: "Invalid credentials" },
   }));
@@ -43,7 +43,7 @@ Given("a mock auth server that returns 401 for user info", function (this: GdbWo
 
 Given("a mock auth server with server error", function (this: GdbWorld) {
   this.writeConfig({ url: this.serverUrl });
-  mockServer.addRoute("POST", "/auth/tokens", () => ({
+  mockServer.addRoute("POST", "/auth/login", () => ({
     status: 500,
     body: { error: "InternalError", description: "Server error" },
   }));
@@ -81,27 +81,27 @@ When("I run login without credentials", async function (this: GdbWorld) {
 });
 
 Then("a token should be saved in config", function (this: GdbWorld) {
-  const config = this.readConfig();
+  const config = this.readProfileConfig();
   assert.ok(config.token, `Expected token to be saved. Config: ${JSON.stringify(config)}`);
 });
 
 Then("the token should be {string}", function (this: GdbWorld, expected: string) {
-  const config = this.readConfig();
+  const config = this.readProfileConfig();
   assert.equal(config.token, expected, `Expected token "${expected}", got "${config.token}".`);
 });
 
 Then("a refresh token should be saved in config", function (this: GdbWorld) {
-  const config = this.readConfig();
+  const config = this.readProfileConfig();
   assert.ok(config.refreshToken, `Expected refreshToken to be saved. Config: ${JSON.stringify(config)}`);
 });
 
 Then("no token should be in config", function (this: GdbWorld) {
-  const config = this.readConfig();
+  const config = this.readProfileConfig();
   assert.ok(!config.token, `Expected no token in config. Config: ${JSON.stringify(config)}`);
 });
 
 Then("no refresh token should be in config", function (this: GdbWorld) {
-  const config = this.readConfig();
+  const config = this.readProfileConfig();
   assert.ok(!config.refreshToken, `Expected no refreshToken in config. Config: ${JSON.stringify(config)}`);
 });
 
@@ -111,8 +111,8 @@ Then("the auth server should have received a POST to {string}", function (this: 
 });
 
 Then("the auth request body should contain email {string}", function (this: GdbWorld, email: string) {
-  const req = mockServer.requests.find((r) => r.method === "POST" && r.url === "/auth/tokens");
-  assert.ok(req, "Expected POST to /auth/tokens");
+  const req = mockServer.requests.find((r) => r.method === "POST" && r.url === "/auth/login");
+  assert.ok(req, "Expected POST to /auth/login");
   const body = JSON.parse(req.body);
   assert.equal(body.email, email);
 });

@@ -27,4 +27,4 @@ Feature: Whoami
     Given a mock auth server that returns 401 for user info
     When I run "whoami"
     Then the exit code should be 1
-    And the output should contain "Token expired"
+    And the output should contain "Authentication failed"

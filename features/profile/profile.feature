@@ -19,7 +19,8 @@ Feature: Profile management
     Given a v2 config with profiles:
       """
       {
-        "activeProfile": "default",
+        "version": 2,
+        "currentProfile": "default",
         "profiles": {
           "default": { "url": "http://localhost:1026" },
           "staging": { "url": "http://staging:1026" }
@@ -34,7 +35,8 @@ Feature: Profile management
     Given a v2 config with profiles:
       """
       {
-        "activeProfile": "default",
+        "version": 2,
+        "currentProfile": "default",
         "profiles": {
           "default": { "url": "http://localhost:1026", "service": "myservice" }
         }
@@ -48,7 +50,8 @@ Feature: Profile management
     Given a v2 config with profiles:
       """
       {
-        "activeProfile": "default",
+        "version": 2,
+        "currentProfile": "default",
         "profiles": {
           "default": { "url": "http://localhost:1026" },
           "staging": { "url": "http://staging:1026" }
@@ -63,7 +66,8 @@ Feature: Profile management
     Given a v2 config with profiles:
       """
       {
-        "activeProfile": "default",
+        "version": 2,
+        "currentProfile": "default",
         "profiles": {
           "default": { "url": "http://localhost:1026" }
         }
@@ -76,7 +80,8 @@ Feature: Profile management
     Given a v2 config with profiles:
       """
       {
-        "activeProfile": "default",
+        "version": 2,
+        "currentProfile": "default",
         "profiles": {
           "default": { "url": "http://localhost:1026" },
           "staging": { "url": "http://staging:1026" }
@@ -90,7 +95,8 @@ Feature: Profile management
     Given a v2 config with profiles:
       """
       {
-        "activeProfile": "default",
+        "version": 2,
+        "currentProfile": "default",
         "profiles": {
           "default": { "url": "http://localhost:1026" }
         }
@@ -99,11 +105,12 @@ Feature: Profile management
     When I run "profile use nonexistent"
     Then the exit code should be 1
 
-  Scenario: Cannot delete active profile
+  Scenario: Delete active profile switches to default
     Given a v2 config with profiles:
       """
       {
-        "activeProfile": "staging",
+        "version": 2,
+        "currentProfile": "staging",
         "profiles": {
           "default": { "url": "http://localhost:1026" },
           "staging": { "url": "http://staging:1026" }
@@ -111,17 +118,21 @@ Feature: Profile management
       }
       """
     When I run "profile delete staging"
-    Then the exit code should be 1
+    Then the exit code should be 0
+    And the config should not have profile "staging"
+    And the active profile should be "default"
 
-  Scenario: Cannot show non-existent profile
+  Scenario: Show non-existent profile shows empty message
     Given a v2 config with profiles:
       """
       {
-        "activeProfile": "default",
+        "version": 2,
+        "currentProfile": "default",
         "profiles": {
           "default": { "url": "http://localhost:1026" }
         }
       }
       """
     When I run "profile show nonexistent"
-    Then the exit code should be 1
+    Then the exit code should be 0
+    And the output should contain "has no settings"

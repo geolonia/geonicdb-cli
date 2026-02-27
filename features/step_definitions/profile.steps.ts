@@ -23,5 +23,5 @@ Then("the config should not have profile {string}", function (this: GdbWorld, pr
 
 Then("the active profile should be {string}", function (this: GdbWorld, profileName: string) {
   const config = this.readFullConfig();
-  assert.equal(config.activeProfile, profileName, `Expected active profile "${profileName}", got "${config.activeProfile}".`);
+  assert.equal(config.currentProfile, profileName, `Expected active profile "${profileName}", got "${config.currentProfile}".`);
 });

@@ -9,13 +9,13 @@ Feature: API key authentication
   Scenario: Authenticate with --api-key flag
     When I run "entities list --api-key test-api-key" with URL
     Then the exit code should be 0
-    And the server should have received header "x-api-key" with value "test-api-key"
+    And the server should have received header "authorization" with value "Bearer test-api-key"
 
   Scenario: Authenticate with GDB_API_KEY environment variable
     Given the CLI is configured with URL to mock server
     When I run "entities list" with env "GDB_API_KEY=env-api-key"
     Then the exit code should be 0
-    And the server should have received header "x-api-key" with value "env-api-key"
+    And the server should have received header "authorization" with value "Bearer env-api-key"
 
   Scenario: API key from config fallback
     Given the CLI is configured with:
@@ -25,7 +25,7 @@ Feature: API key authentication
     And the CLI is configured with URL to mock server
     When I run "entities list"
     Then the exit code should be 0
-    And the server should have received header "x-api-key" with value "config-api-key"
+    And the server should have received header "authorization" with value "Bearer config-api-key"
 
   Scenario: Token takes priority over API key
     Given the CLI is configured with:
@@ -36,4 +36,3 @@ Feature: API key authentication
     When I run "entities list"
     Then the exit code should be 0
     And the server should have received header "authorization" with value "Bearer my-token"
-    And the server should not have received header "x-api-key"

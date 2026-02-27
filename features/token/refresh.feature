@@ -13,4 +13,4 @@ Feature: Token refresh
     Given a mock server that returns 401 and refresh also fails
     When I run "entities list"
     Then the exit code should be 1
-    And the output should contain "Token expired"
+    And the output should contain "Authentication failed"

@@ -22,7 +22,7 @@ Given("a mock server that returns 401 then succeeds after token refresh", functi
   });
 
   // Token refresh endpoint
-  mockServer.addRoute("POST", "/auth/tokens/refresh", (_req, body) => {
+  mockServer.addRoute("POST", "/auth/refresh", (_req, body) => {
     const parsed = JSON.parse(body);
     if (parsed.refreshToken === "valid-refresh-token") {
       refreshCallCount++;
@@ -44,7 +44,7 @@ Given("a mock server that returns 401 and refresh also fails", function (this: G
     body: { error: "Unauthorized", description: "Token expired" },
   }));
 
-  mockServer.addRoute("POST", "/auth/tokens/refresh", () => ({
+  mockServer.addRoute("POST", "/auth/refresh", () => ({
     status: 401,
     body: { error: "Unauthorized", description: "Invalid refresh token" },
   }));

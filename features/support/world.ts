@@ -87,7 +87,7 @@ export class GdbWorld extends World {
     const raw = this.readConfig();
     if (raw.profiles && typeof raw.profiles === "object") {
       const profiles = raw.profiles as Record<string, Record<string, unknown>>;
-      const active = (raw.activeProfile as string) ?? "default";
+      const active = (raw.currentProfile as string) ?? "default";
       return profiles[active] ?? {};
     }
     return raw;

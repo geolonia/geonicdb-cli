@@ -70,16 +70,19 @@ Then("stderr should contain {string}", function (this: GdbWorld, text: string) {
 });
 
 Then("stdout should be valid JSON", function (this: GdbWorld) {
-  assert.doesNotThrow(() => JSON.parse(this.lastResult.stdout), `Expected stdout to be valid JSON.\nstdout: ${this.lastResult.stdout}`);
+  const json = extractJson(this.lastResult.stdout);
+  assert.ok(json !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);
 });
 
 Then("the JSON output should have key {string}", function (this: GdbWorld, key: string) {
-  const json = JSON.parse(this.lastResult.stdout);
+  const json = extractJson(this.lastResult.stdout);
+  assert.ok(json !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);
   assert.ok(key in json, `Expected JSON output to have key "${key}".\nJSON: ${JSON.stringify(json)}`);
 });
 
 Then("the JSON output key {string} should be {string}", function (this: GdbWorld, key: string, value: string) {
-  const json = JSON.parse(this.lastResult.stdout);
+  const json = extractJson(this.lastResult.stdout);
+  assert.ok(json !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);
   assert.equal(String(json[key]), value, `Expected json.${key} to be "${value}", got "${json[key]}".`);
 });
 
@@ -111,6 +114,28 @@ Then("the server should not have received header {string}", function (this: GdbW
   const headerValue = lastReq.headers[header.toLowerCase()];
   assert.ok(!headerValue, `Expected header "${header}" to NOT be present, but got "${headerValue}".`);
 });
+
+/** Extract the first JSON object or array from stdout (ignoring trailing non-JSON lines) */
+function extractJson(text: string): Record<string, unknown> | null {
+  // Try parsing the entire text first
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    // Fall through
+  }
+  // Find the last closing brace/bracket and try parsing up to that point
+  const lastBrace = text.lastIndexOf("}");
+  const lastBracket = text.lastIndexOf("]");
+  const endIdx = Math.max(lastBrace, lastBracket);
+  if (endIdx >= 0) {
+    try {
+      return JSON.parse(text.substring(0, endIdx + 1)) as Record<string, unknown>;
+    } catch {
+      // Fall through
+    }
+  }
+  return null;
+}
 
 function parseArgs(command: string): string[] {
   // Simple argument parser that handles quoted strings

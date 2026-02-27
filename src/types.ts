@@ -12,9 +12,9 @@ export interface GdbConfig {
   apiKey?: string;
 }
 
-export interface GdbConfigV2 {
-  version?: number;
-  activeProfile: string;
+export interface GdbConfigFile {
+  version: number;
+  currentProfile: string;
   profiles: Record<string, GdbConfig>;
 }
 
@@ -37,10 +37,10 @@ export interface ClientOptions {
   servicePath?: string;
   api: ApiVersion;
   token?: string;
-  verbose?: boolean;
-  apiKey?: string;
   refreshToken?: string;
+  apiKey?: string;
   onTokenRefresh?: (token: string, refreshToken?: string) => void;
+  verbose?: boolean;
 }
 
 export interface ClientResponse<T = unknown> {
