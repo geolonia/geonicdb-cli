@@ -1,0 +1,169 @@
+import { Given, When, Then } from "@cucumber/cucumber";
+import { strict as assert } from "node:assert";
+import { mockServer } from "../support/mock-server.js";
+import type { GdbWorld } from "../support/world.js";
+
+Given("the CLI is configured with URL {string}", function (this: GdbWorld, url: string) {
+  this.writeConfig({ url });
+});
+
+Given("the CLI is configured with:", function (this: GdbWorld, docString: string) {
+  const config = JSON.parse(docString);
+  this.writeConfig(config);
+});
+
+Given("the CLI is configured with URL to mock server", function (this: GdbWorld) {
+  const existing = this.readConfig();
+  this.writeConfig({ ...existing, url: this.serverUrl });
+});
+
+Given("no config file exists", function (this: GdbWorld) {
+  // configDir is already empty from Before hook
+});
+
+Given("a mock v2 entities endpoint", function (this: GdbWorld) {
+  mockServer.addRoute("GET", "/v2/entities", () => ({
+    status: 200,
+    body: [{ id: "entity1", type: "Thing" }],
+  }));
+});
+
+When("I run {string}", async function (this: GdbWorld, command: string) {
+  const args = parseArgs(command);
+  await this.run(args);
+});
+
+When("I run {string} with URL", async function (this: GdbWorld, command: string) {
+  const args = parseArgs(command);
+  args.push("--url", this.serverUrl);
+  await this.run(args);
+});
+
+When("I run {string} with env {string}", async function (this: GdbWorld, command: string, envPair: string) {
+  const args = parseArgs(command);
+  const eqIdx = envPair.indexOf("=");
+  const key = envPair.substring(0, eqIdx);
+  const value = envPair.substring(eqIdx + 1);
+  await this.run(args, { [key]: value });
+});
+
+Then("the exit code should be {int}", function (this: GdbWorld, code: number) {
+  assert.equal(this.lastResult.exitCode, code, `Expected exit code ${code}, got ${this.lastResult.exitCode}.\nstdout: ${this.lastResult.stdout}\nstderr: ${this.lastResult.stderr}`);
+});
+
+Then("the output should contain {string}", function (this: GdbWorld, text: string) {
+  const combined = this.lastResult.stdout + "\n" + this.lastResult.stderr;
+  assert.ok(combined.includes(text), `Expected output to contain "${text}".\nstdout: ${this.lastResult.stdout}\nstderr: ${this.lastResult.stderr}`);
+});
+
+Then("the output should not contain {string}", function (this: GdbWorld, text: string) {
+  const combined = this.lastResult.stdout + "\n" + this.lastResult.stderr;
+  assert.ok(!combined.includes(text), `Expected output NOT to contain "${text}".\nstdout: ${this.lastResult.stdout}\nstderr: ${this.lastResult.stderr}`);
+});
+
+Then("stdout should contain {string}", function (this: GdbWorld, text: string) {
+  assert.ok(this.lastResult.stdout.includes(text), `Expected stdout to contain "${text}".\nstdout: ${this.lastResult.stdout}`);
+});
+
+Then("stderr should contain {string}", function (this: GdbWorld, text: string) {
+  assert.ok(this.lastResult.stderr.includes(text), `Expected stderr to contain "${text}".\nstderr: ${this.lastResult.stderr}`);
+});
+
+Then("stdout should be valid JSON", function (this: GdbWorld) {
+  const json = extractJson(this.lastResult.stdout);
+  assert.ok(json !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);
+});
+
+Then("the JSON output should have key {string}", function (this: GdbWorld, key: string) {
+  const json = extractJson(this.lastResult.stdout);
+  assert.ok(json !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);
+  assert.ok(key in json, `Expected JSON output to have key "${key}".\nJSON: ${JSON.stringify(json)}`);
+});
+
+Then("the JSON output key {string} should be {string}", function (this: GdbWorld, key: string, value: string) {
+  const json = extractJson(this.lastResult.stdout);
+  assert.ok(json !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);
+  assert.equal(String(json[key]), value, `Expected json.${key} to be "${value}", got "${json[key]}".`);
+});
+
+Then("the config should have key {string}", function (this: GdbWorld, key: string) {
+  const config = this.readProfileConfig();
+  assert.ok(key in config, `Expected config to have key "${key}". Config: ${JSON.stringify(config)}`);
+});
+
+Then("the config key {string} should be {string}", function (this: GdbWorld, key: string, value: string) {
+  const config = this.readProfileConfig();
+  assert.equal(String(config[key]), value, `Expected config.${key} to be "${value}", got "${config[key]}".`);
+});
+
+Then("the config should not have key {string}", function (this: GdbWorld, key: string) {
+  const config = this.readProfileConfig();
+  assert.ok(!(key in config), `Expected config NOT to have key "${key}". Config: ${JSON.stringify(config)}`);
+});
+
+Then("the server should have received header {string} with value {string}", function (this: GdbWorld, header: string, value: string) {
+  const lastReq = mockServer.requests[mockServer.requests.length - 1];
+  assert.ok(lastReq, "No requests recorded on mock server");
+  const headerValue = lastReq.headers[header.toLowerCase()];
+  assert.equal(headerValue, value, `Expected header "${header}" to be "${value}", got "${headerValue}".`);
+});
+
+Then("the server should not have received header {string}", function (this: GdbWorld, header: string) {
+  const lastReq = mockServer.requests[mockServer.requests.length - 1];
+  assert.ok(lastReq, "No requests recorded on mock server");
+  const headerValue = lastReq.headers[header.toLowerCase()];
+  assert.ok(!headerValue, `Expected header "${header}" to NOT be present, but got "${headerValue}".`);
+});
+
+/** Extract the first JSON object or array from stdout (ignoring trailing non-JSON lines) */
+function extractJson(text: string): Record<string, unknown> | null {
+  // Try parsing the entire text first
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    // Fall through
+  }
+  // Find the last closing brace/bracket and try parsing up to that point
+  const lastBrace = text.lastIndexOf("}");
+  const lastBracket = text.lastIndexOf("]");
+  const endIdx = Math.max(lastBrace, lastBracket);
+  if (endIdx >= 0) {
+    try {
+      return JSON.parse(text.substring(0, endIdx + 1)) as Record<string, unknown>;
+    } catch {
+      // Fall through
+    }
+  }
+  return null;
+}
+
+function parseArgs(command: string): string[] {
+  // Simple argument parser that handles quoted strings
+  const args: string[] = [];
+  let current = "";
+  let inQuote = false;
+  let quoteChar = "";
+
+  for (const ch of command) {
+    if (inQuote) {
+      if (ch === quoteChar) {
+        inQuote = false;
+      } else {
+        current += ch;
+      }
+    } else if (ch === '"' || ch === "'") {
+      inQuote = true;
+      quoteChar = ch;
+    } else if (ch === " ") {
+      if (current) {
+        args.push(current);
+        current = "";
+      }
+    } else {
+      current += ch;
+    }
+  }
+  if (current) args.push(current);
+
+  return args;
+}

@@ -6,7 +6,11 @@ export class GdbClient {
   private servicePath?: string;
   private api: ApiVersion;
   private token?: string;
+  private refreshToken?: string;
+  private apiKey?: string;
+  private onTokenRefresh?: (token: string, refreshToken?: string) => void;
   private verbose: boolean;
+  private refreshPromise?: Promise<boolean>;
 
   constructor(options: ClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
@@ -14,6 +18,9 @@ export class GdbClient {
     this.servicePath = options.servicePath;
     this.api = options.api;
     this.token = options.token;
+    this.refreshToken = options.refreshToken;
+    this.apiKey = options.apiKey;
+    this.onTokenRefresh = options.onTokenRefresh;
     this.verbose = options.verbose ?? false;
   }
 
@@ -33,6 +40,8 @@ export class GdbClient {
 
     if (this.token) {
       headers["Authorization"] = `Bearer ${this.token}`;
+    } else if (this.apiKey) {
+      headers["Authorization"] = `Bearer ${this.apiKey}`;
     }
 
     if (extra) {
@@ -58,7 +67,103 @@ export class GdbClient {
     return this.api === "ld" ? "/ngsi-ld/v1" : "/v2";
   }
 
-  async request<T = unknown>(
+  private static readonly SENSITIVE_HEADERS = new Set(["authorization"]);
+  private static readonly SENSITIVE_BODY_KEYS = new Set([
+    "password",
+    "refreshToken",
+    "token",
+    "client_secret",
+    "clientSecret",
+  ]);
+
+  private logRequest(
+    method: string,
+    url: string,
+    headers: Record<string, string>,
+    body?: string,
+  ): void {
+    if (!this.verbose) return;
+    process.stderr.write(`> ${method} ${url}\n`);
+    for (const [k, v] of Object.entries(headers)) {
+      if (GdbClient.SENSITIVE_HEADERS.has(k.toLowerCase())) {
+        process.stderr.write(`> ${k}: ***\n`);
+      } else {
+        process.stderr.write(`> ${k}: ${v}\n`);
+      }
+    }
+    if (body) {
+      process.stderr.write(`> Body: ${GdbClient.maskBodySecrets(body)}\n`);
+    }
+    process.stderr.write("\n");
+  }
+
+  private static maskBodySecrets(raw: string): string {
+    try {
+      const obj = JSON.parse(raw) as Record<string, unknown>;
+      for (const key of Object.keys(obj)) {
+        if (GdbClient.SENSITIVE_BODY_KEYS.has(key)) {
+          obj[key] = "***";
+        }
+      }
+      return JSON.stringify(obj);
+    } catch {
+      return raw;
+    }
+  }
+
+  private logResponse(response: Response): void {
+    if (!this.verbose) return;
+    process.stderr.write(`< ${response.status} ${response.statusText}\n`);
+    response.headers.forEach((v, k) => {
+      process.stderr.write(`< ${k}: ${v}\n`);
+    });
+    process.stderr.write("\n");
+  }
+
+  private canRefresh(): boolean {
+    return !!this.refreshToken && !this.apiKey;
+  }
+
+  private async performTokenRefresh(): Promise<boolean> {
+    if (this.refreshPromise) return this.refreshPromise;
+
+    this.refreshPromise = this.doRefresh();
+    try {
+      return await this.refreshPromise;
+    } finally {
+      this.refreshPromise = undefined;
+    }
+  }
+
+  private async doRefresh(): Promise<boolean> {
+    if (!this.refreshToken) return false;
+
+    try {
+      const url = this.buildUrl("/auth/refresh");
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken: this.refreshToken }),
+      });
+
+      if (!response.ok) return false;
+
+      const data = (await response.json()) as Record<string, unknown>;
+      const newToken = data.token as string | undefined;
+      const newRefreshToken = data.refreshToken as string | undefined;
+
+      if (!newToken) return false;
+
+      this.token = newToken;
+      if (newRefreshToken) this.refreshToken = newRefreshToken;
+      this.onTokenRefresh?.(newToken, newRefreshToken);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async executeRequest<T>(
     method: string,
     path: string,
     options?: {
@@ -71,26 +176,9 @@ export class GdbClient {
     const headers = this.buildHeaders(options?.headers);
     const body = options?.body ? JSON.stringify(options.body) : undefined;
 
-    if (this.verbose) {
-      process.stderr.write(`> ${method} ${url}\n`);
-      for (const [k, v] of Object.entries(headers)) {
-        process.stderr.write(`> ${k}: ${v}\n`);
-      }
-      if (body) {
-        process.stderr.write(`> Body: ${body}\n`);
-      }
-      process.stderr.write("\n");
-    }
-
+    this.logRequest(method, url, headers, body);
     const response = await fetch(url, { method, headers, body });
-
-    if (this.verbose) {
-      process.stderr.write(`< ${response.status} ${response.statusText}\n`);
-      response.headers.forEach((v, k) => {
-        process.stderr.write(`< ${k}: ${v}\n`);
-      });
-      process.stderr.write("\n");
-    }
+    this.logResponse(response);
 
     const countHeader =
       this.api === "ld"
@@ -115,6 +203,64 @@ export class GdbClient {
     }
 
     return { status: response.status, headers: response.headers, data, count };
+  }
+
+  private async executeRawRequest<T>(
+    method: string,
+    path: string,
+    options?: {
+      body?: unknown;
+      params?: Record<string, string>;
+      headers?: Record<string, string>;
+    },
+  ): Promise<ClientResponse<T>> {
+    const url = this.buildUrl(path, options?.params);
+    const headers = this.buildHeaders(options?.headers);
+    const body = options?.body ? JSON.stringify(options.body) : undefined;
+
+    this.logRequest(method, url, headers, body);
+    const response = await fetch(url, { method, headers, body });
+    this.logResponse(response);
+
+    let data: T;
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("json") || contentType.includes("ld+json")) {
+      data = (await response.json()) as T;
+    } else {
+      const text = await response.text();
+      data = text as unknown as T;
+    }
+
+    if (!response.ok) {
+      const err = data as unknown as NgsiError;
+      const message =
+        err?.description || err?.detail || err?.error || err?.title || `HTTP ${response.status}`;
+      throw new GdbClientError(message, response.status, err);
+    }
+
+    return { status: response.status, headers: response.headers, data };
+  }
+
+  async request<T = unknown>(
+    method: string,
+    path: string,
+    options?: {
+      body?: unknown;
+      params?: Record<string, string>;
+      headers?: Record<string, string>;
+    },
+  ): Promise<ClientResponse<T>> {
+    try {
+      return await this.executeRequest<T>(method, path, options);
+    } catch (err) {
+      if (err instanceof GdbClientError && err.status === 401 && this.canRefresh()) {
+        const refreshed = await this.performTokenRefresh();
+        if (refreshed) {
+          return await this.executeRequest<T>(method, path, options);
+        }
+      }
+      throw err;
+    }
   }
 
   async get<T = unknown>(
@@ -166,48 +312,17 @@ export class GdbClient {
       headers?: Record<string, string>;
     },
   ): Promise<ClientResponse<T>> {
-    const url = this.buildUrl(path, options?.params);
-    const headers = this.buildHeaders(options?.headers);
-    const body = options?.body ? JSON.stringify(options.body) : undefined;
-
-    if (this.verbose) {
-      process.stderr.write(`> ${method} ${url}\n`);
-      for (const [k, v] of Object.entries(headers)) {
-        process.stderr.write(`> ${k}: ${v}\n`);
+    try {
+      return await this.executeRawRequest<T>(method, path, options);
+    } catch (err) {
+      if (err instanceof GdbClientError && err.status === 401 && this.canRefresh()) {
+        const refreshed = await this.performTokenRefresh();
+        if (refreshed) {
+          return await this.executeRawRequest<T>(method, path, options);
+        }
       }
-      if (body) {
-        process.stderr.write(`> Body: ${body}\n`);
-      }
-      process.stderr.write("\n");
+      throw err;
     }
-
-    const response = await fetch(url, { method, headers, body });
-
-    if (this.verbose) {
-      process.stderr.write(`< ${response.status} ${response.statusText}\n`);
-      response.headers.forEach((v, k) => {
-        process.stderr.write(`< ${k}: ${v}\n`);
-      });
-      process.stderr.write("\n");
-    }
-
-    let data: T;
-    const contentType = response.headers.get("content-type") ?? "";
-    if (contentType.includes("json") || contentType.includes("ld+json")) {
-      data = (await response.json()) as T;
-    } else {
-      const text = await response.text();
-      data = text as unknown as T;
-    }
-
-    if (!response.ok) {
-      const err = data as unknown as NgsiError;
-      const message =
-        err?.description || err?.detail || err?.error || err?.title || `HTTP ${response.status}`;
-      throw new GdbClientError(message, response.status, err);
-    }
-
-    return { status: response.status, headers: response.headers, data };
   }
 }
 

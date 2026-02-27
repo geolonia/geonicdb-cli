@@ -8,6 +8,8 @@ import {
 } from "../config.js";
 import { printOutput, printSuccess, printInfo } from "../output.js";
 
+const SENSITIVE_CONFIG_KEYS = new Set(["token", "refreshToken", "apiKey"]);
+
 export function registerConfigCommand(program: Command): void {
   const config = program
     .command("config")
@@ -18,17 +20,25 @@ export function registerConfigCommand(program: Command): void {
     .description("Save a config value")
     .argument("<key>", "Configuration key")
     .argument("<value>", "Configuration value")
-    .action((key: string, value: string) => {
-      setConfigValue(key, value);
-      printSuccess(`Set ${key} = ${value}`);
+    .action((...args: unknown[]) => {
+      const cmd = args[args.length - 1] as Command;
+      const key = args[0] as string;
+      const value = args[1] as string;
+      const profile = (cmd.optsWithGlobals() as { profile?: string }).profile;
+      setConfigValue(key, value, profile);
+      const display = SENSITIVE_CONFIG_KEYS.has(key) ? "***" : value;
+      printSuccess(`Set ${key} = ${display}`);
     });
 
   config
     .command("get")
     .description("Get a config value")
     .argument("<key>", "Configuration key")
-    .action((key: string) => {
-      const value = getConfigValue(key);
+    .action((...args: unknown[]) => {
+      const cmd = args[args.length - 1] as Command;
+      const key = args[0] as string;
+      const profile = (cmd.optsWithGlobals() as { profile?: string }).profile;
+      const value = getConfigValue(key, profile);
       if (value === undefined) {
         printInfo(`Key "${key}" is not set.`);
       } else {
@@ -39,8 +49,10 @@ export function registerConfigCommand(program: Command): void {
   config
     .command("list")
     .description("List all config values")
-    .action(() => {
-      const all = loadConfig();
+    .action((...args: unknown[]) => {
+      const cmd = args[args.length - 1] as Command;
+      const profile = (cmd.optsWithGlobals() as { profile?: string }).profile;
+      const all = loadConfig(profile);
       if (Object.keys(all).length === 0) {
         printInfo(`No configuration set. Config path: ${getConfigPath()}`);
       } else {
@@ -52,8 +64,11 @@ export function registerConfigCommand(program: Command): void {
     .command("delete")
     .description("Delete a config value")
     .argument("<key>", "Configuration key")
-    .action((key: string) => {
-      deleteConfigValue(key);
+    .action((...args: unknown[]) => {
+      const cmd = args[args.length - 1] as Command;
+      const key = args[0] as string;
+      const profile = (cmd.optsWithGlobals() as { profile?: string }).profile;
+      deleteConfigValue(key, profile);
       printSuccess(`Deleted key "${key}".`);
     });
 }
