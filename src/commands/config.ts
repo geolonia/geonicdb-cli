@@ -8,6 +8,8 @@ import {
 } from "../config.js";
 import { printOutput, printSuccess, printInfo } from "../output.js";
 
+const SENSITIVE_CONFIG_KEYS = new Set(["token", "refreshToken", "apiKey"]);
+
 export function registerConfigCommand(program: Command): void {
   const config = program
     .command("config")
@@ -24,7 +26,8 @@ export function registerConfigCommand(program: Command): void {
       const value = args[1] as string;
       const profile = (cmd.optsWithGlobals() as { profile?: string }).profile;
       setConfigValue(key, value, profile);
-      printSuccess(`Set ${key} = ${value}`);
+      const display = SENSITIVE_CONFIG_KEYS.has(key) ? "***" : value;
+      printSuccess(`Set ${key} = ${display}`);
     });
 
   config

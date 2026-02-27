@@ -25,20 +25,35 @@ export async function promptPassword(): Promise<string> {
       let data = "";
       stdin.setEncoding("utf-8");
       stdin.resume();
+      const cleanup = () => {
+        stdin.removeListener("data", onData);
+        stdin.removeListener("end", onEnd);
+        stdin.removeListener("error", onError);
+        stdin.pause();
+      };
       const onData = (chunk: string) => {
         const newline = chunk.indexOf("\n");
         if (newline !== -1) {
           data += chunk.slice(0, newline);
-          stdin.removeListener("data", onData);
-          stdin.pause();
+          cleanup();
           stdout.write("\n");
           resolve(data);
         } else {
           data += chunk;
         }
       };
+      const onEnd = () => {
+        cleanup();
+        stdout.write("\n");
+        resolve(data);
+      };
+      const onError = (err: Error) => {
+        cleanup();
+        reject(err);
+      };
       stdin.on("data", onData);
-      stdin.on("error", reject);
+      stdin.on("end", onEnd);
+      stdin.on("error", onError);
       return;
     }
 
@@ -49,19 +64,28 @@ export async function promptPassword(): Promise<string> {
 
     let password = "";
 
+    const restoreTerminal = () => {
+      stdin.removeListener("data", onData);
+      stdin.removeListener("error", onError);
+      stdin.setRawMode(wasRaw ?? false);
+      stdin.pause();
+    };
+
+    const onError = (err: Error) => {
+      restoreTerminal();
+      stdout.write("\n");
+      reject(err);
+    };
+
     const onData = (char: string) => {
       const code = char.charCodeAt(0);
 
       if (char === "\r" || char === "\n") {
-        stdin.removeListener("data", onData);
-        stdin.setRawMode(wasRaw ?? false);
-        stdin.pause();
+        restoreTerminal();
         stdout.write("\n");
         resolve(password);
       } else if (code === 3) {
-        stdin.removeListener("data", onData);
-        stdin.setRawMode(wasRaw ?? false);
-        stdin.pause();
+        restoreTerminal();
         stdout.write("\n");
         reject(new Error("User cancelled"));
       } else if (code === 127 || code === 8) {
@@ -76,5 +100,6 @@ export async function promptPassword(): Promise<string> {
     };
 
     stdin.on("data", onData);
+    stdin.on("error", onError);
   });
 }

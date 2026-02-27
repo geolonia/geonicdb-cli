@@ -78,7 +78,7 @@ export function registerProfileCommands(program: Command): void {
           (key === "token" || key === "refreshToken" || key === "apiKey") &&
           typeof value === "string"
         ) {
-          console.log(`${key}: ${value.slice(0, 10)}...`);
+          console.log(`${key}: ***`);
         } else {
           console.log(`${key}: ${value}`);
         }

@@ -10,7 +10,7 @@ export class GdbClient {
   private apiKey?: string;
   private onTokenRefresh?: (token: string, refreshToken?: string) => void;
   private verbose: boolean;
-  private isRefreshing = false;
+  private refreshPromise?: Promise<boolean>;
 
   constructor(options: ClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
@@ -67,6 +67,15 @@ export class GdbClient {
     return this.api === "ld" ? "/ngsi-ld/v1" : "/v2";
   }
 
+  private static readonly SENSITIVE_HEADERS = new Set(["authorization"]);
+  private static readonly SENSITIVE_BODY_KEYS = new Set([
+    "password",
+    "refreshToken",
+    "token",
+    "client_secret",
+    "clientSecret",
+  ]);
+
   private logRequest(
     method: string,
     url: string,
@@ -76,12 +85,30 @@ export class GdbClient {
     if (!this.verbose) return;
     process.stderr.write(`> ${method} ${url}\n`);
     for (const [k, v] of Object.entries(headers)) {
-      process.stderr.write(`> ${k}: ${v}\n`);
+      if (GdbClient.SENSITIVE_HEADERS.has(k.toLowerCase())) {
+        process.stderr.write(`> ${k}: ***\n`);
+      } else {
+        process.stderr.write(`> ${k}: ${v}\n`);
+      }
     }
     if (body) {
-      process.stderr.write(`> Body: ${body}\n`);
+      process.stderr.write(`> Body: ${GdbClient.maskBodySecrets(body)}\n`);
     }
     process.stderr.write("\n");
+  }
+
+  private static maskBodySecrets(raw: string): string {
+    try {
+      const obj = JSON.parse(raw) as Record<string, unknown>;
+      for (const key of Object.keys(obj)) {
+        if (GdbClient.SENSITIVE_BODY_KEYS.has(key)) {
+          obj[key] = "***";
+        }
+      }
+      return JSON.stringify(obj);
+    } catch {
+      return raw;
+    }
   }
 
   private logResponse(response: Response): void {
@@ -94,13 +121,23 @@ export class GdbClient {
   }
 
   private canRefresh(): boolean {
-    return !!this.refreshToken && !this.apiKey && !this.isRefreshing;
+    return !!this.refreshToken && !this.apiKey;
   }
 
   private async performTokenRefresh(): Promise<boolean> {
-    if (!this.refreshToken || this.isRefreshing) return false;
+    if (this.refreshPromise) return this.refreshPromise;
 
-    this.isRefreshing = true;
+    this.refreshPromise = this.doRefresh();
+    try {
+      return await this.refreshPromise;
+    } finally {
+      this.refreshPromise = undefined;
+    }
+  }
+
+  private async doRefresh(): Promise<boolean> {
+    if (!this.refreshToken) return false;
+
     try {
       const url = this.buildUrl("/auth/refresh");
       const response = await fetch(url, {
@@ -123,8 +160,6 @@ export class GdbClient {
       return true;
     } catch {
       return false;
-    } finally {
-      this.isRefreshing = false;
     }
   }
 

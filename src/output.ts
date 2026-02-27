@@ -33,7 +33,7 @@ export function printInfo(message: string): void {
 }
 
 export function printWarning(message: string): void {
-  console.log(chalk.yellow(message));
+  console.error(chalk.yellow(message));
 }
 
 export function printCount(count: number): void {

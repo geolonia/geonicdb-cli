@@ -33,6 +33,8 @@ export function createClient(cmd: Command): GdbClient {
     printError("No URL configured. Use `gdb config set url <url>` or pass --url.");
     process.exit(1);
   }
+  const cliOpts = cmd.optsWithGlobals() as GlobalOptions;
+  const usingCliToken = !!cliOpts.token;
   const config = loadConfig(opts.profile);
   return new GdbClient({
     baseUrl: opts.url,
@@ -40,14 +42,16 @@ export function createClient(cmd: Command): GdbClient {
     servicePath: opts.servicePath,
     api: opts.api as ApiVersion,
     token: opts.token,
-    refreshToken: config.refreshToken,
+    refreshToken: usingCliToken ? undefined : config.refreshToken,
     apiKey: opts.apiKey,
-    onTokenRefresh: (token, refreshToken) => {
-      const cfg = loadConfig(opts.profile);
-      cfg.token = token;
-      if (refreshToken) cfg.refreshToken = refreshToken;
-      saveConfig(cfg, opts.profile);
-    },
+    onTokenRefresh: usingCliToken
+      ? undefined
+      : (token, refreshToken) => {
+          const cfg = loadConfig(opts.profile);
+          cfg.token = token;
+          if (refreshToken) cfg.refreshToken = refreshToken;
+          saveConfig(cfg, opts.profile);
+        },
     verbose: opts.verbose,
   });
 }

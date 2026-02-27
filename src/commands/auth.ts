@@ -155,9 +155,10 @@ export function registerAuthCommands(program: Command): void {
         const response = await client.rawRequest("GET", "/auth/me");
         outputResponse(response, format);
 
-        // Show token expiry if token exists
-        if (config.token) {
-          const status = getTokenStatus(config.token);
+        // Show token expiry if token exists (re-read in case of auto-refresh)
+        const latestConfig = loadConfig(globalOpts.profile);
+        if (latestConfig.token) {
+          const status = getTokenStatus(latestConfig.token);
           if (status.expiresAt) {
             if (status.isExpired) {
               console.log(chalk.red(`Token expires: ${status.expiresAt.toISOString()} (expired)`));

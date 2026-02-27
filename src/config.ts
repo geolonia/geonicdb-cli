@@ -42,6 +42,21 @@ function migrateV1ToV2(data: Record<string, unknown>): GdbConfigFile {
   };
 }
 
+function isGdbConfigFile(value: unknown): value is GdbConfigFile {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    v.version === 2 &&
+    typeof v.currentProfile === "string" &&
+    typeof v.profiles === "object" &&
+    v.profiles !== null
+  );
+}
+
+function defaultConfig(): GdbConfigFile {
+  return { version: 2, currentProfile: "default", profiles: { default: {} } };
+}
+
 export function loadConfigFile(): GdbConfigFile {
   try {
     const raw = readFileSync(getConfigFile(), "utf-8");
@@ -53,9 +68,13 @@ export function loadConfigFile(): GdbConfigFile {
       return migrated;
     }
 
-    return data as unknown as GdbConfigFile;
+    if (!isGdbConfigFile(data)) {
+      return defaultConfig();
+    }
+
+    return data;
   } catch {
-    return { version: 2, currentProfile: "default", profiles: { default: {} } };
+    return defaultConfig();
   }
 }
 
