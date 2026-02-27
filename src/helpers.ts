@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { loadConfig } from "./config.js";
+import { loadConfig, saveConfig } from "./config.js";
 import { GdbClient } from "./client.js";
 import { printError, printOutput, printCount } from "./output.js";
 import type { ApiVersion, ClientResponse, GlobalOptions, OutputFormat } from "./types.js";
@@ -9,16 +9,18 @@ import type { ApiVersion, ClientResponse, GlobalOptions, OutputFormat } from "./
  */
 export function resolveOptions(cmd: Command): GlobalOptions {
   const opts = cmd.optsWithGlobals() as GlobalOptions;
-  const config = loadConfig();
+  const config = loadConfig(opts.profile);
   return {
     url: opts.url ?? config.url,
     service: opts.service ?? config.service,
     servicePath: opts.servicePath ?? config.servicePath,
     api: opts.api ?? config.api ?? "v2",
     token: opts.token ?? config.token,
+    apiKey: opts.apiKey ?? process.env.GDB_API_KEY ?? config.apiKey,
     format: opts.format ?? config.format ?? "json",
     color: opts.color,
     verbose: opts.verbose,
+    profile: opts.profile,
   };
 }
 
@@ -31,12 +33,22 @@ export function createClient(cmd: Command): GdbClient {
     printError("No URL configured. Use `gdb config set url <url>` or pass --url.");
     process.exit(1);
   }
+  const profile = opts.profile;
+  const config = loadConfig(profile);
   return new GdbClient({
     baseUrl: opts.url,
     service: opts.service,
     servicePath: opts.servicePath,
     api: opts.api as ApiVersion,
     token: opts.token,
+    apiKey: opts.apiKey,
+    refreshToken: config.refreshToken,
+    onTokenRefresh: (newToken, newRefreshToken) => {
+      const cfg = loadConfig(profile);
+      cfg.token = newToken;
+      if (newRefreshToken) cfg.refreshToken = newRefreshToken;
+      saveConfig(cfg, profile);
+    },
     verbose: opts.verbose,
   });
 }

@@ -10,6 +10,7 @@ export function registerAuthCommands(program: Command): void {
     .action(
       withErrorHandler(async (...args: unknown[]) => {
         const cmd = args[args.length - 1] as Command;
+        const profile = (cmd.optsWithGlobals() as { profile?: string }).profile;
 
         const email = process.env.GDB_EMAIL;
         const password = process.env.GDB_PASSWORD;
@@ -35,12 +36,12 @@ export function registerAuthCommands(program: Command): void {
           process.exit(1);
         }
 
-        const config = loadConfig();
+        const config = loadConfig(profile);
         config.token = token;
         if (refreshToken) {
           config.refreshToken = refreshToken;
         }
-        saveConfig(config);
+        saveConfig(config, profile);
 
         printSuccess("Login successful. Token saved to config.");
       }),
@@ -50,11 +51,14 @@ export function registerAuthCommands(program: Command): void {
     .command("logout")
     .description("Clear saved authentication token")
     .action(
-      withErrorHandler(async () => {
-        const config = loadConfig();
+      withErrorHandler(async (...args: unknown[]) => {
+        const cmd = args[args.length - 1] as Command;
+        const profile = (cmd.optsWithGlobals() as { profile?: string }).profile;
+
+        const config = loadConfig(profile);
         delete config.token;
         delete config.refreshToken;
-        saveConfig(config);
+        saveConfig(config, profile);
         printSuccess("Logged out. Token cleared from config.");
       }),
     );
@@ -65,8 +69,9 @@ export function registerAuthCommands(program: Command): void {
     .action(
       withErrorHandler(async (...args: unknown[]) => {
         const cmd = args[args.length - 1] as Command;
+        const profile = (cmd.optsWithGlobals() as { profile?: string }).profile;
 
-        const config = loadConfig();
+        const config = loadConfig(profile);
         if (!config.token) {
           printInfo("Not logged in. Use `gdb login` to authenticate.");
           return;

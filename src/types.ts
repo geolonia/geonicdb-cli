@@ -9,6 +9,13 @@ export interface GdbConfig {
   token?: string;
   refreshToken?: string;
   format?: OutputFormat;
+  apiKey?: string;
+}
+
+export interface GdbConfigV2 {
+  version?: number;
+  activeProfile: string;
+  profiles: Record<string, GdbConfig>;
 }
 
 export interface GlobalOptions {
@@ -20,6 +27,8 @@ export interface GlobalOptions {
   format?: OutputFormat;
   color?: boolean;
   verbose?: boolean;
+  profile?: string;
+  apiKey?: string;
 }
 
 export interface ClientOptions {
@@ -29,6 +38,9 @@ export interface ClientOptions {
   api: ApiVersion;
   token?: string;
   verbose?: boolean;
+  apiKey?: string;
+  refreshToken?: string;
+  onTokenRefresh?: (token: string, refreshToken?: string) => void;
 }
 
 export interface ClientResponse<T = unknown> {

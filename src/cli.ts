@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { registerConfigCommand } from "./commands/config.js";
 import { registerAuthCommands } from "./commands/auth.js";
+import { registerProfileCommand } from "./commands/profile.js";
 import { registerEntitiesCommand } from "./commands/entities.js";
 import { registerAttrsCommand } from "./commands/attrs.js";
 import { registerBatchCommand } from "./commands/batch.js";
@@ -26,12 +27,15 @@ export function createProgram(): Command {
     .option("--service-path <path>", "Fiware-ServicePath header")
     .option("--api <version>", "API version: v2 or ld")
     .option("--token <token>", "Authentication token")
+    .option("--api-key <key>", "API key for authentication")
+    .option("-p, --profile <name>", "Configuration profile to use")
     .option("-f, --format <fmt>", "Output format: json, table, keyValues, geojson")
     .option("--no-color", "Disable color output")
     .option("-v, --verbose", "Verbose output");
 
   registerConfigCommand(program);
   registerAuthCommands(program);
+  registerProfileCommand(program);
   registerEntitiesCommand(program);
   registerAttrsCommand(program);
   registerBatchCommand(program);

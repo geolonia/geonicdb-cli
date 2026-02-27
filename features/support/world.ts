@@ -1,0 +1,97 @@
+import { World, setWorldConstructor, setDefaultTimeout } from "@cucumber/cucumber";
+import { execFile } from "node:child_process";
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { mockServer } from "./mock-server.js";
+
+setDefaultTimeout(10_000);
+
+export interface CliResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+}
+
+export class GdbWorld extends World {
+  configDir!: string;
+  lastResult!: CliResult;
+  env: Record<string, string> = {};
+
+  /** Run the CLI with given arguments */
+  async run(args: string[], extraEnv?: Record<string, string>): Promise<CliResult> {
+    const cliPath = join(process.cwd(), "dist", "index.js");
+
+    const env: Record<string, string> = {
+      ...process.env as Record<string, string>,
+      GDB_CONFIG_DIR: this.configDir,
+      NO_COLOR: "1",
+      ...this.env,
+      ...extraEnv,
+    };
+
+    return new Promise((resolve) => {
+      execFile("node", [cliPath, ...args], { env, timeout: 8_000 }, (error, stdout, stderr) => {
+        const result: CliResult = {
+          stdout: stdout.toString().trim(),
+          stderr: stderr.toString().trim(),
+          exitCode: error ? (error as NodeJS.ErrnoException & { code?: number }).code ?? 1 : 0,
+        };
+        // execFile sets error.code to the exit code
+        if (error && "code" in error && typeof error.code === "number") {
+          result.exitCode = error.code;
+        }
+        this.lastResult = result;
+        resolve(result);
+      });
+    });
+  }
+
+  /** Create a temp config directory for this scenario */
+  createConfigDir(): void {
+    this.configDir = mkdtempSync(join(tmpdir(), "gdb-e2e-"));
+  }
+
+  /** Remove the temp config directory */
+  cleanConfigDir(): void {
+    if (this.configDir && existsSync(this.configDir)) {
+      rmSync(this.configDir, { recursive: true, force: true });
+    }
+  }
+
+  /** Get the mock server base URL */
+  get serverUrl(): string {
+    return mockServer.baseUrl;
+  }
+
+  /** Write a config file in the temp config dir */
+  writeConfig(config: Record<string, unknown>): void {
+    mkdirSync(this.configDir, { recursive: true });
+    writeFileSync(join(this.configDir, "config.json"), JSON.stringify(config, null, 2) + "\n");
+  }
+
+  /** Read the current config file (raw JSON) */
+  readConfig(): Record<string, unknown> {
+    const configPath = join(this.configDir, "config.json");
+    if (!existsSync(configPath)) return {};
+    return JSON.parse(readFileSync(configPath, "utf-8"));
+  }
+
+  /** Read the full config (v2-aware, returns raw structure) */
+  readFullConfig(): Record<string, unknown> {
+    return this.readConfig();
+  }
+
+  /** Read the active profile's config (v2-aware) */
+  readProfileConfig(): Record<string, unknown> {
+    const raw = this.readConfig();
+    if (raw.profiles && typeof raw.profiles === "object") {
+      const profiles = raw.profiles as Record<string, Record<string, unknown>>;
+      const active = (raw.activeProfile as string) ?? "default";
+      return profiles[active] ?? {};
+    }
+    return raw;
+  }
+}
+
+setWorldConstructor(GdbWorld);
