@@ -91,6 +91,7 @@ export function formatTopLevelHelp(program: Command): string {
   lines.push("");
 
   const commands = program.commands
+    .filter((c) => !(c as Command & { _hidden?: boolean })._hidden)
     .slice()
     .sort((a, b) => a.name().localeCompare(b.name()));
 
@@ -130,7 +131,9 @@ export function formatCommandDetails(
   lines.push("");
   lines.push(`  ${cmd.description()}`);
 
-  const subcommands = cmd.commands;
+  const subcommands = cmd.commands.filter(
+    (c) => !(c as Command & { _hidden?: boolean })._hidden,
+  );
 
   if (subcommands.length > 0) {
     // Command group with subcommands

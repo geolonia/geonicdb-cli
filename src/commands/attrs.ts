@@ -9,11 +9,7 @@ import {
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
 
-export function registerAttrsCommand(program: Command): void {
-  const attrs = program
-    .command("attrs")
-    .description("Manage entity attributes");
-
+export function addAttrsSubcommands(attrs: Command): void {
   // attrs list
   attrs
     .command("list")
@@ -210,4 +206,12 @@ export function registerAttrsCommand(program: Command): void {
         },
       ),
     );
+}
+
+export function registerAttrsSubcommand(entitiesCmd: Command): void {
+  const attrs = entitiesCmd
+    .command("attrs")
+    .description("Manage entity attributes");
+
+  addAttrsSubcommands(attrs);
 }

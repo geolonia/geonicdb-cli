@@ -115,13 +115,20 @@ geonic help [<command>] [<subcommand>]
 
 ### auth — Authentication
 
-| Command | Description |
+| Subcommand | Description |
 |---|---|
-| `login` | Authenticate and save token |
-| `logout` | Clear saved authentication token |
-| `whoami` | Display current authenticated user |
+| `auth login` | Authenticate and save token |
+| `auth logout` | Clear saved authentication token |
 
-The `login` command reads `GDB_EMAIL` and `GDB_PASSWORD` environment variables. It also supports OAuth Client Credentials flow with `--client-id` and `--client-secret`.
+The `auth login` command reads `GDB_EMAIL` and `GDB_PASSWORD` environment variables. It also supports OAuth Client Credentials flow with `--client-id` and `--client-secret`.
+
+### me — Display current user
+
+```bash
+geonic me
+```
+
+Displays the current authenticated user, token expiry, and active profile.
 
 ### entities — Manage context entities
 
@@ -137,28 +144,30 @@ The `login` command reads `GDB_EMAIL` and `GDB_PASSWORD` environment variables. 
 
 `entities list` supports filtering options: `--type`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`.
 
-### attrs — Manage entity attributes
+#### entities attrs — Manage entity attributes
 
 | Subcommand | Description |
 |---|---|
-| `attrs list <entityId>` | List all attributes |
-| `attrs get <entityId> <attrName>` | Get a specific attribute |
-| `attrs add <entityId> <json>` | Add attributes |
-| `attrs update <entityId> <attrName> <json>` | Update an attribute |
-| `attrs delete <entityId> <attrName>` | Delete an attribute |
-| `attrs value get <entityId> <attrName>` | Get attribute value (v2 only) |
-| `attrs value set <entityId> <attrName> <value>` | Set attribute value (v2 only) |
+| `entities attrs list <entityId>` | List all attributes |
+| `entities attrs get <entityId> <attrName>` | Get a specific attribute |
+| `entities attrs add <entityId> <json>` | Add attributes |
+| `entities attrs update <entityId> <attrName> <json>` | Update an attribute |
+| `entities attrs delete <entityId> <attrName>` | Delete an attribute |
+| `entities attrs value get <entityId> <attrName>` | Get attribute value (v2 only) |
+| `entities attrs value set <entityId> <attrName> <value>` | Set attribute value (v2 only) |
 
-### batch — Batch operations
+### entityOperations (batch) — Batch operations
 
 | Subcommand | Description |
 |---|---|
-| `batch create <json>` | Batch create entities |
-| `batch upsert <json>` | Batch upsert entities |
-| `batch update <json>` | Batch update entities |
-| `batch delete <json>` | Batch delete entities |
-| `batch query <json>` | Batch query entities |
-| `batch merge <json>` | Batch merge entities (NGSI-LD only) |
+| `entityOperations create <json>` | Batch create entities |
+| `entityOperations upsert <json>` | Batch upsert entities |
+| `entityOperations update <json>` | Batch update entities |
+| `entityOperations delete <json>` | Batch delete entities |
+| `entityOperations query <json>` | Batch query entities |
+| `entityOperations merge <json>` | Batch merge entities (NGSI-LD only) |
+
+`batch` is available as an alias for `entityOperations`.
 
 ### subscriptions (sub) — Manage context subscriptions
 
@@ -189,16 +198,24 @@ The `login` command reads `GDB_EMAIL` and `GDB_PASSWORD` environment variables. 
 
 ### temporal — Temporal entity operations (NGSI-LD only)
 
+#### temporal entities
+
 | Subcommand | Description |
 |---|---|
-| `temporal list` | List temporal entities |
-| `temporal get <id>` | Get a temporal entity by ID |
-| `temporal create <json>` | Create a temporal entity |
-| `temporal delete <id>` | Delete a temporal entity |
-| `temporal query <json>` | Query temporal entities (POST) |
+| `temporal entities list` | List temporal entities |
+| `temporal entities get <id>` | Get a temporal entity by ID |
+| `temporal entities create <json>` | Create a temporal entity |
+| `temporal entities delete <id>` | Delete a temporal entity |
 
-Temporal list/get support: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`.
-Temporal query supports: `--aggr-methods`, `--aggr-period`.
+Temporal entities list/get support: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`.
+
+#### temporal entityOperations
+
+| Subcommand | Description |
+|---|---|
+| `temporal entityOperations query <json>` | Query temporal entities (POST) |
+
+Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 
 ### snapshots — Snapshot operations (NGSI-LD only)
 
@@ -222,15 +239,17 @@ Temporal query supports: `--aggr-methods`, `--aggr-period`.
 | `rules activate <id>` | Activate a rule |
 | `rules deactivate <id>` | Deactivate a rule |
 
-### models — Custom data model management
+### custom-data-models (models) — Custom data model management
 
 | Subcommand | Description |
 |---|---|
-| `models list` | List all models |
-| `models get <id>` | Get a model by ID |
-| `models create <json>` | Create a new model |
-| `models update <id> <json>` | Update a model |
-| `models delete <id>` | Delete a model |
+| `custom-data-models list` | List all models |
+| `custom-data-models get <id>` | Get a model by ID |
+| `custom-data-models create <json>` | Create a new model |
+| `custom-data-models update <id> <json>` | Update a model |
+| `custom-data-models delete <id>` | Delete a model |
+
+`models` is available as an alias for `custom-data-models`.
 
 ### catalog — DCAT-AP catalog
 

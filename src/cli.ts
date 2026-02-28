@@ -3,7 +3,6 @@ import { registerConfigCommand } from "./commands/config.js";
 import { registerAuthCommands } from "./commands/auth.js";
 import { registerProfileCommands } from "./commands/profile.js";
 import { registerEntitiesCommand } from "./commands/entities.js";
-import { registerAttrsCommand } from "./commands/attrs.js";
 import { registerBatchCommand } from "./commands/batch.js";
 import { registerSubscriptionsCommand } from "./commands/subscriptions.js";
 import { registerRegistrationsCommand } from "./commands/registrations.js";
@@ -16,6 +15,7 @@ import { registerModelsCommand } from "./commands/models.js";
 import { registerCatalogCommand } from "./commands/catalog.js";
 import { registerHealthCommand, registerVersionCommand } from "./commands/health.js";
 import { registerHelpCommand } from "./commands/help.js";
+import { addAttrsSubcommands } from "./commands/attrs.js";
 
 export function createProgram(): Command {
   const program = new Command();
@@ -39,7 +39,6 @@ export function createProgram(): Command {
   registerAuthCommands(program);
   registerProfileCommands(program);
   registerEntitiesCommand(program);
-  registerAttrsCommand(program);
   registerBatchCommand(program);
   registerSubscriptionsCommand(program);
   registerRegistrationsCommand(program);
@@ -52,6 +51,12 @@ export function createProgram(): Command {
   registerCatalogCommand(program);
   registerHealthCommand(program);
   registerVersionCommand(program);
+
+  // Backward-compatible hidden 'attrs' command at top level
+  const hiddenAttrs = new Command("attrs")
+    .description("Manage entity attributes");
+  addAttrsSubcommands(hiddenAttrs);
+  program.addCommand(hiddenAttrs, { hidden: true });
 
   return program;
 }

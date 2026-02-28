@@ -13,9 +13,8 @@ import { getTokenStatus, formatDuration } from "../token.js";
 import { clientCredentialsGrant } from "../oauth.js";
 import chalk from "chalk";
 
-export function registerAuthCommands(program: Command): void {
-  program
-    .command("login")
+function createLoginCommand(): Command {
+  return new Command("login")
     .description("Authenticate and save token")
     .option("--client-credentials", "Use OAuth 2.0 Client Credentials flow")
     .option("--client-id <id>", "OAuth client ID")
@@ -103,15 +102,18 @@ export function registerAuthCommands(program: Command): void {
         config.token = token;
         if (refreshToken) {
           config.refreshToken = refreshToken;
+        } else {
+          delete config.refreshToken;
         }
         saveConfig(config, globalOpts.profile);
 
         printSuccess("Login successful. Token saved to config.");
       }),
     );
+}
 
-  program
-    .command("logout")
+function createLogoutCommand(): Command {
+  return new Command("logout")
     .description("Clear saved authentication token")
     .action(
       withErrorHandler(async (...args: unknown[]) => {
@@ -135,48 +137,74 @@ export function registerAuthCommands(program: Command): void {
         printSuccess("Logged out. Token cleared from config.");
       }),
     );
+}
 
+function createMeAction() {
+  return withErrorHandler(async (...args: unknown[]) => {
+    const cmd = args[args.length - 1] as Command;
+    const globalOpts = resolveOptions(cmd);
+
+    if (!globalOpts.token && !globalOpts.apiKey) {
+      printInfo("Not logged in. Use `geonic auth login` to authenticate.");
+      return;
+    }
+
+    const client = createClient(cmd);
+    const format = getFormat(cmd);
+    const response = await client.rawRequest("GET", "/me");
+    outputResponse(response, format);
+
+    // Suppress additional human-readable logs for structured formats
+    if (format && format !== "table") {
+      return;
+    }
+
+    // Show token expiry if token exists (re-read in case of auto-refresh)
+    const latestConfig = loadConfig(globalOpts.profile);
+    if (latestConfig.token) {
+      const status = getTokenStatus(latestConfig.token);
+      if (status.expiresAt) {
+        if (status.isExpired) {
+          console.log(chalk.red(`Token expires: ${status.expiresAt.toISOString()} (expired)`));
+        } else if (status.isExpiringSoon) {
+          printWarning(
+            `Token expires: ${status.expiresAt.toISOString()} (${formatDuration(status.remainingMs!)} remaining)`,
+          );
+        } else {
+          printInfo(
+            `Token expires: ${status.expiresAt.toISOString()} (${formatDuration(status.remainingMs!)} remaining)`,
+          );
+        }
+      }
+    }
+
+    // Show current profile
+    const profileName = globalOpts.profile ?? getCurrentProfile();
+    printInfo(`Profile: ${profileName}`);
+  });
+}
+
+export function registerAuthCommands(program: Command): void {
+  // auth command group with login/logout subcommands
+  const auth = program
+    .command("auth")
+    .description("Authentication commands");
+
+  auth.addCommand(createLoginCommand());
+  auth.addCommand(createLogoutCommand());
+
+  // me command (top-level, maps to /me API endpoint)
   program
-    .command("whoami")
+    .command("me")
     .description("Display current authenticated user")
-    .action(
-      withErrorHandler(async (...args: unknown[]) => {
-        const cmd = args[args.length - 1] as Command;
-        const globalOpts = resolveOptions(cmd);
-        const config = loadConfig(globalOpts.profile);
+    .action(createMeAction());
 
-        if (!config.token && !config.apiKey) {
-          printInfo("Not logged in. Use `geonic login` to authenticate.");
-          return;
-        }
+  // Backward-compatible hidden aliases
+  program.addCommand(createLoginCommand(), { hidden: true });
+  program.addCommand(createLogoutCommand(), { hidden: true });
 
-        const client = createClient(cmd);
-        const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/me");
-        outputResponse(response, format);
-
-        // Show token expiry if token exists (re-read in case of auto-refresh)
-        const latestConfig = loadConfig(globalOpts.profile);
-        if (latestConfig.token) {
-          const status = getTokenStatus(latestConfig.token);
-          if (status.expiresAt) {
-            if (status.isExpired) {
-              console.log(chalk.red(`Token expires: ${status.expiresAt.toISOString()} (expired)`));
-            } else if (status.isExpiringSoon) {
-              printWarning(
-                `Token expires: ${status.expiresAt.toISOString()} (${formatDuration(status.remainingMs!)} remaining)`,
-              );
-            } else {
-              printInfo(
-                `Token expires: ${status.expiresAt.toISOString()} (${formatDuration(status.remainingMs!)} remaining)`,
-              );
-            }
-          }
-        }
-
-        // Show current profile
-        const profileName = globalOpts.profile ?? getCurrentProfile();
-        printInfo(`Profile: ${profileName}`);
-      }),
-    );
+  const hiddenWhoami = new Command("whoami")
+    .description("Display current authenticated user")
+    .action(createMeAction());
+  program.addCommand(hiddenWhoami, { hidden: true });
 }
