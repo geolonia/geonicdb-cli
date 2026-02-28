@@ -15,6 +15,7 @@ import { registerModelsCommand } from "./commands/models.js";
 import { registerCatalogCommand } from "./commands/catalog.js";
 import { registerHealthCommand, registerVersionCommand } from "./commands/health.js";
 import { registerHelpCommand } from "./commands/help.js";
+import { registerCliCommand } from "./commands/cli.js";
 import { addAttrsSubcommands } from "./commands/attrs.js";
 
 export function createProgram(): Command {
@@ -49,6 +50,7 @@ export function createProgram(): Command {
   registerCatalogCommand(program);
   registerHealthCommand(program);
   registerVersionCommand(program);
+  registerCliCommand(program);
 
   // Backward-compatible hidden 'attrs' command at top level
   const hiddenAttrs = new Command("attrs")
