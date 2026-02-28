@@ -23,7 +23,7 @@ Feature: Login authentication
     And a token should be saved in config
 
   Scenario: Login without credentials shows error
-    Given the CLI is configured with URL "http://localhost:9999"
+    Given the CLI is configured with URL "http://localhost:3000"
     When I run login without credentials
     Then the exit code should be 1
     And the output should contain "GDB_EMAIL"
