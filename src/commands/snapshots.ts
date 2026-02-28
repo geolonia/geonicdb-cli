@@ -10,7 +10,7 @@ import { printSuccess } from "../output.js";
 export function registerSnapshotsCommand(program: Command): void {
   const snapshots = program
     .command("snapshots")
-    .description("Snapshot operations");
+    .description("Manage snapshots");
 
   // snapshots list
   snapshots

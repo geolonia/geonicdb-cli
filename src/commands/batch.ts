@@ -11,7 +11,7 @@ export function registerBatchCommand(program: Command): void {
   const batch = program
     .command("entityOperations")
     .alias("batch")
-    .description("Batch operations on entities");
+    .description("Perform batch operations on entities");
 
   // batch create
   batch

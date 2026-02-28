@@ -4,7 +4,7 @@ import { withErrorHandler, createClient, getFormat, outputResponse } from "../he
 export function registerCatalogCommand(program: Command): void {
   const catalog = program
     .command("catalog")
-    .description("DCAT-AP catalog");
+    .description("Browse DCAT-AP catalog");
 
   // catalog get
   catalog

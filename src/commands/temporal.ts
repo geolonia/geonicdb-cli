@@ -134,15 +134,15 @@ function addQueryOptions(cmd: Command): Command {
 export function registerTemporalCommand(program: Command): void {
   const temporal = program
     .command("temporal")
-    .description("Temporal entity operations");
+    .description("Manage temporal entities");
 
   const entities = temporal
     .command("entities")
-    .description("Temporal entity CRUD operations");
+    .description("List, get, create, and delete temporal entities");
 
   const entityOperations = temporal
     .command("entityOperations")
-    .description("Temporal entity batch operations");
+    .description("Perform batch operations on temporal entities");
 
   // temporal entities list
   addTemporalListOptions(

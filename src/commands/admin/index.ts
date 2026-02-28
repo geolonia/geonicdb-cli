@@ -7,7 +7,7 @@ import { registerOAuthClientsCommand, registerCaddeCommand } from "./oauth-clien
 export function registerAdminCommand(program: Command): void {
   const admin = program
     .command("admin")
-    .description("Admin management commands");
+    .description("Manage admin resources");
 
   registerTenantsCommand(admin);
   registerUsersCommand(admin);

@@ -7,7 +7,7 @@ export function registerModelsCommand(program: Command): void {
   const models = program
     .command("custom-data-models")
     .alias("models")
-    .description("Custom data model management");
+    .description("Manage custom data models");
 
   // models list
   models
