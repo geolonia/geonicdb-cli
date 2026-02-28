@@ -7,13 +7,12 @@ import {
   resolveOptions,
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
-import { printSuccess, printError } from "../output.js";
+import { printSuccess } from "../output.js";
 
 function requireLd(cmd: Command): void {
   const opts = resolveOptions(cmd);
   if (opts.api !== "ld") {
-    printError("Temporal commands are only available with NGSI-LD (--api ld).");
-    process.exit(1);
+    throw new Error("Temporal commands are only available with NGSI-LD (--api ld).");
   }
 }
 

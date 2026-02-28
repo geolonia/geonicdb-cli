@@ -154,6 +154,11 @@ function createMeAction() {
     const response = await client.rawRequest("GET", "/me");
     outputResponse(response, format);
 
+    // Suppress additional human-readable logs for structured formats
+    if (format && format !== "table") {
+      return;
+    }
+
     // Show token expiry if token exists (re-read in case of auto-refresh)
     const latestConfig = loadConfig(globalOpts.profile);
     if (latestConfig.token) {
