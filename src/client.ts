@@ -188,10 +188,10 @@ export class GdbClient {
 
     let data: T;
     const contentType = response.headers.get("content-type") ?? "";
-    if (contentType.includes("json") || contentType.includes("ld+json")) {
-      data = (await response.json()) as T;
+    const text = await response.text();
+    if (text && (contentType.includes("json") || contentType.includes("ld+json"))) {
+      data = JSON.parse(text) as T;
     } else {
-      const text = await response.text();
       data = text as unknown as T;
     }
 
@@ -224,10 +224,10 @@ export class GdbClient {
 
     let data: T;
     const contentType = response.headers.get("content-type") ?? "";
-    if (contentType.includes("json") || contentType.includes("ld+json")) {
-      data = (await response.json()) as T;
+    const text = await response.text();
+    if (text && (contentType.includes("json") || contentType.includes("ld+json"))) {
+      data = JSON.parse(text) as T;
     } else {
-      const text = await response.text();
       data = text as unknown as T;
     }
 
