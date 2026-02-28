@@ -4,7 +4,6 @@ import {
   createClient,
   getFormat,
   outputResponse,
-  resolveOptions,
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
@@ -128,81 +127,6 @@ export function addAttrsSubcommands(attrs: Command): void {
             `/entities/${encodeURIComponent(entityId)}/attrs/${encodeURIComponent(attrName)}`,
           );
           printSuccess("Attribute deleted.");
-        },
-      ),
-    );
-
-  // attrs value subcommand group
-  const value = attrs
-    .command("value")
-    .description("Manage attribute values (v2 only)");
-
-  // attrs value get
-  value
-    .command("get")
-    .description("Get the value of a specific attribute (v2 only)")
-    .argument("<entityId>", "Entity ID")
-    .argument("<attrName>", "Attribute name")
-    .action(
-      withErrorHandler(
-        async (
-          entityId: string,
-          attrName: string,
-          _opts: unknown,
-          cmd: Command,
-        ) => {
-          const client = createClient(cmd);
-          const format = getFormat(cmd);
-          const opts = resolveOptions(cmd);
-
-          if (opts.api === "ld") {
-            throw new Error(
-              "The 'attrs value get' command is only supported with NGSIv2 API.",
-            );
-          }
-
-          const response = await client.get(
-            `/entities/${encodeURIComponent(entityId)}/attrs/${encodeURIComponent(attrName)}/value`,
-          );
-          outputResponse(response, format);
-        },
-      ),
-    );
-
-  // attrs value set
-  value
-    .command("set")
-    .description("Set the value of a specific attribute (v2 only)")
-    .argument("<entityId>", "Entity ID")
-    .argument("<attrName>", "Attribute name")
-    .argument("<value>", "New attribute value")
-    .action(
-      withErrorHandler(
-        async (
-          entityId: string,
-          attrName: string,
-          val: string,
-          _opts: unknown,
-          cmd: Command,
-        ) => {
-          const client = createClient(cmd);
-          const opts = resolveOptions(cmd);
-
-          if (opts.api === "ld") {
-            throw new Error(
-              "The 'attrs value set' command is only supported with NGSIv2 API.",
-            );
-          }
-
-          await client.request(
-            "PUT",
-            `/entities/${encodeURIComponent(entityId)}/attrs/${encodeURIComponent(attrName)}/value`,
-            {
-              body: val,
-              headers: { "Content-Type": "text/plain" },
-            },
-          );
-          printSuccess("Attribute value updated.");
         },
       ),
     );

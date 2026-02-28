@@ -2,7 +2,7 @@
 
 CLI tool for [GeonicDB](https://geonicdb.geolonia.com/) — a FIWARE Orion compatible Context Broker.
 
-Supports both **NGSIv2** and **NGSI-LD** APIs.
+Supports the **NGSI-LD** API.
 
 ## Install
 
@@ -70,9 +70,7 @@ geonic entities list --help
 | Option | Description |
 |---|---|
 | `-u, --url <url>` | Base URL of the GeonicDB server |
-| `-s, --service <name>` | `Fiware-Service` / `NGSILD-Tenant` header |
-| `--service-path <path>` | `Fiware-ServicePath` header |
-| `--api <version>` | API version: `v2` (default) or `ld` |
+| `-s, --service <name>` | `NGSILD-Tenant` header |
 | `--token <token>` | Authentication token |
 | `-p, --profile <name>` | Use a named profile |
 | `--api-key <key>` | API key for authentication |
@@ -84,7 +82,7 @@ Options are resolved in this order (first wins):
 
 1. Command-line flags
 2. Config file (`~/.config/geonic/config.json`)
-3. Defaults (`api=v2`, `format=json`)
+3. Defaults (`format=json`)
 
 ## Commands
 
@@ -153,9 +151,6 @@ Displays the current authenticated user, token expiry, and active profile.
 | `entities attrs add <entityId> <json>` | Add attributes |
 | `entities attrs update <entityId> <attrName> <json>` | Update an attribute |
 | `entities attrs delete <entityId> <attrName>` | Delete an attribute |
-| `entities attrs value get <entityId> <attrName>` | Get attribute value (v2 only) |
-| `entities attrs value set <entityId> <attrName> <value>` | Set attribute value (v2 only) |
-
 ### entityOperations (batch) — Batch operations
 
 | Subcommand | Description |
@@ -165,7 +160,7 @@ Displays the current authenticated user, token expiry, and active profile.
 | `entityOperations update <json>` | Batch update entities |
 | `entityOperations delete <json>` | Batch delete entities |
 | `entityOperations query <json>` | Batch query entities |
-| `entityOperations merge <json>` | Batch merge entities (NGSI-LD only) |
+| `entityOperations merge <json>` | Batch merge entities |
 
 `batch` is available as an alias for `entityOperations`.
 
@@ -196,7 +191,7 @@ Displays the current authenticated user, token expiry, and active profile.
 | `types list` | List available entity types |
 | `types get <typeName>` | Get details for a type |
 
-### temporal — Temporal entity operations (NGSI-LD only)
+### temporal — Temporal entity operations
 
 #### temporal entities
 
@@ -217,7 +212,7 @@ Temporal entities list/get support: `--time-rel`, `--time-at`, `--end-time-at`, 
 
 Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 
-### snapshots — Snapshot operations (NGSI-LD only)
+### snapshots — Snapshot operations
 
 | Subcommand | Description |
 |---|---|
@@ -369,9 +364,6 @@ The CLI stores configuration in `~/.config/geonic/config.json`.
 ```bash
 # Set the default server
 geonic config set url http://localhost:1026
-
-# Use NGSI-LD by default
-geonic config set api ld
 
 # Set default output format
 geonic config set format table

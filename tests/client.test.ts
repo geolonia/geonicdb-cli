@@ -6,41 +6,11 @@ describe("GdbClient", () => {
     vi.restoreAllMocks();
   });
 
-  it("constructs correct v2 headers", async () => {
-    const client = new GdbClient({
-      baseUrl: "http://localhost:3000",
-      service: "myTenant",
-      servicePath: "/sub",
-      api: "v2",
-      token: "test-token",
-    });
-
-    const mockResponse = new Response(JSON.stringify([]), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse);
-
-    await client.get("/entities");
-
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/v2/entities"),
-      expect.objectContaining({
-        method: "GET",
-        headers: expect.objectContaining({
-          "Fiware-Service": "myTenant",
-          "Fiware-ServicePath": "/sub",
-          Authorization: "Bearer test-token",
-        }),
-      }),
-    );
-  });
-
   it("constructs correct NGSI-LD headers", async () => {
     const client = new GdbClient({
       baseUrl: "http://localhost:3000",
       service: "myTenant",
-      api: "ld",
+      token: "test-token",
     });
 
     const mockResponse = new Response(JSON.stringify([]), {
@@ -54,16 +24,18 @@ describe("GdbClient", () => {
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining("/ngsi-ld/v1/entities"),
       expect.objectContaining({
+        method: "GET",
         headers: expect.objectContaining({
           "NGSILD-Tenant": "myTenant",
           "Content-Type": "application/ld+json",
+          Authorization: "Bearer test-token",
         }),
       }),
     );
   });
 
   it("parses JSON response", async () => {
-    const client = new GdbClient({ baseUrl: "http://localhost:3000", api: "v2" });
+    const client = new GdbClient({ baseUrl: "http://localhost:3000" });
     const data = [{ id: "Room:001", type: "Room" }];
 
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
@@ -78,15 +50,15 @@ describe("GdbClient", () => {
     expect(result.data).toEqual(data);
   });
 
-  it("parses count header for v2", async () => {
-    const client = new GdbClient({ baseUrl: "http://localhost:3000", api: "v2" });
+  it("parses NGSILD-Results-Count header", async () => {
+    const client = new GdbClient({ baseUrl: "http://localhost:3000" });
 
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify([]), {
         status: 200,
         headers: {
-          "Content-Type": "application/json",
-          "Fiware-Total-Count": "42",
+          "Content-Type": "application/ld+json",
+          "NGSILD-Results-Count": "42",
         },
       }),
     );
@@ -96,7 +68,7 @@ describe("GdbClient", () => {
   });
 
   it("throws GdbClientError on HTTP error", async () => {
-    const client = new GdbClient({ baseUrl: "http://localhost:3000", api: "v2" });
+    const client = new GdbClient({ baseUrl: "http://localhost:3000" });
     const errorBody = { error: "NotFound", description: "Entity not found" };
 
     vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
@@ -111,7 +83,7 @@ describe("GdbClient", () => {
   });
 
   it("sends POST with JSON body", async () => {
-    const client = new GdbClient({ baseUrl: "http://localhost:3000", api: "v2" });
+    const client = new GdbClient({ baseUrl: "http://localhost:3000" });
     const entity = { id: "Room:001", type: "Room" };
 
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
@@ -133,7 +105,7 @@ describe("GdbClient", () => {
   });
 
   it("appends query params to URL", async () => {
-    const client = new GdbClient({ baseUrl: "http://localhost:3000", api: "v2" });
+    const client = new GdbClient({ baseUrl: "http://localhost:3000" });
 
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify([]), {
@@ -153,7 +125,6 @@ describe("GdbClient", () => {
     it("uses apiKey when no token is set", async () => {
       const client = new GdbClient({
         baseUrl: "http://localhost:3000",
-        api: "v2",
         apiKey: "sk-test-key",
       });
 
@@ -179,7 +150,6 @@ describe("GdbClient", () => {
     it("prefers token over apiKey", async () => {
       const client = new GdbClient({
         baseUrl: "http://localhost:3000",
-        api: "v2",
         token: "jwt-token",
         apiKey: "sk-test-key",
       });
@@ -209,7 +179,6 @@ describe("GdbClient", () => {
       const onRefresh = vi.fn();
       const client = new GdbClient({
         baseUrl: "http://localhost:3000",
-        api: "v2",
         token: "expired-token",
         refreshToken: "valid-refresh",
         onTokenRefresh: onRefresh,
@@ -245,7 +214,6 @@ describe("GdbClient", () => {
     it("throws 401 when refresh fails", async () => {
       const client = new GdbClient({
         baseUrl: "http://localhost:3000",
-        api: "v2",
         token: "expired-token",
         refreshToken: "invalid-refresh",
       });
@@ -271,7 +239,6 @@ describe("GdbClient", () => {
       const onRefresh = vi.fn();
       const client = new GdbClient({
         baseUrl: "http://localhost:3000",
-        api: "v2",
         apiKey: "sk-test",
         refreshToken: "valid-refresh",
         onTokenRefresh: onRefresh,
@@ -292,7 +259,6 @@ describe("GdbClient", () => {
       const onRefresh = vi.fn();
       const client = new GdbClient({
         baseUrl: "http://localhost:3000",
-        api: "v2",
         token: "expired-token",
         refreshToken: "valid-refresh",
         onTokenRefresh: onRefresh,

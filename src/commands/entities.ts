@@ -4,7 +4,6 @@ import {
   createClient,
   getFormat,
   outputResponse,
-  resolveOptions,
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
@@ -150,14 +149,9 @@ export function registerEntitiesCommand(program: Command): void {
     .action(
       withErrorHandler(async (json: string, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
-        const opts = resolveOptions(cmd);
         const data = parseJsonInput(json);
 
-        if (opts.api === "ld") {
-          await client.post("/entityOperations/upsert", data);
-        } else {
-          await client.post("/entities", data, { options: "upsert" });
-        }
+        await client.post("/entityOperations/upsert", data);
         printSuccess("Entity upserted.");
       }),
     );

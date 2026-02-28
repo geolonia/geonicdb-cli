@@ -4,14 +4,13 @@ import {
   createClient,
   getFormat,
   outputResponse,
-  resolveOptions,
 } from "../helpers.js";
-import { printSuccess, printError } from "../output.js";
+import { printSuccess } from "../output.js";
 
 export function registerSnapshotsCommand(program: Command): void {
   const snapshots = program
     .command("snapshots")
-    .description("NGSI-LD snapshot operations");
+    .description("Snapshot operations");
 
   // snapshots list
   snapshots
@@ -21,12 +20,6 @@ export function registerSnapshotsCommand(program: Command): void {
     .option("--offset <n>", "Skip first N snapshots", parseInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
-        const opts = resolveOptions(cmd);
-        if (opts.api !== "ld") {
-          printError("Snapshot commands are only available with NGSI-LD (--api ld).");
-          process.exit(1);
-        }
-
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const cmdOpts = cmd.opts();
@@ -47,12 +40,6 @@ export function registerSnapshotsCommand(program: Command): void {
     .description("Get a snapshot by ID")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
-        const opts = resolveOptions(cmd);
-        if (opts.api !== "ld") {
-          printError("Snapshot commands are only available with NGSI-LD (--api ld).");
-          process.exit(1);
-        }
-
         const client = createClient(cmd);
         const format = getFormat(cmd);
 
@@ -69,12 +56,6 @@ export function registerSnapshotsCommand(program: Command): void {
     .description("Create a new snapshot")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
-        const opts = resolveOptions(cmd);
-        if (opts.api !== "ld") {
-          printError("Snapshot commands are only available with NGSI-LD (--api ld).");
-          process.exit(1);
-        }
-
         const client = createClient(cmd);
 
         await client.post("/snapshots");
@@ -88,12 +69,6 @@ export function registerSnapshotsCommand(program: Command): void {
     .description("Delete a snapshot by ID")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
-        const opts = resolveOptions(cmd);
-        if (opts.api !== "ld") {
-          printError("Snapshot commands are only available with NGSI-LD (--api ld).");
-          process.exit(1);
-        }
-
         const client = createClient(cmd);
 
         await client.delete(
@@ -109,12 +84,6 @@ export function registerSnapshotsCommand(program: Command): void {
     .description("Clone a snapshot by ID")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
-        const opts = resolveOptions(cmd);
-        if (opts.api !== "ld") {
-          printError("Snapshot commands are only available with NGSI-LD (--api ld).");
-          process.exit(1);
-        }
-
         const client = createClient(cmd);
         const format = getFormat(cmd);
 

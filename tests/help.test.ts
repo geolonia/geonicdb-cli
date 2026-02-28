@@ -256,7 +256,6 @@ describe("help", () => {
       expect(output).toContain("add");
       expect(output).toContain("update");
       expect(output).toContain("delete");
-      expect(output).toContain("value");
     });
   });
 
