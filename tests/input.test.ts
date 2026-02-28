@@ -11,7 +11,7 @@ describe("parseJsonInput", () => {
   });
 
   it("parses JSON from file with @ prefix", () => {
-    const filePath = join(tmpdir(), "gdb-test-input.json");
+    const filePath = join(tmpdir(), "geonic-test-input.json");
     writeFileSync(filePath, '{"id":"Room:002","type":"Room"}');
     const result = parseJsonInput(`@${filePath}`);
     expect(result).toEqual({ id: "Room:002", type: "Room" });

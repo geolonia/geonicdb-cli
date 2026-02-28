@@ -16,28 +16,28 @@ Or run directly with npx:
 npx @geolonia/geonicdb-cli <command>
 ```
 
-The CLI is available as `gdb`.
+The CLI is available as `geonic`.
 
 ## Quick Start
 
 ```bash
 # Set the server URL
-gdb config set url http://localhost:1026
+geonic config set url http://localhost:1026
 
 # Create an entity
-gdb entities create '{"id":"Room1","type":"Room","temperature":{"value":23,"type":"Number"}}'
+geonic entities create '{"id":"Room1","type":"Room","temperature":{"value":23,"type":"Number"}}'
 
 # List entities
-gdb entities list
+geonic entities list
 
 # Get an entity by ID
-gdb entities get Room1
+geonic entities get Room1
 
 # Update attributes
-gdb entities update Room1 '{"temperature":{"value":25,"type":"Number"}}'
+geonic entities update Room1 '{"temperature":{"value":25,"type":"Number"}}'
 
 # Delete an entity
-gdb entities delete Room1
+geonic entities delete Room1
 ```
 
 ## Global Options
@@ -56,7 +56,7 @@ gdb entities delete Room1
 Options are resolved in this order (first wins):
 
 1. Command-line flags
-2. Config file (`~/.config/gdb/config.json`)
+2. Config file (`~/.config/geonic/config.json`)
 3. Defaults (`api=v2`, `format=json`)
 
 ## Commands
@@ -258,13 +258,13 @@ Temporal query supports: `--aggr-methods`, `--aggr-period`.
 ### health — Check server health
 
 ```bash
-gdb health
+geonic health
 ```
 
 ### version — Display version info
 
 ```bash
-gdb version
+geonic version
 ```
 
 ## Input Formats
@@ -274,24 +274,24 @@ Commands that accept JSON data support three input methods:
 **Inline JSON**
 
 ```bash
-gdb entities create '{"id":"Room1","type":"Room"}'
+geonic entities create '{"id":"Room1","type":"Room"}'
 ```
 
 **File input** (prefix with `@`)
 
 ```bash
-gdb entities create @payload.json
+geonic entities create @payload.json
 ```
 
 **Stdin** (use `-`)
 
 ```bash
-cat payload.json | gdb entities create -
+cat payload.json | geonic entities create -
 ```
 
 ## Output Formats
 
-Specify the output format with `--format` or `gdb config set format <fmt>`.
+Specify the output format with `--format` or `geonic config set format <fmt>`.
 
 | Format | Description |
 |---|---|
@@ -302,26 +302,26 @@ Specify the output format with `--format` or `gdb config set format <fmt>`.
 
 ## Configuration
 
-The CLI stores configuration in `~/.config/gdb/config.json`.
+The CLI stores configuration in `~/.config/geonic/config.json`.
 
 ```bash
 # Set the default server
-gdb config set url http://localhost:1026
+geonic config set url http://localhost:1026
 
 # Use NGSI-LD by default
-gdb config set api ld
+geonic config set api ld
 
 # Set default output format
-gdb config set format table
+geonic config set format table
 
 # View all settings
-gdb config list
+geonic config list
 ```
 
-Override the config directory with the `GDB_CONFIG_DIR` environment variable:
+Override the config directory with the `GEONIC_CONFIG_DIR` environment variable:
 
 ```bash
-GDB_CONFIG_DIR=/path/to/config gdb entities list
+GEONIC_CONFIG_DIR=/path/to/config geonic entities list
 ```
 
 ## Development

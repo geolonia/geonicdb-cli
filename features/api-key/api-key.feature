@@ -15,10 +15,10 @@ Feature: API key authentication
 
   Scenario: API key from config fallback
     Given I have a valid API key saved in config as apiKey
-    When I run "gdb entities list"
+    When I run "geonic entities list"
     Then the exit code should be 0
 
   Scenario: Token takes priority over API key
     Given I am logged in with token and invalid apiKey in config
-    When I run "gdb entities list"
+    When I run "geonic entities list"
     Then the exit code should be 0

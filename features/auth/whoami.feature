@@ -5,19 +5,19 @@ Feature: Whoami
 
   Scenario: Display user info when logged in
     Given I am logged in
-    When I run "gdb whoami"
+    When I run "geonic whoami"
     Then the exit code should be 0
     And stdout should contain "admin@test.com"
 
   Scenario: Show message when not logged in
     Given I am not logged in
-    When I run "gdb whoami"
+    When I run "geonic whoami"
     Then the exit code should be 0
     And the output should contain "Not logged in"
 
   Scenario: Whoami with JSON format
     Given I am logged in
-    When I run "gdb whoami --format json"
+    When I run "geonic whoami --format json"
     Then the exit code should be 0
     And stdout should be valid JSON
     And the JSON output should have key "email"
@@ -25,6 +25,6 @@ Feature: Whoami
 
   Scenario: Whoami with expired token
     Given I have invalid authentication tokens
-    When I run "gdb whoami"
+    When I run "geonic whoami"
     Then the exit code should be 1
     And the output should contain "Authentication failed"

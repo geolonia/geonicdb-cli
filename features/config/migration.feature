@@ -8,6 +8,6 @@ Feature: Config migration
       """
       { "url": "http://localhost:1026", "token": "old-token" }
       """
-    When I run "gdb config list"
+    When I run "geonic config list"
     Then the exit code should be 0
     And stdout should contain "url"
