@@ -1,6 +1,17 @@
 import chalk from "chalk";
 import type { Command, Help, Option } from "commander";
 
+interface Example {
+  description: string;
+  command: string;
+}
+
+const examplesMap = new WeakMap<Command, Example[]>();
+
+export function addExamples(cmd: Command, examples: Example[]): void {
+  examplesMap.set(cmd, examples);
+}
+
 function header(title: string): string {
   return chalk.yellow.bold(title);
 }
@@ -167,6 +178,19 @@ export function formatCommandDetails(
       lines.push(header("OPTIONS"));
       lines.push("");
       lines.push(...formatOptionList(options));
+    }
+  }
+
+  // EXAMPLES
+  const examples = examplesMap.get(cmd);
+  if (examples && examples.length > 0) {
+    lines.push("");
+    lines.push(header("EXAMPLES"));
+    lines.push("");
+    for (const ex of examples) {
+      lines.push(`  ${ex.description}:`);
+      lines.push(`    $ ${ex.command}`);
+      lines.push("");
     }
   }
 

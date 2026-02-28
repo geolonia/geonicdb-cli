@@ -8,6 +8,7 @@ import {
   loadConfig,
 } from "../config.js";
 import { printSuccess, printInfo, printError } from "../output.js";
+import { addExamples } from "./help.js";
 
 export function registerProfileCommands(program: Command): void {
   const profile = program.command("profile").description("Manage connection profiles");
@@ -23,7 +24,7 @@ export function registerProfileCommands(program: Command): void {
       }
     });
 
-  profile
+  const use = profile
     .command("use <name>")
     .description("Switch active profile")
     .action((name: string) => {
@@ -36,7 +37,14 @@ export function registerProfileCommands(program: Command): void {
       }
     });
 
-  profile
+  addExamples(use, [
+    {
+      description: "Switch to staging profile",
+      command: "geonic profile use staging",
+    },
+  ]);
+
+  const profileCreate = profile
     .command("create <name>")
     .description("Create a new profile")
     .action((name: string) => {
@@ -48,6 +56,13 @@ export function registerProfileCommands(program: Command): void {
         process.exit(1);
       }
     });
+
+  addExamples(profileCreate, [
+    {
+      description: "Create a new profile for staging",
+      command: "geonic profile create staging",
+    },
+  ]);
 
   profile
     .command("delete <name>")
