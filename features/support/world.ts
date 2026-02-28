@@ -1,4 +1,5 @@
 import { World, setWorldConstructor, setDefaultTimeout } from "@cucumber/cucumber";
+import { strict as assert } from "node:assert";
 import { execFile } from "node:child_process";
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -94,3 +95,13 @@ export class GdbWorld extends World {
 }
 
 setWorldConstructor(GdbWorld);
+
+/**
+ * Perform a real login against the test server and return the active profile config.
+ */
+export async function performLogin(world: GdbWorld): Promise<Record<string, unknown>> {
+  world.writeConfig({ url: world.serverUrl });
+  await world.run(["login"], { GDB_EMAIL: TEST_EMAIL, GDB_PASSWORD: TEST_PASSWORD });
+  assert.equal(world.lastResult.exitCode, 0, `Login failed during setup.\nstdout: ${world.lastResult.stdout}\nstderr: ${world.lastResult.stderr}`);
+  return world.readProfileConfig();
+}

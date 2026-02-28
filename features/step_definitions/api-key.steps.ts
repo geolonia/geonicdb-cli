@@ -1,13 +1,6 @@
 import { Given, When } from "@cucumber/cucumber";
 import { strict as assert } from "node:assert";
-import { GdbWorld, TEST_EMAIL, TEST_PASSWORD } from "../support/world.js";
-
-async function performLogin(world: GdbWorld): Promise<Record<string, unknown>> {
-  world.writeConfig({ url: world.serverUrl });
-  await world.run(["login"], { GDB_EMAIL: TEST_EMAIL, GDB_PASSWORD: TEST_PASSWORD });
-  assert.equal(world.lastResult.exitCode, 0, `Login failed during setup.\nstdout: ${world.lastResult.stdout}\nstderr: ${world.lastResult.stderr}`);
-  return world.readProfileConfig();
-}
+import { GdbWorld, performLogin } from "../support/world.js";
 
 function requireToken(config: Record<string, unknown>): string {
   const token = config.token;

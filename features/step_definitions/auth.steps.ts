@@ -1,11 +1,9 @@
 import { Given, When, Then } from "@cucumber/cucumber";
 import { strict as assert } from "node:assert";
-import { GdbWorld, TEST_EMAIL, TEST_PASSWORD } from "../support/world.js";
+import { GdbWorld, TEST_EMAIL, TEST_PASSWORD, performLogin } from "../support/world.js";
 
 Given("I am logged in", async function (this: GdbWorld) {
-  this.writeConfig({ url: this.serverUrl });
-  await this.run(["login"], { GDB_EMAIL: TEST_EMAIL, GDB_PASSWORD: TEST_PASSWORD });
-  assert.equal(this.lastResult.exitCode, 0, `Login failed during setup.\nstdout: ${this.lastResult.stdout}\nstderr: ${this.lastResult.stderr}`);
+  await performLogin(this);
 });
 
 Given("I am logged in with token {string}", function (this: GdbWorld, token: string) {
