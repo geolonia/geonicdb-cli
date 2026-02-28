@@ -6,7 +6,13 @@ async function performLogin(world: GdbWorld): Promise<Record<string, unknown>> {
   world.writeConfig({ url: world.serverUrl });
   await world.run(["login"], { GDB_EMAIL: TEST_EMAIL, GDB_PASSWORD: TEST_PASSWORD });
   assert.equal(world.lastResult.exitCode, 0, `Login failed during setup.\nstdout: ${world.lastResult.stdout}\nstderr: ${world.lastResult.stderr}`);
-  return world.readConfig();
+  return world.readProfileConfig();
+}
+
+function requireToken(config: Record<string, unknown>): string {
+  const token = config.token;
+  assert.ok(typeof token === "string" && token.length > 0, "Expected token in config after login");
+  return token;
 }
 
 function stripAuthTokens(config: Record<string, unknown>): void {
@@ -16,7 +22,7 @@ function stripAuthTokens(config: Record<string, unknown>): void {
 
 Given("I have a valid API key from login", async function (this: GdbWorld) {
   const config = await performLogin(this);
-  this.env.VALID_API_KEY = config.token as string;
+  this.env.VALID_API_KEY = requireToken(config);
 
   stripAuthTokens(config);
   this.writeConfig(config);
@@ -32,7 +38,7 @@ When("I run entities list with api-key env var", async function (this: GdbWorld)
 
 Given("I have a valid API key saved in config as apiKey", async function (this: GdbWorld) {
   const config = await performLogin(this);
-  const jwt = config.token as string;
+  const jwt = requireToken(config);
   stripAuthTokens(config);
   config.apiKey = jwt;
   this.writeConfig(config);
