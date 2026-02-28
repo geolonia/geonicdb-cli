@@ -157,7 +157,18 @@ export function registerCliCommand(program: Command): void {
 
   const completions = cli
     .command("completions")
-    .description("Generate shell completions")
+    .summary("Generate shell completions")
+    .description(
+      [
+        "Generate shell completions for geonic CLI.",
+        "",
+        "To enable bash completion, add the following to ~/.bashrc or ~/.bash_profile:",
+        "",
+        "  eval \"$(geonic cli completions bash)\"",
+        "",
+        "Then reload your shell or run: source ~/.bashrc",
+      ].join("\n"),
+    )
     .option("--line <line>", "Current command line content")
     .option("--point <point>", "Cursor position in the command line")
     .action((opts: { line?: string; point?: string }) => {

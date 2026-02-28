@@ -101,7 +101,7 @@ export function formatTopLevelHelp(program: Command): string {
 
   for (const cmd of commands) {
     const name = cmd.name().padEnd(maxLen + 2);
-    lines.push(`  ${chalk.green(name)}${cmd.description()}`);
+    lines.push(`  ${chalk.green(name)}${cmd.summary() || cmd.description()}`);
   }
 
   lines.push("");
@@ -131,7 +131,9 @@ export function formatCommandDetails(
   lines.push("");
   lines.push(header("DESCRIPTION"));
   lines.push("");
-  lines.push(`  ${cmd.description()}`);
+  for (const descLine of cmd.description().split("\n")) {
+    lines.push(`  ${descLine}`);
+  }
 
   const subcommands = cmd.commands.filter(
     (c) => !(c as Command & { _hidden?: boolean })._hidden,
@@ -150,7 +152,7 @@ export function formatCommandDetails(
     const maxLen = Math.max(...subcommands.map((c) => c.name().length));
     for (const sub of subcommands) {
       const name = sub.name().padEnd(maxLen + 2);
-      lines.push(`  ${chalk.green(name)}${sub.description()}`);
+      lines.push(`  ${chalk.green(name)}${sub.summary() || sub.description()}`);
     }
   } else {
     // Leaf command
