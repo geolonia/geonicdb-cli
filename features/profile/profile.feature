@@ -22,7 +22,7 @@ Feature: Profile management
         "version": 2,
         "currentProfile": "default",
         "profiles": {
-          "default": { "url": "http://localhost:1026" },
+          "default": { "url": "http://localhost:3000" },
           "staging": { "url": "http://staging:1026" }
         }
       }
@@ -38,13 +38,13 @@ Feature: Profile management
         "version": 2,
         "currentProfile": "default",
         "profiles": {
-          "default": { "url": "http://localhost:1026", "service": "myservice" }
+          "default": { "url": "http://localhost:3000", "service": "myservice" }
         }
       }
       """
     When I run "geonic profile show default"
     Then the exit code should be 0
-    And the output should contain "http://localhost:1026"
+    And the output should contain "http://localhost:3000"
 
   Scenario: Delete a profile
     Given a v2 config with profiles:
@@ -53,7 +53,7 @@ Feature: Profile management
         "version": 2,
         "currentProfile": "default",
         "profiles": {
-          "default": { "url": "http://localhost:1026" },
+          "default": { "url": "http://localhost:3000" },
           "staging": { "url": "http://staging:1026" }
         }
       }
@@ -69,7 +69,7 @@ Feature: Profile management
         "version": 2,
         "currentProfile": "default",
         "profiles": {
-          "default": { "url": "http://localhost:1026" }
+          "default": { "url": "http://localhost:3000" }
         }
       }
       """
@@ -83,7 +83,7 @@ Feature: Profile management
         "version": 2,
         "currentProfile": "default",
         "profiles": {
-          "default": { "url": "http://localhost:1026" },
+          "default": { "url": "http://localhost:3000" },
           "staging": { "url": "http://staging:1026" }
         }
       }
@@ -98,7 +98,7 @@ Feature: Profile management
         "version": 2,
         "currentProfile": "default",
         "profiles": {
-          "default": { "url": "http://localhost:1026" }
+          "default": { "url": "http://localhost:3000" }
         }
       }
       """
@@ -112,7 +112,7 @@ Feature: Profile management
         "version": 2,
         "currentProfile": "staging",
         "profiles": {
-          "default": { "url": "http://localhost:1026" },
+          "default": { "url": "http://localhost:3000" },
           "staging": { "url": "http://staging:1026" }
         }
       }
@@ -129,7 +129,7 @@ Feature: Profile management
         "version": 2,
         "currentProfile": "default",
         "profiles": {
-          "default": { "url": "http://localhost:1026" }
+          "default": { "url": "http://localhost:3000" }
         }
       }
       """

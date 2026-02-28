@@ -10,7 +10,7 @@ When("I create a subscription for type {string}", async function (this: GdbWorld
       condition: { attrs: ["temperature"] },
     },
     notification: {
-      http: { url: "http://localhost:9999/notify" },
+      http: { url: "http://localhost:3000/notify" },
       attrs: ["temperature"],
     },
   });

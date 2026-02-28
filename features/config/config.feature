@@ -5,29 +5,29 @@ Feature: Config management
 
   Scenario: Set and get a config value
     Given no config file exists
-    When I run "geonic config set url http://localhost:1026"
+    When I run "geonic config set url http://localhost:3000"
     Then the exit code should be 0
     And the output should contain "Set url"
     When I run "geonic config get url"
     Then the exit code should be 0
-    And stdout should contain "http://localhost:1026"
+    And stdout should contain "http://localhost:3000"
 
   Scenario: List all config values
     Given the CLI is configured with:
       """
-      { "url": "http://localhost:1026", "service": "myservice" }
+      { "url": "http://localhost:3000", "service": "myservice" }
       """
     When I run "geonic config list"
     Then the exit code should be 0
     And stdout should contain "url"
-    And stdout should contain "http://localhost:1026"
+    And stdout should contain "http://localhost:3000"
     And stdout should contain "service"
     And stdout should contain "myservice"
 
   Scenario: Delete a config value
     Given the CLI is configured with:
       """
-      { "url": "http://localhost:1026", "service": "myservice" }
+      { "url": "http://localhost:3000", "service": "myservice" }
       """
     When I run "geonic config delete service"
     Then the exit code should be 0
