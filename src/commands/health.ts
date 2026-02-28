@@ -30,7 +30,7 @@ export function registerVersionCommand(program: Command): void {
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const require = createRequire(import.meta.url);
-        const pkg = require("../../package.json") as { version: string };
+        const pkg = require("../package.json") as { version: string };
         const cliVersion = pkg.version;
 
         printInfo(`CLI version: ${cliVersion}`);
