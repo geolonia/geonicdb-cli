@@ -83,8 +83,10 @@ export function outputResponse(
 /**
  * Wrap an async command handler with error handling.
  */
-export function withErrorHandler(fn: (...args: unknown[]) => Promise<void>) {
-  return async (...args: unknown[]) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function withErrorHandler(fn: (...args: any[]) => Promise<void>) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return async (...args: any[]) => {
     try {
       await fn(...args);
     } catch (err: unknown) {
