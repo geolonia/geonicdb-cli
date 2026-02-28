@@ -66,6 +66,27 @@ export function generateCompletions(
     i++;
   }
 
+  // Special handling: `help` command mirrors the main command tree for completions
+  if (currentCmd.name() === "help" && currentCmd.parent === program) {
+    const helpIdx = walkTokens.findIndex((t) => t === "help");
+    const helpArgs =
+      helpIdx >= 0
+        ? walkTokens.slice(helpIdx + 1).filter((t) => !t.startsWith("-"))
+        : [];
+
+    let target = program;
+    for (const arg of helpArgs) {
+      const sub = findSubcommand(target, arg);
+      if (sub) target = sub;
+      else break;
+    }
+
+    const subs = target.commands
+      .filter((c) => !(c as { _hidden?: boolean })._hidden)
+      .map((c) => c.name());
+    return subs.filter((s) => s.startsWith(partial));
+  }
+
   // Determine predecessor token (immediately before the completion point)
   const predecessor = startingNewWord
     ? tokens[tokens.length - 1]
