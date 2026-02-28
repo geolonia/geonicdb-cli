@@ -62,17 +62,19 @@ function formatSynopsis(path: string, cmd: Command): string {
   return parts.join(" ");
 }
 
+function formatOptionList(options: readonly Option[]): string[] {
+  const maxLen = Math.max(...options.map((o) => o.flags.length));
+  return options.map((opt) => {
+    const flags = opt.flags.padEnd(maxLen + 2);
+    return `  ${chalk.green(flags)}${opt.description ?? ""}`;
+  });
+}
+
 function formatGlobalParameters(program: Command): string {
   const lines: string[] = [];
   lines.push(header("GLOBAL PARAMETERS"));
   lines.push("");
-  for (const opt of program.options) {
-    lines.push(`  ${chalk.green(opt.flags)}`);
-    if (opt.description) {
-      lines.push(`      ${opt.description}`);
-    }
-    lines.push("");
-  }
+  lines.push(...formatOptionList(program.options));
   return lines.join("\n");
 }
 
@@ -162,13 +164,7 @@ export function formatCommandDetails(
       lines.push("");
       lines.push(header("OPTIONS"));
       lines.push("");
-      for (const opt of options) {
-        lines.push(`  ${chalk.green(opt.flags)}`);
-        if (opt.description) {
-          lines.push(`      ${opt.description}`);
-        }
-        lines.push("");
-      }
+      lines.push(...formatOptionList(options));
     }
   }
 
