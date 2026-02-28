@@ -8,6 +8,6 @@ Feature: Config migration
       """
       { "url": "http://localhost:1026", "token": "old-token" }
       """
-    When I run "config list"
+    When I run "gdb config list"
     Then the exit code should be 0
     And stdout should contain "url"

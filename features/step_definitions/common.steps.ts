@@ -21,18 +21,18 @@ Given("no config file exists", function (this: GdbWorld) {
 });
 
 When("I run {string}", async function (this: GdbWorld, command: string) {
-  const args = parseArgs(command);
+  const args = stripGdbPrefix(parseArgs(command));
   await this.run(args);
 });
 
 When("I run {string} with URL", async function (this: GdbWorld, command: string) {
-  const args = parseArgs(command);
+  const args = stripGdbPrefix(parseArgs(command));
   args.push("--url", this.serverUrl);
   await this.run(args);
 });
 
 When("I run {string} with env {string}", async function (this: GdbWorld, command: string, envPair: string) {
-  const args = parseArgs(command);
+  const args = stripGdbPrefix(parseArgs(command));
   const eqIdx = envPair.indexOf("=");
   const key = envPair.substring(0, eqIdx);
   const value = envPair.substring(eqIdx + 1);
@@ -113,6 +113,10 @@ function extractJson(text: string): Record<string, unknown> | null {
     }
   }
   return null;
+}
+
+function stripGdbPrefix(args: string[]): string[] {
+  return args[0] === "gdb" ? args.slice(1) : args;
 }
 
 function parseArgs(command: string): string[] {
