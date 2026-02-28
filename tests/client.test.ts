@@ -320,7 +320,7 @@ describe("GdbClient", () => {
         });
       });
 
-      const result = await client.rawRequest("GET", "/auth/me");
+      const result = await client.rawRequest("GET", "/me");
       expect(result.data).toEqual({ email: "user@test.com" });
       expect(onRefresh).toHaveBeenCalledWith("new-token", undefined);
     });
