@@ -391,6 +391,27 @@ npm run typecheck
 npm run dev
 ```
 
+### Local testing
+
+Use `npm link` to register the `geonic` command globally as a symlink:
+
+```bash
+npm link
+```
+
+After linking, rebuild to reflect code changes:
+
+```bash
+npm run build
+geonic help
+```
+
+To unlink:
+
+```bash
+npm unlink -g @geolonia/geonicdb-cli
+```
+
 ## License
 
 MIT
