@@ -17,7 +17,7 @@ export function registerModelsCommand(program: Command): void {
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/models");
+        const response = await client.rawRequest("GET", "/custom-data-models");
         outputResponse(response, format);
       }),
     );
@@ -32,7 +32,7 @@ export function registerModelsCommand(program: Command): void {
         const format = getFormat(cmd);
         const response = await client.rawRequest(
           "GET",
-          `/models/${encodeURIComponent(String(id))}`,
+          `/custom-data-models/${encodeURIComponent(String(id))}`,
         );
         outputResponse(response, format);
       }),
@@ -47,7 +47,7 @@ export function registerModelsCommand(program: Command): void {
         const body = parseJsonInput(String(json));
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("POST", "/models", { body });
+        const response = await client.rawRequest("POST", "/custom-data-models", { body });
         outputResponse(response, format);
         printSuccess("Model created.");
       }),
@@ -65,7 +65,7 @@ export function registerModelsCommand(program: Command): void {
           const format = getFormat(cmd);
           const response = await client.rawRequest(
             "PATCH",
-            `/models/${encodeURIComponent(String(id))}`,
+            `/custom-data-models/${encodeURIComponent(String(id))}`,
             { body },
           );
           outputResponse(response, format);
@@ -83,7 +83,7 @@ export function registerModelsCommand(program: Command): void {
         const client = createClient(cmd);
         await client.rawRequest(
           "DELETE",
-          `/models/${encodeURIComponent(String(id))}`,
+          `/custom-data-models/${encodeURIComponent(String(id))}`,
         );
         printSuccess("Model deleted.");
       }),

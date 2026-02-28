@@ -102,6 +102,8 @@ function createLoginCommand(): Command {
         config.token = token;
         if (refreshToken) {
           config.refreshToken = refreshToken;
+        } else {
+          delete config.refreshToken;
         }
         saveConfig(config, globalOpts.profile);
 
@@ -141,9 +143,8 @@ function createMeAction() {
   return withErrorHandler(async (...args: unknown[]) => {
     const cmd = args[args.length - 1] as Command;
     const globalOpts = resolveOptions(cmd);
-    const config = loadConfig(globalOpts.profile);
 
-    if (!config.token && !config.apiKey) {
+    if (!globalOpts.token && !globalOpts.apiKey) {
       printInfo("Not logged in. Use `geonic auth login` to authenticate.");
       return;
     }
