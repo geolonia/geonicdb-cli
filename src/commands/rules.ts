@@ -6,7 +6,7 @@ import { printSuccess } from "../output.js";
 export function registerRulesCommand(program: Command): void {
   const rules = program
     .command("rules")
-    .description("Rule engine management");
+    .description("Manage rule engine");
 
   // rules list
   rules

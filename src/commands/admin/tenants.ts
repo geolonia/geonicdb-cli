@@ -6,7 +6,7 @@ import { printSuccess } from "../../output.js";
 export function registerTenantsCommand(parent: Command): void {
   const tenants = parent
     .command("tenants")
-    .description("Admin tenant management");
+    .description("Manage tenants");
 
   // tenants list
   tenants

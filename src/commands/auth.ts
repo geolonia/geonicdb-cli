@@ -188,7 +188,7 @@ export function registerAuthCommands(program: Command): void {
   // auth command group with login/logout subcommands
   const auth = program
     .command("auth")
-    .description("Authentication commands");
+    .description("Manage authentication");
 
   auth.addCommand(createLoginCommand());
   auth.addCommand(createLogoutCommand());

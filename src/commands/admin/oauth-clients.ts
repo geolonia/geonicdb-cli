@@ -6,7 +6,7 @@ import { printSuccess } from "../../output.js";
 export function registerOAuthClientsCommand(parent: Command): void {
   const oauthClients = parent
     .command("oauth-clients")
-    .description("Admin OAuth client management");
+    .description("Manage OAuth clients");
 
   // oauth-clients list
   oauthClients
@@ -94,7 +94,7 @@ export function registerOAuthClientsCommand(parent: Command): void {
 export function registerCaddeCommand(parent: Command): void {
   const cadde = parent
     .command("cadde")
-    .description("Admin CADDE configuration");
+    .description("Manage CADDE configuration");
 
   // cadde get
   cadde

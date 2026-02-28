@@ -6,7 +6,7 @@ import { printSuccess } from "../../output.js";
 export function registerPoliciesCommand(parent: Command): void {
   const policies = parent
     .command("policies")
-    .description("Admin policy management");
+    .description("Manage policies");
 
   // policies list
   policies

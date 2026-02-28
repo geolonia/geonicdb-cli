@@ -6,7 +6,7 @@ import { printSuccess } from "../../output.js";
 export function registerUsersCommand(parent: Command): void {
   const users = parent
     .command("users")
-    .description("Admin user management");
+    .description("Manage users");
 
   // users list
   users
