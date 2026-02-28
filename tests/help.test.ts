@@ -37,9 +37,10 @@ describe("help", () => {
 
     it("lists all command groups", () => {
       const commands = [
+        "auth",
         "entities",
-        "attrs",
-        "batch",
+        "entityOperations",
+        "custom-data-models",
         "subscriptions",
         "registrations",
         "types",
@@ -49,7 +50,7 @@ describe("help", () => {
         "config",
         "profile",
         "rules",
-        "models",
+        "me",
         "catalog",
         "health",
         "version",
@@ -57,6 +58,22 @@ describe("help", () => {
       ];
       for (const cmd of commands) {
         expect(output).toContain(cmd);
+      }
+    });
+
+    it("does not list hidden backward-compat commands", () => {
+      const hidden = ["attrs", "login", "logout", "whoami"];
+      // These should not appear as standalone top-level commands in help
+      // (they may appear as subcommands of other groups)
+      const lines = output.split("\n");
+      const cmdStart = lines.findIndex((l) => l.includes("AVAILABLE COMMANDS"));
+      const globalStart = lines.findIndex((l) => l.includes("GLOBAL PARAMETERS"));
+      const commandNames = lines
+        .slice(cmdStart + 2, globalStart)
+        .filter((l) => l.match(/^\s{2}\S/))
+        .map((l) => l.trim().split(/\s{2,}/)[0]);
+      for (const cmd of hidden) {
+        expect(commandNames).not.toContain(cmd);
       }
     });
 

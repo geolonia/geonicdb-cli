@@ -8,6 +8,7 @@ import {
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
+import { registerAttrsSubcommand } from "./attrs.js";
 
 export function registerEntitiesCommand(program: Command): void {
   const entities = program
@@ -174,4 +175,7 @@ export function registerEntitiesCommand(program: Command): void {
         printSuccess("Entity deleted.");
       }),
     );
+
+  // Register attrs as a subcommand of entities
+  registerAttrsSubcommand(entities);
 }

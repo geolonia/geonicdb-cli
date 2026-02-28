@@ -53,22 +53,22 @@ src/
 ├── output.ts          # Output formatting (json, table, keyValues, geojson)
 ├── types.ts           # Shared TypeScript types
 └── commands/          # One file per command group
-    ├── entities.ts    # Entity CRUD (list, get, create, update, delete)
-    ├── attrs.ts       # Attribute operations
-    ├── batch.ts       # Batch operations (update, upsert)
+    ├── entities.ts    # Entity CRUD + attrs subcommand (list, get, create, update, delete, attrs)
+    ├── attrs.ts       # Attribute operations (registered as entities attrs subcommand)
+    ├── batch.ts       # entityOperations (alias: batch) — batch entity operations
     ├── subscriptions.ts
     ├── registrations.ts
     ├── types.ts       # Entity type queries
-    ├── temporal.ts    # Temporal/time-series queries
+    ├── temporal.ts    # Temporal operations (temporal entities, temporal entityOperations)
     ├── snapshots.ts   # Snapshot operations
     ├── rules.ts       # XACML policy rules
-    ├── models.ts      # Data models
+    ├── models.ts      # custom-data-models (alias: models) — data model management
     ├── catalog.ts     # Data catalog (CKAN/DCAT)
     ├── health.ts      # Health check & version
     ├── help.ts        # wp-cli style help system
     ├── config.ts      # Config management (set, get, list)
     ├── profile.ts     # Profile management
-    ├── auth.ts        # Authentication (login, logout, token)
+    ├── auth.ts        # Authentication (auth login, auth logout, me)
     └── admin/         # Admin commands (tenants, users, policies, oauth-clients, cadde)
 tests/
 ├── client.test.ts
@@ -83,6 +83,7 @@ tests/
 ```
 
 ### Key Design Patterns
+- **API-aligned hierarchy**: CLI commands mirror API endpoint paths (e.g., `entities attrs` → `/entities/{id}/attrs`, `temporal entities` → `/temporal/entities`). Hidden backward-compatible aliases preserve old command paths.
 - **Commander.js**: Each command group exports a `register*Command(program)` function called from `cli.ts`
 - **HTTP Client**: `client.ts` handles all API communication with GeonicDB server
 - **Config**: Persistent config stored in `~/.config/geonic/config.json` (URL, service, token, etc.)

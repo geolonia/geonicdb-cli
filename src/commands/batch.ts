@@ -11,7 +11,8 @@ import { printError } from "../output.js";
 
 export function registerBatchCommand(program: Command): void {
   const batch = program
-    .command("batch")
+    .command("entityOperations")
+    .alias("batch")
     .description("Batch operations on entities");
 
   // batch create
