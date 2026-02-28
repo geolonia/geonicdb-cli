@@ -232,8 +232,15 @@ export function registerHelpCommand(program: Command): void {
       showHelp(program, args);
     });
 
-  // Show help when `geonic` is run with no arguments
-  program.action(() => {
+  // Show help when `geonic` is run with no arguments, or show error for unknown commands
+  program.argument("[command...]").action((commands: string[]) => {
+    if (commands.length > 0) {
+      console.error(
+        `geonic: '${commands[0]}' is not a geonic command. See 'geonic help'.`,
+      );
+      process.exitCode = 1;
+      return;
+    }
     showHelp(program, []);
   });
 }

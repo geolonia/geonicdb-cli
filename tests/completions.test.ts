@@ -201,6 +201,77 @@ describe("completions", () => {
     });
   });
 
+  describe("help command completion", () => {
+    it("completes top-level commands after help", () => {
+      const result = complete("geonic help ");
+      expect(result).toContain("entities");
+      expect(result).toContain("subscriptions");
+      expect(result).toContain("admin");
+      expect(result).toContain("health");
+      expect(result).toContain("config");
+    });
+
+    it("excludes hidden commands after help", () => {
+      const result = complete("geonic help ");
+      expect(result).not.toContain("cli");
+      expect(result).not.toContain("attrs");
+    });
+
+    it("filters commands by partial input after help", () => {
+      const result = complete("geonic help e");
+      expect(result).toContain("entities");
+      expect(result).toContain("entityOperations");
+      expect(result).not.toContain("admin");
+    });
+
+    it("completes subcommands after help <command>", () => {
+      const result = complete("geonic help entities ");
+      expect(result).toContain("list");
+      expect(result).toContain("get");
+      expect(result).toContain("create");
+      expect(result).toContain("attrs");
+    });
+
+    it("completes nested subcommands after help <command> <subcommand>", () => {
+      const result = complete("geonic help admin tenants ");
+      expect(result).toContain("list");
+      expect(result).toContain("create");
+      expect(result).toContain("delete");
+    });
+
+    it("completes with alias navigation after help", () => {
+      const result = complete("geonic help batch ");
+      expect(result).toContain("create");
+      expect(result).toContain("upsert");
+    });
+
+    it("returns empty for leaf commands after help", () => {
+      const result = complete("geonic help health ");
+      expect(result).toEqual([]);
+    });
+
+    it("works with global options before help", () => {
+      const result = complete("geonic --verbose help entities ");
+      expect(result).toContain("list");
+      expect(result).toContain("get");
+    });
+
+    it("skips options with values after help", () => {
+      const result = complete(
+        "geonic help --url http://localhost:3000 entities ",
+      );
+      expect(result).toContain("list");
+      expect(result).toContain("get");
+      expect(result).toContain("create");
+    });
+
+    it("skips boolean flags after help", () => {
+      const result = complete("geonic help --verbose entities ");
+      expect(result).toContain("list");
+      expect(result).toContain("get");
+    });
+  });
+
   describe("point parameter", () => {
     it("truncates line at point position", () => {
       const result = complete("geonic entities list --format json", 16);

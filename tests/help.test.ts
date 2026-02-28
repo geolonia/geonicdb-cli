@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import stripAnsi from "strip-ansi";
 import { createProgram } from "../src/cli.js";
 import { formatTopLevelHelp, formatCommandDetails } from "../src/commands/help.js";
@@ -392,6 +392,23 @@ describe("help", () => {
     it("is findable via models alias", () => {
       const m = findCommand(program, "models");
       expect(m).toBeDefined();
+    });
+  });
+
+  describe("unknown command error", () => {
+    it("prints friendly error for unknown commands", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        await prog.parseAsync(["node", "geonic", "aaaa"]);
+      } catch {
+        // exitOverride throws
+      }
+      const output = stderr.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("geonic: 'aaaa' is not a geonic command");
+      expect(output).toContain("geonic help");
+      stderr.mockRestore();
     });
   });
 
