@@ -20,12 +20,12 @@ describe("config", () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), "gdb-test-"));
-    process.env.GDB_CONFIG_DIR = join(tempDir, "gdb");
+    tempDir = mkdtempSync(join(tmpdir(), "geonic-test-"));
+    process.env.GEONIC_CONFIG_DIR = join(tempDir, "geonic");
   });
 
   afterEach(() => {
-    delete process.env.GDB_CONFIG_DIR;
+    delete process.env.GEONIC_CONFIG_DIR;
     rmSync(tempDir, { recursive: true, force: true });
   });
 
@@ -54,7 +54,7 @@ describe("config", () => {
 
   it("writes valid v2 JSON to disk", () => {
     setConfigValue("service", "myTenant");
-    const configPath = join(tempDir, "gdb", "config.json");
+    const configPath = join(tempDir, "geonic", "config.json");
     const raw = readFileSync(configPath, "utf-8");
     const parsed = JSON.parse(raw);
     expect(parsed.version).toBe(2);
@@ -63,7 +63,7 @@ describe("config", () => {
 
   describe("v1 to v2 migration", () => {
     it("migrates flat config to profiles format", () => {
-      const configDir = join(tempDir, "gdb");
+      const configDir = join(tempDir, "geonic");
       mkdirSync(configDir, { recursive: true });
       const v1Config = {
         url: "http://localhost:1026",
@@ -90,7 +90,7 @@ describe("config", () => {
     });
 
     it("preserves unknown fields during migration by ignoring them", () => {
-      const configDir = join(tempDir, "gdb");
+      const configDir = join(tempDir, "geonic");
       mkdirSync(configDir, { recursive: true });
       writeFileSync(
         join(configDir, "config.json"),

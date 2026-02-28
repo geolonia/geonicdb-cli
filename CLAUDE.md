@@ -13,10 +13,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GeonicDB CLI (`gdb`) is a command-line tool for interacting with GeonicDB — a FIWARE Orion-compatible Context Broker. It supports NGSIv2 and NGSI-LD APIs, providing commands for entity management, subscriptions, registrations, batch operations, temporal queries, admin tasks, and more.
+GeonicDB CLI (`geonic`) is a command-line tool for interacting with GeonicDB — a FIWARE Orion-compatible Context Broker. It supports NGSIv2 and NGSI-LD APIs, providing commands for entity management, subscriptions, registrations, batch operations, temporal queries, admin tasks, and more.
 
 - **Package**: `@geolonia/geonicdb-cli`
-- **Binary**: `gdb`
+- **Binary**: `geonic`
 - **Runtime**: Node.js >= 20
 - **Module**: ESM (`"type": "module"`)
 - **License**: MIT
@@ -78,7 +78,7 @@ tests/
 ### Key Design Patterns
 - **Commander.js**: Each command group exports a `register*Command(program)` function called from `cli.ts`
 - **HTTP Client**: `client.ts` handles all API communication with GeonicDB server
-- **Config**: Persistent config stored in `~/.gdbrc` (URL, service, token, etc.)
+- **Config**: Persistent config stored in `~/.config/geonic/config.json` (URL, service, token, etc.)
 - **Output Formatting**: Supports `json`, `table`, `keyValues`, `geojson` via `--format` flag
 - **Global Options**: `--url`, `--service`, `--service-path`, `--api`, `--token`, `--format`, `--verbose`
 

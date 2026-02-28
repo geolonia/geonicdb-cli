@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import type { GdbConfig, GdbConfigFile } from "./types.js";
 
 function getConfigDir(): string {
-  return process.env.GDB_CONFIG_DIR ?? join(homedir(), ".config", "gdb");
+  return process.env.GEONIC_CONFIG_DIR ?? process.env.GDB_CONFIG_DIR ?? join(homedir(), ".config", "geonic");
 }
 
 function getConfigFile(): string {

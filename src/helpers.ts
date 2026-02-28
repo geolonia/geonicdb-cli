@@ -30,7 +30,7 @@ export function resolveOptions(cmd: Command): GlobalOptions {
 export function createClient(cmd: Command): GdbClient {
   const opts = resolveOptions(cmd);
   if (!opts.url) {
-    printError("No URL configured. Use `gdb config set url <url>` or pass --url.");
+    printError("No URL configured. Use `geonic config set url <url>` or pass --url.");
     process.exit(1);
   }
   const cliOpts = cmd.optsWithGlobals() as GlobalOptions;
@@ -89,7 +89,7 @@ export function withErrorHandler<T extends unknown[]>(fn: (...args: T) => Promis
       await fn(...args);
     } catch (err: unknown) {
       if (err instanceof GdbClientError && err.status === 401) {
-        printError("Authentication failed. Please run `gdb login` to re-authenticate.");
+        printError("Authentication failed. Please run `geonic login` to re-authenticate.");
       } else if (err instanceof Error) {
         printError(err.message);
       } else {

@@ -20,7 +20,7 @@ export function createProgram(): Command {
   const program = new Command();
 
   program
-    .name("gdb")
+    .name("geonic")
     .description("CLI for GeonicDB — FIWARE Orion compatible Context Broker")
     .option("-u, --url <url>", "Base URL of the GeonicDB server")
     .option("-s, --service <name>", "Fiware-Service / NGSILD-Tenant header")

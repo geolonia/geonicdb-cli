@@ -46,7 +46,7 @@ export function registerAuthCommands(program: Command): void {
           }
 
           if (!globalOpts.url) {
-            printError("No URL configured. Use `gdb config set url <url>` or pass --url.");
+            printError("No URL configured. Use `geonic config set url <url>` or pass --url.");
             process.exit(1);
           }
 
@@ -146,7 +146,7 @@ export function registerAuthCommands(program: Command): void {
         const config = loadConfig(globalOpts.profile);
 
         if (!config.token && !config.apiKey) {
-          printInfo("Not logged in. Use `gdb login` to authenticate.");
+          printInfo("Not logged in. Use `geonic login` to authenticate.");
           return;
         }
 

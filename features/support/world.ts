@@ -29,7 +29,7 @@ export class GdbWorld extends World {
 
     const env: Record<string, string> = {
       ...process.env as Record<string, string>,
-      GDB_CONFIG_DIR: this.configDir,
+      GEONIC_CONFIG_DIR: this.configDir,
       NO_COLOR: "1",
       ...this.env,
       ...extraEnv,
@@ -54,7 +54,7 @@ export class GdbWorld extends World {
 
   /** Create a temp config directory for this scenario */
   createConfigDir(): void {
-    this.configDir = mkdtempSync(join(tmpdir(), "gdb-e2e-"));
+    this.configDir = mkdtempSync(join(tmpdir(), "geonic-e2e-"));
   }
 
   /** Remove the temp config directory */
