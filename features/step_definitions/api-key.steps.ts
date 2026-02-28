@@ -9,12 +9,16 @@ async function performLogin(world: GdbWorld): Promise<Record<string, unknown>> {
   return world.readConfig();
 }
 
+function stripAuthTokens(config: Record<string, unknown>): void {
+  delete config.token;
+  delete config.refreshToken;
+}
+
 Given("I have a valid API key from login", async function (this: GdbWorld) {
   const config = await performLogin(this);
   this.env.VALID_API_KEY = config.token as string;
 
-  delete config.token;
-  delete config.refreshToken;
+  stripAuthTokens(config);
   this.writeConfig(config);
 });
 
@@ -29,8 +33,7 @@ When("I run entities list with api-key env var", async function (this: GdbWorld)
 Given("I have a valid API key saved in config as apiKey", async function (this: GdbWorld) {
   const config = await performLogin(this);
   const jwt = config.token as string;
-  delete config.token;
-  delete config.refreshToken;
+  stripAuthTokens(config);
   config.apiKey = jwt;
   this.writeConfig(config);
 });
