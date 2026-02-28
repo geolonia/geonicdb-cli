@@ -22,7 +22,7 @@ The CLI is available as `geonic`.
 
 ```bash
 # Set the server URL
-geonic config set url http://localhost:1026
+geonic config set url http://localhost:3000
 
 # Create an entity
 geonic entities create '{"id":"Room1","type":"Room","temperature":{"value":23,"type":"Number"}}'
@@ -349,7 +349,7 @@ The CLI stores configuration in `~/.config/geonic/config.json`.
 
 ```bash
 # Set the default server
-geonic config set url http://localhost:1026
+geonic config set url http://localhost:3000
 
 # Use NGSI-LD by default
 geonic config set api ld
