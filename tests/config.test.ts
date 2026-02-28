@@ -65,7 +65,7 @@ describe("config", () => {
       const configDir = join(tempDir, "geonic");
       mkdirSync(configDir, { recursive: true });
       const v1Config = {
-        url: "http://localhost:1026",
+        url: "http://localhost:3000",
         service: "myTenant",
         token: "old-token",
         refreshToken: "old-refresh",
@@ -74,7 +74,7 @@ describe("config", () => {
       writeFileSync(join(configDir, "config.json"), JSON.stringify(v1Config), "utf-8");
 
       const config = loadConfig();
-      expect(config.url).toBe("http://localhost:1026");
+      expect(config.url).toBe("http://localhost:3000");
       expect(config.service).toBe("myTenant");
       expect(config.token).toBe("old-token");
       expect(config.refreshToken).toBe("old-refresh");
@@ -84,7 +84,7 @@ describe("config", () => {
       const parsed = JSON.parse(raw);
       expect(parsed.version).toBe(2);
       expect(parsed.currentProfile).toBe("default");
-      expect(parsed.profiles.default.url).toBe("http://localhost:1026");
+      expect(parsed.profiles.default.url).toBe("http://localhost:3000");
     });
 
     it("preserves unknown fields during migration by ignoring them", () => {
@@ -92,12 +92,12 @@ describe("config", () => {
       mkdirSync(configDir, { recursive: true });
       writeFileSync(
         join(configDir, "config.json"),
-        JSON.stringify({ url: "http://localhost:1026", unknownField: "value" }),
+        JSON.stringify({ url: "http://localhost:3000", unknownField: "value" }),
         "utf-8",
       );
 
       const configFile = loadConfigFile();
-      expect(configFile.profiles.default.url).toBe("http://localhost:1026");
+      expect(configFile.profiles.default.url).toBe("http://localhost:3000");
       expect((configFile.profiles.default as Record<string, unknown>).unknownField).toBeUndefined();
     });
   });

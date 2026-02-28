@@ -109,14 +109,14 @@ describe("helpers", () => {
     });
 
     it("creates GdbClient with correct options when URL is configured", () => {
-      saveConfig({ url: "http://localhost:1026", service: "myTenant" });
+      saveConfig({ url: "http://localhost:3000", service: "myTenant" });
       const client = createClient(fakeCmd());
       expect(client).toBeInstanceOf(GdbClient);
     });
 
     it("sets refreshToken to undefined when CLI --token is passed", () => {
       saveConfig({
-        url: "http://localhost:1026",
+        url: "http://localhost:3000",
         token: "config-token",
         refreshToken: "config-refresh",
       });
@@ -129,7 +129,7 @@ describe("helpers", () => {
 
     it("sets onTokenRefresh callback when token comes from config", () => {
       saveConfig({
-        url: "http://localhost:1026",
+        url: "http://localhost:3000",
         token: "config-token",
         refreshToken: "config-refresh",
       });
