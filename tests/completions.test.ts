@@ -255,6 +255,21 @@ describe("completions", () => {
       expect(result).toContain("list");
       expect(result).toContain("get");
     });
+
+    it("skips options with values after help", () => {
+      const result = complete(
+        "geonic help --url http://localhost:3000 entities ",
+      );
+      expect(result).toContain("list");
+      expect(result).toContain("get");
+      expect(result).toContain("create");
+    });
+
+    it("skips boolean flags after help", () => {
+      const result = complete("geonic help --verbose entities ");
+      expect(result).toContain("list");
+      expect(result).toContain("get");
+    });
   });
 
   describe("point parameter", () => {

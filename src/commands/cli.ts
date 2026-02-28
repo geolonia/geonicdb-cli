@@ -69,10 +69,18 @@ export function generateCompletions(
   // Special handling: `help` command mirrors the main command tree for completions
   if (currentCmd.name() === "help" && currentCmd.parent === program) {
     const helpIdx = walkTokens.findIndex((t) => t === "help");
-    const helpArgs =
-      helpIdx >= 0
-        ? walkTokens.slice(helpIdx + 1).filter((t) => !t.startsWith("-"))
-        : [];
+    const rawArgs = helpIdx >= 0 ? walkTokens.slice(helpIdx + 1) : [];
+    const helpArgs: string[] = [];
+    for (let j = 0; j < rawArgs.length; j++) {
+      const t = rawArgs[j];
+      if (t.startsWith("-")) {
+        if (optionTakesValue(currentCmd, program, t)) {
+          j++; // skip the option's value
+        }
+        continue;
+      }
+      helpArgs.push(t);
+    }
 
     let target = program;
     for (const arg of helpArgs) {
