@@ -4,10 +4,10 @@ Feature: Whoami
   So that I know which account I'm using
 
   Scenario: Display user info when logged in
-    Given a mock auth server that returns user info
+    Given I am logged in
     When I run "whoami"
     Then the exit code should be 0
-    And stdout should contain "user@example.com"
+    And stdout should contain "admin@test.com"
 
   Scenario: Show message when not logged in
     Given I am not logged in
@@ -16,15 +16,15 @@ Feature: Whoami
     And the output should contain "Not logged in"
 
   Scenario: Whoami with JSON format
-    Given a mock auth server that returns user info
+    Given I am logged in
     When I run "whoami --format json"
     Then the exit code should be 0
     And stdout should be valid JSON
     And the JSON output should have key "email"
-    And the JSON output key "email" should be "user@example.com"
+    And the JSON output key "email" should be "admin@test.com"
 
   Scenario: Whoami with expired token
-    Given a mock auth server that returns 401 for user info
+    Given I have invalid authentication tokens
     When I run "whoami"
     Then the exit code should be 1
     And the output should contain "Authentication failed"

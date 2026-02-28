@@ -91,7 +91,7 @@ export function registerAuthCommands(program: Command): void {
         const response = await client.rawRequest("POST", "/auth/login", { body });
 
         const data = response.data as Record<string, unknown>;
-        const token = data.token as string | undefined;
+        const token = (data.accessToken ?? data.token) as string | undefined;
         const refreshToken = data.refreshToken as string | undefined;
 
         if (!token) {
@@ -152,7 +152,7 @@ export function registerAuthCommands(program: Command): void {
 
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/auth/me");
+        const response = await client.rawRequest("GET", "/me");
         outputResponse(response, format);
 
         // Show token expiry if token exists (re-read in case of auto-refresh)

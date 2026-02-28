@@ -1,6 +1,5 @@
 import { Given, When, Then } from "@cucumber/cucumber";
 import { strict as assert } from "node:assert";
-import { mockServer } from "../support/mock-server.js";
 import type { GdbWorld } from "../support/world.js";
 
 Given("the CLI is configured with URL {string}", function (this: GdbWorld, url: string) {
@@ -12,20 +11,13 @@ Given("the CLI is configured with:", function (this: GdbWorld, docString: string
   this.writeConfig(config);
 });
 
-Given("the CLI is configured with URL to mock server", function (this: GdbWorld) {
+Given("the CLI is configured with server URL", function (this: GdbWorld) {
   const existing = this.readConfig();
   this.writeConfig({ ...existing, url: this.serverUrl });
 });
 
 Given("no config file exists", function (this: GdbWorld) {
   // configDir is already empty from Before hook
-});
-
-Given("a mock v2 entities endpoint", function (this: GdbWorld) {
-  mockServer.addRoute("GET", "/v2/entities", () => ({
-    status: 200,
-    body: [{ id: "entity1", type: "Thing" }],
-  }));
 });
 
 When("I run {string}", async function (this: GdbWorld, command: string) {
@@ -99,20 +91,6 @@ Then("the config key {string} should be {string}", function (this: GdbWorld, key
 Then("the config should not have key {string}", function (this: GdbWorld, key: string) {
   const config = this.readProfileConfig();
   assert.ok(!(key in config), `Expected config NOT to have key "${key}". Config: ${JSON.stringify(config)}`);
-});
-
-Then("the server should have received header {string} with value {string}", function (this: GdbWorld, header: string, value: string) {
-  const lastReq = mockServer.requests[mockServer.requests.length - 1];
-  assert.ok(lastReq, "No requests recorded on mock server");
-  const headerValue = lastReq.headers[header.toLowerCase()];
-  assert.equal(headerValue, value, `Expected header "${header}" to be "${value}", got "${headerValue}".`);
-});
-
-Then("the server should not have received header {string}", function (this: GdbWorld, header: string) {
-  const lastReq = mockServer.requests[mockServer.requests.length - 1];
-  assert.ok(lastReq, "No requests recorded on mock server");
-  const headerValue = lastReq.headers[header.toLowerCase()];
-  assert.ok(!headerValue, `Expected header "${header}" to NOT be present, but got "${headerValue}".`);
 });
 
 /** Extract the first JSON object or array from stdout (ignoring trailing non-JSON lines) */
