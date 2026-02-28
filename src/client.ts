@@ -149,7 +149,7 @@ export class GdbClient {
       if (!response.ok) return false;
 
       const data = (await response.json()) as Record<string, unknown>;
-      const newToken = data.token as string | undefined;
+      const newToken = (data.accessToken ?? data.token) as string | undefined;
       const newRefreshToken = data.refreshToken as string | undefined;
 
       if (!newToken) return false;

@@ -1,13 +1,33 @@
 import { BeforeAll, AfterAll, Before, After } from "@cucumber/cucumber";
-import { mockServer } from "./mock-server.js";
-import type { GdbWorld } from "./world.js";
+import { createServer, type GeonicDBServer } from "geonicdb";
+import { MongoClient } from "mongodb";
+import { GdbWorld, TEST_EMAIL, TEST_PASSWORD, JWT_SECRET } from "./world.js";
+
+let server: GeonicDBServer;
+let mongoClient: MongoClient;
 
 BeforeAll(async function () {
-  await mockServer.start();
+  process.env.AUTH_ENABLED = "true";
+  process.env.JWT_SECRET = JWT_SECRET;
+  process.env.SUPER_ADMIN_EMAIL = TEST_EMAIL;
+  process.env.SUPER_ADMIN_PASSWORD = TEST_PASSWORD;
+
+  server = await createServer({ silent: true });
+  mongoClient = new MongoClient(server.mongoUri);
+  await mongoClient.connect();
 });
 
-Before(function (this: GdbWorld) {
-  mockServer.clearRoutes();
+Before(async function (this: GdbWorld) {
+  // DB cleanup for scenario isolation
+  const db = mongoClient.db();
+  const collections = await db.listCollections().toArray();
+  for (const c of collections) {
+    if (!c.name.startsWith("system.")) {
+      await db.collection(c.name).deleteMany({});
+    }
+  }
+
+  this.serverUrl = server.url;
   this.createConfigDir();
 });
 
@@ -16,5 +36,6 @@ After(function (this: GdbWorld) {
 });
 
 AfterAll(async function () {
-  await mockServer.stop();
+  await mongoClient.close();
+  await server.close();
 });

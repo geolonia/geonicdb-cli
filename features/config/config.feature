@@ -5,10 +5,10 @@ Feature: Config management
 
   Scenario: Set and get a config value
     Given no config file exists
-    When I run "config set url http://localhost:1026"
+    When I run "gdb config set url http://localhost:1026"
     Then the exit code should be 0
     And the output should contain "Set url"
-    When I run "config get url"
+    When I run "gdb config get url"
     Then the exit code should be 0
     And stdout should contain "http://localhost:1026"
 
@@ -17,7 +17,7 @@ Feature: Config management
       """
       { "url": "http://localhost:1026", "service": "myservice" }
       """
-    When I run "config list"
+    When I run "gdb config list"
     Then the exit code should be 0
     And stdout should contain "url"
     And stdout should contain "http://localhost:1026"
@@ -29,7 +29,7 @@ Feature: Config management
       """
       { "url": "http://localhost:1026", "service": "myservice" }
       """
-    When I run "config delete service"
+    When I run "gdb config delete service"
     Then the exit code should be 0
     And the output should contain "Deleted"
     And the config should not have key "service"

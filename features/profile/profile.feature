@@ -5,13 +5,13 @@ Feature: Profile management
 
   Scenario: List profiles when none exist
     Given no config file exists
-    When I run "profile list"
+    When I run "gdb profile list"
     Then the exit code should be 0
     And the output should contain "default"
 
   Scenario: Create a new profile
     Given no config file exists
-    When I run "profile create staging"
+    When I run "gdb profile create staging"
     Then the exit code should be 0
     And the output should contain "staging"
 
@@ -27,7 +27,7 @@ Feature: Profile management
         }
       }
       """
-    When I run "profile use staging"
+    When I run "gdb profile use staging"
     Then the exit code should be 0
     And the active profile should be "staging"
 
@@ -42,7 +42,7 @@ Feature: Profile management
         }
       }
       """
-    When I run "profile show default"
+    When I run "gdb profile show default"
     Then the exit code should be 0
     And the output should contain "http://localhost:1026"
 
@@ -58,7 +58,7 @@ Feature: Profile management
         }
       }
       """
-    When I run "profile delete staging"
+    When I run "gdb profile delete staging"
     Then the exit code should be 0
     And the config should not have profile "staging"
 
@@ -73,7 +73,7 @@ Feature: Profile management
         }
       }
       """
-    When I run "profile delete default"
+    When I run "gdb profile delete default"
     Then the exit code should be 1
 
   Scenario: Cannot create duplicate profile
@@ -88,7 +88,7 @@ Feature: Profile management
         }
       }
       """
-    When I run "profile create staging"
+    When I run "gdb profile create staging"
     Then the exit code should be 1
 
   Scenario: Cannot switch to non-existent profile
@@ -102,7 +102,7 @@ Feature: Profile management
         }
       }
       """
-    When I run "profile use nonexistent"
+    When I run "gdb profile use nonexistent"
     Then the exit code should be 1
 
   Scenario: Delete active profile switches to default
@@ -117,7 +117,7 @@ Feature: Profile management
         }
       }
       """
-    When I run "profile delete staging"
+    When I run "gdb profile delete staging"
     Then the exit code should be 0
     And the config should not have profile "staging"
     And the active profile should be "default"
@@ -133,6 +133,6 @@ Feature: Profile management
         }
       }
       """
-    When I run "profile show nonexistent"
+    When I run "gdb profile show nonexistent"
     Then the exit code should be 0
     And the output should contain "has no settings"

@@ -1,11 +1,15 @@
 import { World, setWorldConstructor, setDefaultTimeout } from "@cucumber/cucumber";
+import { strict as assert } from "node:assert";
 import { execFile } from "node:child_process";
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { mockServer } from "./mock-server.js";
 
-setDefaultTimeout(10_000);
+setDefaultTimeout(30_000);
+
+export const TEST_EMAIL = "admin@test.com";
+export const TEST_PASSWORD = "SuperSecretPassword123!";
+export const JWT_SECRET = "e2e-test-secret-key-minimum-32-characters-long";
 
 export interface CliResult {
   stdout: string;
@@ -17,6 +21,7 @@ export class GdbWorld extends World {
   configDir!: string;
   lastResult!: CliResult;
   env: Record<string, string> = {};
+  serverUrl!: string;
 
   /** Run the CLI with given arguments */
   async run(args: string[], extraEnv?: Record<string, string>): Promise<CliResult> {
@@ -31,7 +36,7 @@ export class GdbWorld extends World {
     };
 
     return new Promise((resolve) => {
-      execFile("node", [cliPath, ...args], { env, timeout: 8_000 }, (error, stdout, stderr) => {
+      execFile("node", [cliPath, ...args], { env, timeout: 15_000 }, (error, stdout, stderr) => {
         const result: CliResult = {
           stdout: stdout.toString().trim(),
           stderr: stderr.toString().trim(),
@@ -57,11 +62,6 @@ export class GdbWorld extends World {
     if (this.configDir && existsSync(this.configDir)) {
       rmSync(this.configDir, { recursive: true, force: true });
     }
-  }
-
-  /** Get the mock server base URL */
-  get serverUrl(): string {
-    return mockServer.baseUrl;
   }
 
   /** Write a config file in the temp config dir */
@@ -95,3 +95,13 @@ export class GdbWorld extends World {
 }
 
 setWorldConstructor(GdbWorld);
+
+/**
+ * Perform a real login against the test server and return the active profile config.
+ */
+export async function performLogin(world: GdbWorld): Promise<Record<string, unknown>> {
+  world.writeConfig({ url: world.serverUrl });
+  await world.run(["login"], { GDB_EMAIL: TEST_EMAIL, GDB_PASSWORD: TEST_PASSWORD });
+  assert.equal(world.lastResult.exitCode, 0, `Login failed during setup.\nstdout: ${world.lastResult.stdout}\nstderr: ${world.lastResult.stderr}`);
+  return world.readProfileConfig();
+}

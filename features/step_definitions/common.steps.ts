@@ -1,6 +1,5 @@
 import { Given, When, Then } from "@cucumber/cucumber";
 import { strict as assert } from "node:assert";
-import { mockServer } from "../support/mock-server.js";
 import type { GdbWorld } from "../support/world.js";
 
 Given("the CLI is configured with URL {string}", function (this: GdbWorld, url: string) {
@@ -12,7 +11,7 @@ Given("the CLI is configured with:", function (this: GdbWorld, docString: string
   this.writeConfig(config);
 });
 
-Given("the CLI is configured with URL to mock server", function (this: GdbWorld) {
+Given("the CLI is configured with server URL", function (this: GdbWorld) {
   const existing = this.readConfig();
   this.writeConfig({ ...existing, url: this.serverUrl });
 });
@@ -21,26 +20,19 @@ Given("no config file exists", function (this: GdbWorld) {
   // configDir is already empty from Before hook
 });
 
-Given("a mock v2 entities endpoint", function (this: GdbWorld) {
-  mockServer.addRoute("GET", "/v2/entities", () => ({
-    status: 200,
-    body: [{ id: "entity1", type: "Thing" }],
-  }));
-});
-
 When("I run {string}", async function (this: GdbWorld, command: string) {
-  const args = parseArgs(command);
+  const args = stripGdbPrefix(parseArgs(command));
   await this.run(args);
 });
 
 When("I run {string} with URL", async function (this: GdbWorld, command: string) {
-  const args = parseArgs(command);
+  const args = stripGdbPrefix(parseArgs(command));
   args.push("--url", this.serverUrl);
   await this.run(args);
 });
 
 When("I run {string} with env {string}", async function (this: GdbWorld, command: string, envPair: string) {
-  const args = parseArgs(command);
+  const args = stripGdbPrefix(parseArgs(command));
   const eqIdx = envPair.indexOf("=");
   const key = envPair.substring(0, eqIdx);
   const value = envPair.substring(eqIdx + 1);
@@ -101,20 +93,6 @@ Then("the config should not have key {string}", function (this: GdbWorld, key: s
   assert.ok(!(key in config), `Expected config NOT to have key "${key}". Config: ${JSON.stringify(config)}`);
 });
 
-Then("the server should have received header {string} with value {string}", function (this: GdbWorld, header: string, value: string) {
-  const lastReq = mockServer.requests[mockServer.requests.length - 1];
-  assert.ok(lastReq, "No requests recorded on mock server");
-  const headerValue = lastReq.headers[header.toLowerCase()];
-  assert.equal(headerValue, value, `Expected header "${header}" to be "${value}", got "${headerValue}".`);
-});
-
-Then("the server should not have received header {string}", function (this: GdbWorld, header: string) {
-  const lastReq = mockServer.requests[mockServer.requests.length - 1];
-  assert.ok(lastReq, "No requests recorded on mock server");
-  const headerValue = lastReq.headers[header.toLowerCase()];
-  assert.ok(!headerValue, `Expected header "${header}" to NOT be present, but got "${headerValue}".`);
-});
-
 /** Extract the first JSON object or array from stdout (ignoring trailing non-JSON lines) */
 function extractJson(text: string): Record<string, unknown> | null {
   // Try parsing the entire text first
@@ -135,6 +113,10 @@ function extractJson(text: string): Record<string, unknown> | null {
     }
   }
   return null;
+}
+
+function stripGdbPrefix(args: string[]): string[] {
+  return args[0] === "gdb" ? args.slice(1) : args;
 }
 
 function parseArgs(command: string): string[] {
