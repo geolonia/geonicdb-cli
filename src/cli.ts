@@ -15,6 +15,7 @@ import { registerRulesCommand } from "./commands/rules.js";
 import { registerModelsCommand } from "./commands/models.js";
 import { registerCatalogCommand } from "./commands/catalog.js";
 import { registerHealthCommand, registerVersionCommand } from "./commands/health.js";
+import { registerHelpCommand } from "./commands/help.js";
 
 export function createProgram(): Command {
   const program = new Command();
@@ -33,6 +34,7 @@ export function createProgram(): Command {
     .option("--no-color", "Disable color output")
     .option("-v, --verbose", "Verbose output");
 
+  registerHelpCommand(program);
   registerConfigCommand(program);
   registerAuthCommands(program);
   registerProfileCommands(program);

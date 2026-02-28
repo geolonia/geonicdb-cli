@@ -47,7 +47,7 @@ src/
 ├── index.ts           # Entry point — parses CLI args
 ├── cli.ts             # Commander program setup, registers all commands
 ├── client.ts          # HTTP client for GeonicDB API
-├── config.ts          # Configuration management (~/.gdbrc)
+├── config.ts          # Configuration management (~/.config/geonic/config.json)
 ├── helpers.ts         # Shared utility functions
 ├── input.ts           # Input parsing (stdin, files, JSON)
 ├── output.ts          # Output formatting (json, table, keyValues, geojson)
@@ -65,14 +65,21 @@ src/
     ├── models.ts      # Data models
     ├── catalog.ts     # Data catalog (CKAN/DCAT)
     ├── health.ts      # Health check & version
+    ├── help.ts        # wp-cli style help system
     ├── config.ts      # Config management (set, get, list)
+    ├── profile.ts     # Profile management
     ├── auth.ts        # Authentication (login, logout, token)
-    └── admin/         # Admin commands (tenants, users)
+    └── admin/         # Admin commands (tenants, users, policies, oauth-clients, cadde)
 tests/
 ├── client.test.ts
 ├── config.test.ts
+├── help.test.ts
+├── helpers.test.ts
 ├── input.test.ts
-└── output.test.ts
+├── oauth.test.ts
+├── output.test.ts
+├── prompt.test.ts
+└── token.test.ts
 ```
 
 ### Key Design Patterns
@@ -80,7 +87,8 @@ tests/
 - **HTTP Client**: `client.ts` handles all API communication with GeonicDB server
 - **Config**: Persistent config stored in `~/.config/geonic/config.json` (URL, service, token, etc.)
 - **Output Formatting**: Supports `json`, `table`, `keyValues`, `geojson` via `--format` flag
-- **Global Options**: `--url`, `--service`, `--service-path`, `--api`, `--token`, `--format`, `--verbose`
+- **Help System**: wp-cli style help via `geonic help [command] [subcommand]` and `--help`
+- **Global Options**: `--url`, `--service`, `--service-path`, `--api`, `--token`, `--profile`, `--api-key`, `--format`, `--verbose`
 
 ### Build
 - **tsup**: Bundles to single ESM file (`dist/index.js`) with `#!/usr/bin/env node` banner
