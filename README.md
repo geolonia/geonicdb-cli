@@ -40,6 +40,31 @@ geonic entities update Room1 '{"temperature":{"value":25,"type":"Number"}}'
 geonic entities delete Room1
 ```
 
+## Getting Help
+
+The CLI provides built-in help in wp-cli style. Use `geonic help` to explore available commands:
+
+```bash
+# Show all available commands
+geonic help
+
+# Get help on a specific command
+geonic help entities
+
+# Get help on a subcommand
+geonic help entities list
+
+# Works with nested commands too
+geonic help admin tenants
+```
+
+You can also use `--help` on any command:
+
+```bash
+geonic entities --help
+geonic entities list --help
+```
+
 ## Global Options
 
 | Option | Description |
@@ -49,6 +74,8 @@ geonic entities delete Room1
 | `--service-path <path>` | `Fiware-ServicePath` header |
 | `--api <version>` | API version: `v2` (default) or `ld` |
 | `--token <token>` | Authentication token |
+| `-p, --profile <name>` | Use a named profile |
+| `--api-key <key>` | API key for authentication |
 | `-f, --format <fmt>` | Output format: `json`, `table`, `keyValues`, `geojson` |
 | `--no-color` | Disable color output |
 | `-v, --verbose` | Verbose output |
@@ -61,6 +88,12 @@ Options are resolved in this order (first wins):
 
 ## Commands
 
+### help — Get help on commands
+
+```bash
+geonic help [<command>] [<subcommand>]
+```
+
 ### config — Manage CLI configuration
 
 | Subcommand | Description |
@@ -70,6 +103,16 @@ Options are resolved in this order (first wins):
 | `config list` | List all config values |
 | `config delete <key>` | Delete a config value |
 
+### profile — Manage connection profiles
+
+| Subcommand | Description |
+|---|---|
+| `profile list` | List all profiles |
+| `profile use <name>` | Switch active profile |
+| `profile create <name>` | Create a new profile |
+| `profile delete <name>` | Delete a profile |
+| `profile show [name]` | Show profile settings |
+
 ### auth — Authentication
 
 | Command | Description |
@@ -78,7 +121,7 @@ Options are resolved in this order (first wins):
 | `logout` | Clear saved authentication token |
 | `whoami` | Display current authenticated user |
 
-The `login` command reads `GDB_EMAIL` and `GDB_PASSWORD` environment variables.
+The `login` command reads `GDB_EMAIL` and `GDB_PASSWORD` environment variables. It also supports OAuth Client Credentials flow with `--client-id` and `--client-secret`.
 
 ### entities — Manage context entities
 
