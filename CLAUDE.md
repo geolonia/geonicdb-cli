@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GeonicDB CLI (`geonic`) is a command-line tool for interacting with GeonicDB — a FIWARE Orion-compatible Context Broker. It supports NGSIv2 and NGSI-LD APIs, providing commands for entity management, subscriptions, registrations, batch operations, temporal queries, admin tasks, and more.
+GeonicDB CLI (`geonic`) is a command-line tool for interacting with GeonicDB — a FIWARE Orion-compatible Context Broker. It uses the NGSI-LD API, providing commands for entity management, subscriptions, registrations, batch operations, temporal queries, admin tasks, and more.
 
 - **Package**: `@geolonia/geonicdb-cli`
 - **Binary**: `geonic`
@@ -89,7 +89,7 @@ tests/
 - **Config**: Persistent config stored in `~/.config/geonic/config.json` (URL, service, token, etc.)
 - **Output Formatting**: Supports `json`, `table`, `keyValues`, `geojson` via `--format` flag
 - **Help System**: wp-cli style help via `geonic help [command] [subcommand]` and `--help`
-- **Global Options**: `--url`, `--service`, `--service-path`, `--api`, `--token`, `--profile`, `--api-key`, `--format`, `--verbose`
+- **Global Options**: `--url`, `--service`, `--token`, `--profile`, `--api-key`, `--format`, `--verbose`
 
 ### Build
 - **tsup**: Bundles to single ESM file (`dist/index.js`) with `#!/usr/bin/env node` banner

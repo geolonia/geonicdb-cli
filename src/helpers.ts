@@ -2,7 +2,7 @@ import { Command } from "commander";
 import { loadConfig, saveConfig } from "./config.js";
 import { GdbClient, GdbClientError } from "./client.js";
 import { printError, printOutput, printCount } from "./output.js";
-import type { ApiVersion, ClientResponse, GlobalOptions, OutputFormat } from "./types.js";
+import type { ClientResponse, GlobalOptions, OutputFormat } from "./types.js";
 
 /**
  * Resolve merged options from config + CLI flags.
@@ -13,8 +13,6 @@ export function resolveOptions(cmd: Command): GlobalOptions {
   return {
     url: opts.url ?? config.url,
     service: opts.service ?? config.service,
-    servicePath: opts.servicePath ?? config.servicePath,
-    api: opts.api ?? config.api ?? "v2",
     token: opts.token ?? config.token,
     format: opts.format ?? config.format ?? "json",
     color: opts.color,
@@ -39,8 +37,6 @@ export function createClient(cmd: Command): GdbClient {
   return new GdbClient({
     baseUrl: opts.url,
     service: opts.service,
-    servicePath: opts.servicePath,
-    api: opts.api as ApiVersion,
     token: opts.token,
     refreshToken: usingCliToken ? undefined : config.refreshToken,
     apiKey: opts.apiKey,

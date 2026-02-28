@@ -1,10 +1,8 @@
-import type { ApiVersion, ClientOptions, ClientResponse, NgsiError } from "./types.js";
+import type { ClientOptions, ClientResponse, NgsiError } from "./types.js";
 
 export class GdbClient {
   private baseUrl: string;
   private service?: string;
-  private servicePath?: string;
-  private api: ApiVersion;
   private token?: string;
   private refreshToken?: string;
   private apiKey?: string;
@@ -15,8 +13,6 @@ export class GdbClient {
   constructor(options: ClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.service = options.service;
-    this.servicePath = options.servicePath;
-    this.api = options.api;
     this.token = options.token;
     this.refreshToken = options.refreshToken;
     this.apiKey = options.apiKey;
@@ -27,16 +23,9 @@ export class GdbClient {
   private buildHeaders(extra?: Record<string, string>): Record<string, string> {
     const headers: Record<string, string> = {};
 
-    if (this.api === "ld") {
-      headers["Content-Type"] = "application/ld+json";
-      headers["Accept"] = "application/ld+json";
-      if (this.service) headers["NGSILD-Tenant"] = this.service;
-    } else {
-      headers["Content-Type"] = "application/json";
-      headers["Accept"] = "application/json";
-      if (this.service) headers["Fiware-Service"] = this.service;
-      if (this.servicePath) headers["Fiware-ServicePath"] = this.servicePath;
-    }
+    headers["Content-Type"] = "application/ld+json";
+    headers["Accept"] = "application/ld+json";
+    if (this.service) headers["NGSILD-Tenant"] = this.service;
 
     if (this.token) {
       headers["Authorization"] = `Bearer ${this.token}`;
@@ -64,7 +53,7 @@ export class GdbClient {
   }
 
   private getBasePath(): string {
-    return this.api === "ld" ? "/ngsi-ld/v1" : "/v2";
+    return "/ngsi-ld/v1";
   }
 
   private static readonly SENSITIVE_HEADERS = new Set(["authorization"]);
@@ -180,10 +169,7 @@ export class GdbClient {
     const response = await fetch(url, { method, headers, body });
     this.logResponse(response);
 
-    const countHeader =
-      this.api === "ld"
-        ? response.headers.get("NGSILD-Results-Count")
-        : response.headers.get("Fiware-Total-Count");
+    const countHeader = response.headers.get("NGSILD-Results-Count");
     const count = countHeader ? parseInt(countHeader, 10) : undefined;
 
     let data: T;

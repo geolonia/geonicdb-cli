@@ -55,9 +55,8 @@ describe("helpers", () => {
       expect(opts.service).toBe("tenant-a");
     });
 
-    it("defaults api to v2 and format to json", () => {
+    it("defaults format to json", () => {
       const opts = resolveOptions(fakeCmd());
-      expect(opts.api).toBe("v2");
       expect(opts.format).toBe("json");
     });
 
@@ -90,8 +89,6 @@ describe("helpers", () => {
       const opts = resolveOptions(fakeCmd());
       expect(opts.url).toBeUndefined();
       expect(opts.service).toBeUndefined();
-      expect(opts.servicePath).toBeUndefined();
-      expect(opts.api).toBe("v2");
       expect(opts.format).toBe("json");
       expect(opts.token).toBeUndefined();
       expect(opts.apiKey).toBeUndefined();

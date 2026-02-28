@@ -35,10 +35,9 @@ describe("config", () => {
   });
 
   it("saves and loads config", () => {
-    saveConfig({ url: "http://localhost:3000", api: "v2" });
+    saveConfig({ url: "http://localhost:3000" });
     const config = loadConfig();
     expect(config.url).toBe("http://localhost:3000");
-    expect(config.api).toBe("v2");
   });
 
   it("sets individual config values", () => {
@@ -68,7 +67,6 @@ describe("config", () => {
       const v1Config = {
         url: "http://localhost:1026",
         service: "myTenant",
-        api: "v2",
         token: "old-token",
         refreshToken: "old-refresh",
         format: "json",

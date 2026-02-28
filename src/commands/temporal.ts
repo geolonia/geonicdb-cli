@@ -4,17 +4,9 @@ import {
   createClient,
   getFormat,
   outputResponse,
-  resolveOptions,
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
-
-function requireLd(cmd: Command): void {
-  const opts = resolveOptions(cmd);
-  if (opts.api !== "ld") {
-    throw new Error("Temporal commands are only available with NGSI-LD (--api ld).");
-  }
-}
 
 function addTemporalListOptions(cmd: Command): Command {
   return cmd
@@ -35,8 +27,6 @@ function addTemporalListOptions(cmd: Command): Command {
 
 function createListAction() {
   return withErrorHandler(async (_opts: unknown, cmd: Command) => {
-    requireLd(cmd);
-
     const client = createClient(cmd);
     const format = getFormat(cmd);
     const cmdOpts = cmd.opts();
@@ -73,8 +63,6 @@ function addTemporalGetOptions(cmd: Command): Command {
 
 function createGetAction() {
   return withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
-    requireLd(cmd);
-
     const client = createClient(cmd);
     const format = getFormat(cmd);
     const cmdOpts = cmd.opts();
@@ -97,8 +85,6 @@ function createGetAction() {
 
 function createCreateAction() {
   return withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-    requireLd(cmd);
-
     const body = parseJsonInput(String(json));
     const client = createClient(cmd);
 
@@ -109,8 +95,6 @@ function createCreateAction() {
 
 function createDeleteAction() {
   return withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
-    requireLd(cmd);
-
     const client = createClient(cmd);
 
     await client.delete(
@@ -122,8 +106,6 @@ function createDeleteAction() {
 
 function createQueryAction() {
   return withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-    requireLd(cmd);
-
     const body = parseJsonInput(String(json));
     const client = createClient(cmd);
     const format = getFormat(cmd);
@@ -152,7 +134,7 @@ function addQueryOptions(cmd: Command): Command {
 export function registerTemporalCommand(program: Command): void {
   const temporal = program
     .command("temporal")
-    .description("NGSI-LD temporal entity operations");
+    .description("Temporal entity operations");
 
   const entities = temporal
     .command("entities")

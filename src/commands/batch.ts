@@ -4,10 +4,8 @@ import {
   createClient,
   getFormat,
   outputResponse,
-  resolveOptions,
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
-import { printError } from "../output.js";
 
 export function registerBatchCommand(program: Command): void {
   const batch = program
@@ -23,20 +21,9 @@ export function registerBatchCommand(program: Command): void {
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const opts = resolveOptions(cmd);
         const data = parseJsonInput(String(json));
 
-        let response;
-        if (opts.api === "ld") {
-          response = await client.post("/entityOperations/create", data);
-        } else {
-          const entities = Array.isArray(data) ? data : [data];
-          response = await client.post("/op/update", {
-            actionType: "append",
-            entities,
-          });
-        }
-
+        const response = await client.post("/entityOperations/create", data);
         outputResponse(response, format);
       }),
     );
@@ -49,20 +36,9 @@ export function registerBatchCommand(program: Command): void {
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const opts = resolveOptions(cmd);
         const data = parseJsonInput(String(json));
 
-        let response;
-        if (opts.api === "ld") {
-          response = await client.post("/entityOperations/upsert", data);
-        } else {
-          const entities = Array.isArray(data) ? data : [data];
-          response = await client.post("/op/update", {
-            actionType: "append",
-            entities,
-          });
-        }
-
+        const response = await client.post("/entityOperations/upsert", data);
         outputResponse(response, format);
       }),
     );
@@ -75,20 +51,9 @@ export function registerBatchCommand(program: Command): void {
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const opts = resolveOptions(cmd);
         const data = parseJsonInput(String(json));
 
-        let response;
-        if (opts.api === "ld") {
-          response = await client.post("/entityOperations/update", data);
-        } else {
-          const entities = Array.isArray(data) ? data : [data];
-          response = await client.post("/op/update", {
-            actionType: "update",
-            entities,
-          });
-        }
-
+        const response = await client.post("/entityOperations/update", data);
         outputResponse(response, format);
       }),
     );
@@ -101,20 +66,9 @@ export function registerBatchCommand(program: Command): void {
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const opts = resolveOptions(cmd);
         const data = parseJsonInput(String(json));
 
-        let response;
-        if (opts.api === "ld") {
-          response = await client.post("/entityOperations/delete", data);
-        } else {
-          const entities = Array.isArray(data) ? data : [data];
-          response = await client.post("/op/update", {
-            actionType: "delete",
-            entities,
-          });
-        }
-
+        const response = await client.post("/entityOperations/delete", data);
         outputResponse(response, format);
       }),
     );
@@ -127,33 +81,19 @@ export function registerBatchCommand(program: Command): void {
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const opts = resolveOptions(cmd);
         const data = parseJsonInput(String(json));
 
-        let response;
-        if (opts.api === "ld") {
-          response = await client.post("/entityOperations/query", data);
-        } else {
-          response = await client.post("/op/query", data);
-        }
-
+        const response = await client.post("/entityOperations/query", data);
         outputResponse(response, format);
       }),
     );
 
-  // batch merge (NGSI-LD only)
+  // batch merge
   batch
     .command("merge <json>")
-    .description("Batch merge entities (NGSI-LD only)")
+    .description("Batch merge entities")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-        const opts = resolveOptions(cmd);
-
-        if (opts.api !== "ld") {
-          printError("Batch merge is only supported for NGSI-LD (--api ld).");
-          process.exit(1);
-        }
-
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const data = parseJsonInput(String(json));

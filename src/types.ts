@@ -1,11 +1,8 @@
-export type ApiVersion = "v2" | "ld";
 export type OutputFormat = "json" | "table" | "keyValues" | "geojson";
 
 export interface GdbConfig {
   url?: string;
   service?: string;
-  servicePath?: string;
-  api?: ApiVersion;
   token?: string;
   refreshToken?: string;
   format?: OutputFormat;
@@ -21,8 +18,6 @@ export interface GdbConfigFile {
 export interface GlobalOptions {
   url?: string;
   service?: string;
-  servicePath?: string;
-  api?: ApiVersion;
   token?: string;
   format?: OutputFormat;
   color?: boolean;
@@ -34,8 +29,6 @@ export interface GlobalOptions {
 export interface ClientOptions {
   baseUrl: string;
   service?: string;
-  servicePath?: string;
-  api: ApiVersion;
   token?: string;
   refreshToken?: string;
   apiKey?: string;
