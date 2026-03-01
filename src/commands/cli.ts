@@ -168,6 +168,17 @@ function getOptionValueCompletions(
   return [];
 }
 
+const ZSH_SCRIPT = `_geonic_completions() {
+  local completions
+  completions=(\${(f)"$(geonic cli completions --line="$BUFFER" --point="$CURSOR" 2>/dev/null)"})
+  if [[ "\${completions[1]}" == "<file>" ]]; then
+    _files
+    return
+  fi
+  compadd -a completions
+}
+compdef _geonic_completions geonic`;
+
 const BASH_SCRIPT = `_geonic_completions() {
   local cur="\${COMP_WORDS[COMP_CWORD]}"
   local completions
@@ -221,6 +232,29 @@ export function registerCliCommand(program: Command): void {
       description: "Persist in ~/.bashrc",
       command:
         'echo \'eval "$(geonic cli completions bash)"\' >> ~/.bashrc',
+    },
+  ]);
+
+  const zsh = completions
+    .command("zsh")
+    .description("Output zsh completion script")
+    .action(() => {
+      console.log(ZSH_SCRIPT);
+    });
+
+  addExamples(zsh, [
+    {
+      description: "Print the zsh completion script",
+      command: "geonic cli completions zsh",
+    },
+    {
+      description: "Enable in current shell session",
+      command: 'eval "$(geonic cli completions zsh)"',
+    },
+    {
+      description: "Persist in ~/.zshrc",
+      command:
+        'echo \'eval "$(geonic cli completions zsh)"\' >> ~/.zshrc',
     },
   ]);
 }
