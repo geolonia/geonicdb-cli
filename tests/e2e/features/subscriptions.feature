@@ -40,6 +40,10 @@ Feature: Subscription management
     When I update the subscription with '{"description":"Updated subscription"}'
     Then the exit code should be 0
     And the output should contain "Subscription updated."
+    When I get the subscription by ID
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the output should contain "Updated subscription"
 
   Scenario: List subscriptions with count
     Given I am logged in
