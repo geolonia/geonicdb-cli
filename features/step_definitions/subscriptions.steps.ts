@@ -4,14 +4,13 @@ import type { GdbWorld } from "../support/world.js";
 
 When("I create a subscription for type {string}", async function (this: GdbWorld, type: string) {
   const sub = JSON.stringify({
+    type: "Subscription",
     description: `Notify on ${type} changes`,
-    subject: {
-      entities: [{ type }],
-      condition: { attrs: ["temperature"] },
-    },
+    entities: [{ type }],
+    watchedAttributes: ["temperature"],
     notification: {
-      http: { url: "http://localhost:3000/notify" },
-      attrs: ["temperature"],
+      endpoint: { uri: "http://localhost:3000/notify" },
+      attributes: ["temperature"],
     },
   });
   await this.run(["subscriptions", "create", sub]);
@@ -29,4 +28,16 @@ When("I delete the subscription", async function (this: GdbWorld) {
   const id = (this as Record<string, unknown>).subscriptionId as string;
   assert.ok(id, "No subscription ID saved");
   await this.run(["subscriptions", "delete", id]);
+});
+
+When("I get the subscription by ID", async function (this: GdbWorld) {
+  const id = (this as Record<string, unknown>).subscriptionId as string;
+  assert.ok(id, "No subscription ID saved");
+  await this.run(["subscriptions", "get", id]);
+});
+
+When("I update the subscription with {string}", async function (this: GdbWorld, json: string) {
+  const id = (this as Record<string, unknown>).subscriptionId as string;
+  assert.ok(id, "No subscription ID saved");
+  await this.run(["subscriptions", "update", id, json]);
 });
