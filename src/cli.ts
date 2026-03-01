@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import { Command } from "commander";
 import { registerConfigCommand } from "./commands/config.js";
 import { registerAuthCommands } from "./commands/auth.js";
@@ -19,11 +20,13 @@ import { registerCliCommand } from "./commands/cli.js";
 import { addAttrsSubcommands } from "./commands/attrs.js";
 
 export function createProgram(): Command {
+  const require = createRequire(import.meta.url);
+  const pkg = require("../package.json") as { description: string };
   const program = new Command();
 
   program
     .name("geonic")
-    .description("CLI for GeonicDB — FIWARE Orion compatible Context Broker")
+    .description(pkg.description)
     .option("-u, --url <url>", "Base URL of the GeonicDB server")
     .option("-s, --service <name>", "NGSILD-Tenant header")
     .option("--token <token>", "Authentication token")
