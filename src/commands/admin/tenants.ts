@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import { withErrorHandler, createClient, getFormat, outputResponse } from "../../helpers.js";
 import { parseJsonInput } from "../../input.js";
 import { printSuccess } from "../../output.js";
+import { addExamples } from "../help.js";
 
 export function registerTenantsCommand(parent: Command): void {
   const tenants = parent
@@ -9,7 +10,7 @@ export function registerTenantsCommand(parent: Command): void {
     .description("Manage tenants");
 
   // tenants list
-  tenants
+  const list = tenants
     .command("list")
     .description("List all tenants")
     .action(
@@ -21,8 +22,15 @@ export function registerTenantsCommand(parent: Command): void {
       }),
     );
 
+  addExamples(list, [
+    {
+      description: "List all tenants",
+      command: "geonic admin tenants list",
+    },
+  ]);
+
   // tenants get
-  tenants
+  const get = tenants
     .command("get <id>")
     .description("Get a tenant by ID")
     .action(
@@ -37,8 +45,15 @@ export function registerTenantsCommand(parent: Command): void {
       }),
     );
 
+  addExamples(get, [
+    {
+      description: "Get a tenant by ID",
+      command: "geonic admin tenants get <tenant-id>",
+    },
+  ]);
+
   // tenants create
-  tenants
+  const create = tenants
     .command("create <json>")
     .description("Create a new tenant")
     .action(
@@ -54,8 +69,15 @@ export function registerTenantsCommand(parent: Command): void {
       }),
     );
 
+  addExamples(create, [
+    {
+      description: "Create a tenant from a JSON file",
+      command: "geonic admin tenants create @tenant.json",
+    },
+  ]);
+
   // tenants update
-  tenants
+  const update = tenants
     .command("update <id> <json>")
     .description("Update a tenant")
     .action(
@@ -75,8 +97,15 @@ export function registerTenantsCommand(parent: Command): void {
       ),
     );
 
+  addExamples(update, [
+    {
+      description: "Update a tenant from a JSON file",
+      command: "geonic admin tenants update <tenant-id> @tenant.json",
+    },
+  ]);
+
   // tenants delete
-  tenants
+  const del = tenants
     .command("delete <id>")
     .description("Delete a tenant")
     .action(
@@ -90,8 +119,15 @@ export function registerTenantsCommand(parent: Command): void {
       }),
     );
 
+  addExamples(del, [
+    {
+      description: "Delete a tenant",
+      command: "geonic admin tenants delete <tenant-id>",
+    },
+  ]);
+
   // tenants activate
-  tenants
+  const activate = tenants
     .command("activate <id>")
     .description("Activate a tenant")
     .action(
@@ -105,8 +141,15 @@ export function registerTenantsCommand(parent: Command): void {
       }),
     );
 
+  addExamples(activate, [
+    {
+      description: "Activate a tenant",
+      command: "geonic admin tenants activate <tenant-id>",
+    },
+  ]);
+
   // tenants deactivate
-  tenants
+  const deactivate = tenants
     .command("deactivate <id>")
     .description("Deactivate a tenant")
     .action(
@@ -119,4 +162,11 @@ export function registerTenantsCommand(parent: Command): void {
         printSuccess("Tenant deactivated.");
       }),
     );
+
+  addExamples(deactivate, [
+    {
+      description: "Deactivate a tenant",
+      command: "geonic admin tenants deactivate <tenant-id>",
+    },
+  ]);
 }

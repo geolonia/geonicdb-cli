@@ -205,13 +205,75 @@ describe("help", () => {
   });
 
   describe("formatCommandDetails — no EXAMPLES when none registered", () => {
-    const health = findCommand(program, "health");
+    const admin = findCommand(program, "admin");
     const output = stripAnsi(
-      formatCommandDetails(program, health as never, "geonic health"),
+      formatCommandDetails(program, admin as never, "geonic admin"),
     );
 
     it("does not include EXAMPLES section", () => {
       expect(output).not.toContain("EXAMPLES");
+    });
+  });
+
+  describe("formatCommandDetails — new EXAMPLES coverage", () => {
+    it("health command has examples", () => {
+      const health = findCommand(program, "health");
+      const output = stripAnsi(
+        formatCommandDetails(program, health as never, "geonic health"),
+      );
+      expect(output).toContain("EXAMPLES");
+      expect(output).toContain("$ geonic health");
+    });
+
+    it("batch update command has examples", () => {
+      const batchUpdate = findCommand(program, "batch", "update");
+      const output = stripAnsi(
+        formatCommandDetails(
+          program,
+          batchUpdate as never,
+          "geonic batch update",
+        ),
+      );
+      expect(output).toContain("EXAMPLES");
+      expect(output).toContain("$ geonic batch update");
+    });
+
+    it("admin tenants list command has examples", () => {
+      const tenantsList = findCommand(program, "admin", "tenants", "list");
+      const output = stripAnsi(
+        formatCommandDetails(
+          program,
+          tenantsList as never,
+          "geonic admin tenants list",
+        ),
+      );
+      expect(output).toContain("EXAMPLES");
+      expect(output).toContain("$ geonic admin tenants list");
+    });
+
+    it("entities attrs list command has examples", () => {
+      const attrsList = findCommand(program, "entities", "attrs", "list");
+      const output = stripAnsi(
+        formatCommandDetails(
+          program,
+          attrsList as never,
+          "geonic entities attrs list",
+        ),
+      );
+      expect(output).toContain("EXAMPLES");
+    });
+
+    it("rules activate command has examples", () => {
+      const rulesActivate = findCommand(program, "rules", "activate");
+      const output = stripAnsi(
+        formatCommandDetails(
+          program,
+          rulesActivate as never,
+          "geonic rules activate",
+        ),
+      );
+      expect(output).toContain("EXAMPLES");
+      expect(output).toContain("$ geonic rules activate");
     });
   });
 

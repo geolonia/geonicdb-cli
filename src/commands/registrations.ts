@@ -7,6 +7,7 @@ import {
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
+import { addExamples } from "./help.js";
 
 export function registerRegistrationsCommand(program: Command): void {
   const registrations = program
@@ -15,7 +16,7 @@ export function registerRegistrationsCommand(program: Command): void {
     .description("Manage context registrations");
 
   // registrations list
-  registrations
+  const list = registrations
     .command("list")
     .description("List registrations")
     .option("--limit <n>", "Maximum number of results", parseInt)
@@ -37,8 +38,19 @@ export function registerRegistrationsCommand(program: Command): void {
       }),
     );
 
+  addExamples(list, [
+    {
+      description: "List all registrations",
+      command: "geonic registrations list",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic registrations list --limit 10",
+    },
+  ]);
+
   // registrations get
-  registrations
+  const get = registrations
     .command("get <id>")
     .description("Get a registration by ID")
     .action(
@@ -53,8 +65,16 @@ export function registerRegistrationsCommand(program: Command): void {
       }),
     );
 
+  addExamples(get, [
+    {
+      description: "Get registration by ID",
+      command:
+        "geonic registrations get urn:ngsi-ld:ContextSourceRegistration:001",
+    },
+  ]);
+
   // registrations create
-  registrations
+  const create = registrations
     .command("create <json>")
     .description("Create a registration")
     .action(
@@ -69,8 +89,15 @@ export function registerRegistrationsCommand(program: Command): void {
       }),
     );
 
+  addExamples(create, [
+    {
+      description: "Create a registration from a file",
+      command: "geonic registrations create @registration.json",
+    },
+  ]);
+
   // registrations update
-  registrations
+  const regUpdate = registrations
     .command("update <id> <json>")
     .description("Update a registration")
     .action(
@@ -90,8 +117,16 @@ export function registerRegistrationsCommand(program: Command): void {
       ),
     );
 
+  addExamples(regUpdate, [
+    {
+      description: "Update a registration from a file",
+      command:
+        "geonic registrations update urn:ngsi-ld:ContextSourceRegistration:001 @registration.json",
+    },
+  ]);
+
   // registrations delete
-  registrations
+  const del = registrations
     .command("delete <id>")
     .description("Delete a registration")
     .action(
@@ -104,4 +139,12 @@ export function registerRegistrationsCommand(program: Command): void {
         printSuccess("Registration deleted.");
       }),
     );
+
+  addExamples(del, [
+    {
+      description: "Delete a registration",
+      command:
+        "geonic registrations delete urn:ngsi-ld:ContextSourceRegistration:001",
+    },
+  ]);
 }

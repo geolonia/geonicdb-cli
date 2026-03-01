@@ -13,7 +13,7 @@ import { addExamples } from "./help.js";
 export function registerProfileCommands(program: Command): void {
   const profile = program.command("profile").description("Manage connection profiles");
 
-  profile
+  const list = profile
     .command("list")
     .description("List all profiles")
     .action(() => {
@@ -23,6 +23,13 @@ export function registerProfileCommands(program: Command): void {
         console.log(`${p.name}${marker}`);
       }
     });
+
+  addExamples(list, [
+    {
+      description: "List all profiles (active profile marked with *)",
+      command: "geonic profile list",
+    },
+  ]);
 
   const use = profile
     .command("use <name>")
@@ -64,7 +71,7 @@ export function registerProfileCommands(program: Command): void {
     },
   ]);
 
-  profile
+  const del = profile
     .command("delete <name>")
     .description("Delete a profile")
     .action((name: string) => {
@@ -77,7 +84,14 @@ export function registerProfileCommands(program: Command): void {
       }
     });
 
-  profile
+  addExamples(del, [
+    {
+      description: "Delete a profile",
+      command: "geonic profile delete staging",
+    },
+  ]);
+
+  const show = profile
     .command("show [name]")
     .description("Show profile settings")
     .action((name?: string) => {
@@ -99,4 +113,15 @@ export function registerProfileCommands(program: Command): void {
         }
       }
     });
+
+  addExamples(show, [
+    {
+      description: "Show current profile settings",
+      command: "geonic profile show",
+    },
+    {
+      description: "Show settings for a specific profile",
+      command: "geonic profile show production",
+    },
+  ]);
 }

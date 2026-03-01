@@ -5,6 +5,7 @@ import {
   getFormat,
   outputResponse,
 } from "../helpers.js";
+import { addExamples } from "./help.js";
 
 export function registerTypesCommand(program: Command): void {
   const types = program
@@ -12,7 +13,7 @@ export function registerTypesCommand(program: Command): void {
     .description("Browse entity types");
 
   // types list
-  types
+  const list = types
     .command("list")
     .description("List available entity types")
     .action(
@@ -25,8 +26,15 @@ export function registerTypesCommand(program: Command): void {
       }),
     );
 
+  addExamples(list, [
+    {
+      description: "List all entity types",
+      command: "geonic types list",
+    },
+  ]);
+
   // types get
-  types
+  const get = types
     .command("get <typeName>")
     .description("Get details for an entity type")
     .action(
@@ -42,4 +50,11 @@ export function registerTypesCommand(program: Command): void {
         },
       ),
     );
+
+  addExamples(get, [
+    {
+      description: "Get details for a specific type",
+      command: "geonic types get Sensor",
+    },
+  ]);
 }

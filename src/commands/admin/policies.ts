@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import { withErrorHandler, createClient, getFormat, outputResponse } from "../../helpers.js";
 import { parseJsonInput } from "../../input.js";
 import { printSuccess } from "../../output.js";
+import { addExamples } from "../help.js";
 
 export function registerPoliciesCommand(parent: Command): void {
   const policies = parent
@@ -9,7 +10,7 @@ export function registerPoliciesCommand(parent: Command): void {
     .description("Manage policies");
 
   // policies list
-  policies
+  const list = policies
     .command("list")
     .description("List all policies")
     .action(
@@ -21,8 +22,15 @@ export function registerPoliciesCommand(parent: Command): void {
       }),
     );
 
+  addExamples(list, [
+    {
+      description: "List all policies",
+      command: "geonic admin policies list",
+    },
+  ]);
+
   // policies get
-  policies
+  const get = policies
     .command("get <id>")
     .description("Get a policy by ID")
     .action(
@@ -37,8 +45,15 @@ export function registerPoliciesCommand(parent: Command): void {
       }),
     );
 
+  addExamples(get, [
+    {
+      description: "Get a policy by ID",
+      command: "geonic admin policies get <policy-id>",
+    },
+  ]);
+
   // policies create
-  policies
+  const create = policies
     .command("create <json>")
     .description("Create a new policy")
     .action(
@@ -54,8 +69,15 @@ export function registerPoliciesCommand(parent: Command): void {
       }),
     );
 
+  addExamples(create, [
+    {
+      description: "Create a policy from a JSON file",
+      command: "geonic admin policies create @policy.json",
+    },
+  ]);
+
   // policies update
-  policies
+  const update = policies
     .command("update <id> <json>")
     .description("Update a policy")
     .action(
@@ -75,8 +97,15 @@ export function registerPoliciesCommand(parent: Command): void {
       ),
     );
 
+  addExamples(update, [
+    {
+      description: "Update a policy from a JSON file",
+      command: "geonic admin policies update <policy-id> @policy.json",
+    },
+  ]);
+
   // policies delete
-  policies
+  const del = policies
     .command("delete <id>")
     .description("Delete a policy")
     .action(
@@ -90,8 +119,15 @@ export function registerPoliciesCommand(parent: Command): void {
       }),
     );
 
+  addExamples(del, [
+    {
+      description: "Delete a policy",
+      command: "geonic admin policies delete <policy-id>",
+    },
+  ]);
+
   // policies activate
-  policies
+  const activate = policies
     .command("activate <id>")
     .description("Activate a policy")
     .action(
@@ -105,8 +141,15 @@ export function registerPoliciesCommand(parent: Command): void {
       }),
     );
 
+  addExamples(activate, [
+    {
+      description: "Activate a policy",
+      command: "geonic admin policies activate <policy-id>",
+    },
+  ]);
+
   // policies deactivate
-  policies
+  const deactivate = policies
     .command("deactivate <id>")
     .description("Deactivate a policy")
     .action(
@@ -119,4 +162,11 @@ export function registerPoliciesCommand(parent: Command): void {
         printSuccess("Policy deactivated.");
       }),
     );
+
+  addExamples(deactivate, [
+    {
+      description: "Deactivate a policy",
+      command: "geonic admin policies deactivate <policy-id>",
+    },
+  ]);
 }

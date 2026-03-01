@@ -7,10 +7,11 @@ import {
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
+import { addExamples } from "./help.js";
 
 export function addAttrsSubcommands(attrs: Command): void {
   // attrs list
-  attrs
+  const list = attrs
     .command("list")
     .description("List all attributes of an entity")
     .argument("<entityId>", "Entity ID")
@@ -28,8 +29,15 @@ export function addAttrsSubcommands(attrs: Command): void {
       ),
     );
 
+  addExamples(list, [
+    {
+      description: "List all attributes of an entity",
+      command: "geonic entities attrs list urn:ngsi-ld:Sensor:001",
+    },
+  ]);
+
   // attrs get
-  attrs
+  const get = attrs
     .command("get")
     .description("Get a specific attribute of an entity")
     .argument("<entityId>", "Entity ID")
@@ -53,8 +61,15 @@ export function addAttrsSubcommands(attrs: Command): void {
       ),
     );
 
+  addExamples(get, [
+    {
+      description: "Get a specific attribute",
+      command: "geonic entities attrs get urn:ngsi-ld:Sensor:001 temperature",
+    },
+  ]);
+
   // attrs add
-  attrs
+  const add = attrs
     .command("add")
     .description("Add attributes to an entity")
     .argument("<entityId>", "Entity ID")
@@ -79,8 +94,15 @@ export function addAttrsSubcommands(attrs: Command): void {
       ),
     );
 
+  addExamples(add, [
+    {
+      description: "Add attributes from a file",
+      command: "geonic entities attrs add urn:ngsi-ld:Sensor:001 @attrs.json",
+    },
+  ]);
+
   // attrs update
-  attrs
+  const attrUpdate = attrs
     .command("update")
     .description("Update a specific attribute of an entity")
     .argument("<entityId>", "Entity ID")
@@ -107,8 +129,16 @@ export function addAttrsSubcommands(attrs: Command): void {
       ),
     );
 
+  addExamples(attrUpdate, [
+    {
+      description: "Update a specific attribute",
+      command:
+        "geonic entities attrs update urn:ngsi-ld:Sensor:001 temperature '{\"value\":25}'",
+    },
+  ]);
+
   // attrs delete
-  attrs
+  const del = attrs
     .command("delete")
     .description("Delete a specific attribute from an entity")
     .argument("<entityId>", "Entity ID")
@@ -130,6 +160,14 @@ export function addAttrsSubcommands(attrs: Command): void {
         },
       ),
     );
+
+  addExamples(del, [
+    {
+      description: "Delete a specific attribute",
+      command:
+        "geonic entities attrs delete urn:ngsi-ld:Sensor:001 temperature",
+    },
+  ]);
 }
 
 export function registerAttrsSubcommand(entitiesCmd: Command): void {

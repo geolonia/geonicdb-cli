@@ -54,7 +54,7 @@ export function registerSubscriptionsCommand(program: Command): void {
   ]);
 
   // subscriptions get
-  subscriptions
+  const get = subscriptions
     .command("get <id>")
     .description("Get a subscription by ID")
     .action(
@@ -68,6 +68,13 @@ export function registerSubscriptionsCommand(program: Command): void {
         outputResponse(response, format);
       }),
     );
+
+  addExamples(get, [
+    {
+      description: "Get subscription by ID",
+      command: "geonic subscriptions get urn:ngsi-ld:Subscription:001",
+    },
+  ]);
 
   // subscriptions create
   const create = subscriptions
@@ -97,7 +104,7 @@ export function registerSubscriptionsCommand(program: Command): void {
   ]);
 
   // subscriptions update
-  subscriptions
+  const update = subscriptions
     .command("update <id> <json>")
     .description("Update a subscription")
     .action(
@@ -117,8 +124,16 @@ export function registerSubscriptionsCommand(program: Command): void {
       ),
     );
 
+  addExamples(update, [
+    {
+      description: "Update a subscription from a file",
+      command:
+        "geonic subscriptions update urn:ngsi-ld:Subscription:001 @sub.json",
+    },
+  ]);
+
   // subscriptions delete
-  subscriptions
+  const del = subscriptions
     .command("delete <id>")
     .description("Delete a subscription")
     .action(
@@ -131,4 +146,11 @@ export function registerSubscriptionsCommand(program: Command): void {
         printSuccess("Subscription deleted.");
       }),
     );
+
+  addExamples(del, [
+    {
+      description: "Delete a subscription",
+      command: "geonic subscriptions delete urn:ngsi-ld:Subscription:001",
+    },
+  ]);
 }

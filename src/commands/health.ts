@@ -7,9 +7,10 @@ import {
   outputResponse,
 } from "../helpers.js";
 import { printInfo } from "../output.js";
+import { addExamples } from "./help.js";
 
 export function registerHealthCommand(program: Command): void {
-  program
+  const health = program
     .command("health")
     .description("Check the health status of the server")
     .action(
@@ -21,10 +22,17 @@ export function registerHealthCommand(program: Command): void {
         outputResponse(response, format);
       }),
     );
+
+  addExamples(health, [
+    {
+      description: "Check server health",
+      command: "geonic health",
+    },
+  ]);
 }
 
 export function registerVersionCommand(program: Command): void {
-  program
+  const version = program
     .command("version")
     .description("Display CLI and server version information")
     .action(
@@ -43,4 +51,11 @@ export function registerVersionCommand(program: Command): void {
         outputResponse(response, format);
       }),
     );
+
+  addExamples(version, [
+    {
+      description: "Show CLI and server version",
+      command: "geonic version",
+    },
+  ]);
 }
