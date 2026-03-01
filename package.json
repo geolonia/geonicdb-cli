@@ -1,7 +1,7 @@
 {
   "name": "@geolonia/geonicdb-cli",
   "version": "0.1.0",
-  "description": "CLI tool for GeonicDB - FIWARE Orion compatible Context Broker",
+  "description": "A CLI client for the GeonicDB",
   "type": "module",
   "bin": {
     "geonic": "./dist/index.js"
@@ -34,6 +34,15 @@
     "context-broker",
     "cli"
   ],
+  "author": "Geolonia Inc. (https://geolonia.com)",
+  "homepage": "https://github.com/geolonia/geonicdb-cli#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/geolonia/geonicdb-cli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/geolonia/geonicdb-cli/issues"
+  },
   "license": "MIT",
   "dependencies": {
     "chalk": "^5.3.0",
