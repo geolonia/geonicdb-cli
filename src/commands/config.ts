@@ -19,7 +19,10 @@ export function registerConfigCommand(program: Command): void {
   const set = config
     .command("set")
     .description("Save a config value")
-    .argument("<key>", "Configuration key")
+    .argument(
+      "<key>",
+      "Configuration key (url, service, token, refreshToken, format, apiKey)",
+    )
     .argument("<value>", "Configuration value")
     .action((...args: unknown[]) => {
       const cmd = args[args.length - 1] as Command;
@@ -41,8 +44,21 @@ export function registerConfigCommand(program: Command): void {
       command: "geonic config set service my-tenant",
     },
     {
+      description: "Set authentication token",
+      command: "geonic config set token eyJhbGciOi...",
+    },
+    {
+      description: "Set API key",
+      command: "geonic config set apiKey your-api-key",
+    },
+    {
+      description: "Set default output format",
+      command: "geonic config set format table",
+    },
+    {
       description: "Set config for a specific profile",
-      command: "geonic config set url https://staging.example.com --profile staging",
+      command:
+        "geonic config set url https://staging.example.com --profile staging",
     },
   ]);
 
