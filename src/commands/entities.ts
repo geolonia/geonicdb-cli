@@ -68,6 +68,10 @@ export function registerEntitiesCommand(program: Command): void {
       command: "geonic entities list --type Sensor",
     },
     {
+      description: "Filter by entity ID pattern (regex)",
+      command: "geonic entities list --id-pattern 'urn:ngsi-ld:Sensor:.*'",
+    },
+    {
       description: "Filter by attribute value",
       command: "geonic entities list --query 'temperature>30'",
     },
@@ -86,6 +90,36 @@ export function registerEntitiesCommand(program: Command): void {
     {
       description: "Check attribute existence",
       command: "geonic entities list --query 'temperature'",
+    },
+    {
+      description: "Select specific attributes",
+      command: "geonic entities list --attrs temperature,humidity",
+    },
+    {
+      description: "Geo-query: entities near a point (within 1km)",
+      command:
+        "geonic entities list --georel 'near;maxDistance==1000' --geometry Point --coords '35.6812,139.7671'",
+    },
+    {
+      description: "Geo-query: entities within a polygon",
+      command:
+        "geonic entities list --georel within --geometry Polygon --coords '[[35.7,139.7],[35.7,139.8],[35.6,139.8],[35.6,139.7],[35.7,139.7]]'",
+    },
+    {
+      description: "Filter by Spatial ID (ZFXY tile)",
+      command: "geonic entities list --spatial-id 15/0/29101/12903",
+    },
+    {
+      description: "Paginate results",
+      command: "geonic entities list --limit 20 --offset 40",
+    },
+    {
+      description: "Order by attribute",
+      command: "geonic entities list --order-by temperature",
+    },
+    {
+      description: "Get total count with results",
+      command: "geonic entities list --type Sensor --count",
     },
   ]);
 
