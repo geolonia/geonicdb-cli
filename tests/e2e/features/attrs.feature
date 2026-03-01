@@ -33,6 +33,9 @@ Feature: Entity attribute management
     When I run "geonic entities attrs update urn:ngsi-ld:Room:A04 humidity '{\"value\":80,\"type\":\"Property\"}'"
     Then the exit code should be 0
     And the output should contain "Attribute updated."
+    When I run "geonic entities attrs get urn:ngsi-ld:Room:A04 humidity"
+    Then the exit code should be 0
+    And the output should contain "80"
 
   Scenario: Delete a specific attribute
     Given I am logged in
@@ -42,3 +45,6 @@ Feature: Entity attribute management
     When I run "geonic entities attrs delete urn:ngsi-ld:Room:A05 humidity"
     Then the exit code should be 0
     And the output should contain "Attribute deleted."
+    When I run "geonic entities attrs list urn:ngsi-ld:Room:A05"
+    Then the exit code should be 0
+    And the output should not contain "humidity"

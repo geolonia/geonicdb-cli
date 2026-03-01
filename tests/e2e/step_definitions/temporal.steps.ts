@@ -2,11 +2,11 @@ import { When } from "@cucumber/cucumber";
 import type { GdbWorld } from "../support/world.js";
 
 When(
-  "I create a temporal entity {string}",
-  async function (this: GdbWorld, id: string) {
+  "I create a temporal entity {string} of type {string}",
+  async function (this: GdbWorld, id: string, type: string) {
     const entity = JSON.stringify({
       id,
-      type: "Room",
+      type,
       temperature: [
         {
           type: "Property",

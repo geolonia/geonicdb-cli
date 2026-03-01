@@ -12,16 +12,21 @@ function extractId(obj: Record<string, unknown>): string | undefined {
 When("I create an admin tenant {string}", async function (this: GdbWorld, name: string) {
   const payload = JSON.stringify({ name, description: `Tenant ${name}` });
   await this.run(["admin", "tenants", "create", payload]);
+  assert.equal(this.lastResult.exitCode, 0, `Failed to create tenant: ${this.lastResult.stderr}`);
 });
 
 Given("I get the admin tenant ID", async function (this: GdbWorld) {
+  const name = (this as Record<string, unknown>).adminResourceName as string | undefined;
   await this.run(["admin", "tenants", "list", "--format", "json"]);
   assert.equal(this.lastResult.exitCode, 0, `Failed to list tenants: ${this.lastResult.stderr}`);
   const tenants = JSON.parse(this.lastResult.stdout);
   const list = Array.isArray(tenants) ? tenants : [];
   assert.ok(list.length > 0, "No tenants found");
-  const id = extractId(list[list.length - 1]);
-  assert.ok(id, `Could not extract tenant ID from: ${JSON.stringify(list[list.length - 1])}`);
+  const target = name
+    ? list.find((t: Record<string, unknown>) => t.name === name) ?? list[list.length - 1]
+    : list[list.length - 1];
+  const id = extractId(target);
+  assert.ok(id, `Could not extract tenant ID from: ${JSON.stringify(target)}`);
   (this as Record<string, unknown>).adminResourceId = id;
 });
 
@@ -60,18 +65,22 @@ When("I deactivate the admin tenant", async function (this: GdbWorld) {
 When("I create an admin user {string}", async function (this: GdbWorld, email: string) {
   const payload = JSON.stringify({ email, password: "TestPassword123!", role: "super_admin" });
   await this.run(["admin", "users", "create", payload]);
+  assert.equal(this.lastResult.exitCode, 0, `Failed to create user: ${this.lastResult.stderr}`);
+  (this as Record<string, unknown>).adminResourceName = email;
 });
 
 Given("I get the admin user ID", async function (this: GdbWorld) {
+  const email = (this as Record<string, unknown>).adminResourceName as string | undefined;
   await this.run(["admin", "users", "list", "--format", "json"]);
   assert.equal(this.lastResult.exitCode, 0, `Failed to list users: ${this.lastResult.stderr}`);
   const users = JSON.parse(this.lastResult.stdout);
   const list = Array.isArray(users) ? users : [];
-  // Get the last non-admin user (the one we just created)
-  const nonAdmin = list.filter((u: Record<string, unknown>) => u.email !== "admin@test.com");
-  assert.ok(nonAdmin.length > 0, `No non-admin users found. Users: ${JSON.stringify(list.map((u: Record<string, unknown>) => u.email))}`);
-  const id = extractId(nonAdmin[nonAdmin.length - 1]);
-  assert.ok(id, `Could not extract user ID from: ${JSON.stringify(nonAdmin[nonAdmin.length - 1])}`);
+  const target = email
+    ? list.find((u: Record<string, unknown>) => u.email === email)
+    : list.filter((u: Record<string, unknown>) => u.email !== "admin@test.com").pop();
+  assert.ok(target, `No user found${email ? ` with email ${email}` : ""}. Users: ${JSON.stringify(list.map((u: Record<string, unknown>) => u.email))}`);
+  const id = extractId(target);
+  assert.ok(id, `Could not extract user ID from: ${JSON.stringify(target)}`);
   (this as Record<string, unknown>).adminResourceId = id;
 });
 
@@ -113,16 +122,22 @@ When("I create an admin policy {string}", async function (this: GdbWorld, name: 
     rules: [{ ruleId: name, effect: "Permit" }],
   });
   await this.run(["admin", "policies", "create", payload]);
+  assert.equal(this.lastResult.exitCode, 0, `Failed to create policy: ${this.lastResult.stderr}`);
+  (this as Record<string, unknown>).adminResourceName = name;
 });
 
 Given("I get the admin policy ID", async function (this: GdbWorld) {
+  const name = (this as Record<string, unknown>).adminResourceName as string | undefined;
   await this.run(["admin", "policies", "list", "--format", "json"]);
   assert.equal(this.lastResult.exitCode, 0, `Failed to list policies: ${this.lastResult.stderr}`);
   const policies = JSON.parse(this.lastResult.stdout);
   const list = Array.isArray(policies) ? policies : [];
   assert.ok(list.length > 0, "No policies found");
-  const id = extractId(list[list.length - 1]);
-  assert.ok(id, `Could not extract policy ID from: ${JSON.stringify(list[list.length - 1])}`);
+  const target = name
+    ? list.find((p: Record<string, unknown>) => p.description === `Policy ${name}`) ?? list[list.length - 1]
+    : list[list.length - 1];
+  const id = extractId(target);
+  assert.ok(id, `Could not extract policy ID from: ${JSON.stringify(target)}`);
   (this as Record<string, unknown>).adminResourceId = id;
 });
 
@@ -130,6 +145,12 @@ When("I run admin policies get with the saved ID", async function (this: GdbWorl
   const id = (this as Record<string, unknown>).adminResourceId as string;
   assert.ok(id, "No admin resource ID saved");
   await this.run(["admin", "policies", "get", id]);
+});
+
+When("I update the admin policy with {string}", async function (this: GdbWorld, json: string) {
+  const id = (this as Record<string, unknown>).adminResourceId as string;
+  assert.ok(id, "No admin resource ID saved");
+  await this.run(["admin", "policies", "update", id, json]);
 });
 
 When("I delete the admin policy", async function (this: GdbWorld) {
@@ -155,16 +176,22 @@ When("I deactivate the admin policy", async function (this: GdbWorld) {
 When("I create an admin oauth-client {string}", async function (this: GdbWorld, name: string) {
   const payload = JSON.stringify({ clientName: name, allowedScopes: [] });
   await this.run(["admin", "oauth-clients", "create", payload]);
+  assert.equal(this.lastResult.exitCode, 0, `Failed to create oauth-client: ${this.lastResult.stderr}`);
+  (this as Record<string, unknown>).adminResourceName = name;
 });
 
 Given("I get the admin oauth-client ID", async function (this: GdbWorld) {
+  const name = (this as Record<string, unknown>).adminResourceName as string | undefined;
   await this.run(["admin", "oauth-clients", "list", "--format", "json"]);
   assert.equal(this.lastResult.exitCode, 0, `Failed to list oauth-clients: ${this.lastResult.stderr}`);
   const clients = JSON.parse(this.lastResult.stdout);
   const list = Array.isArray(clients) ? clients : [];
   assert.ok(list.length > 0, "No oauth-clients found");
-  const id = extractId(list[list.length - 1]);
-  assert.ok(id, `Could not extract oauth-client ID from: ${JSON.stringify(list[list.length - 1])}`);
+  const target = name
+    ? list.find((c: Record<string, unknown>) => c.clientName === name) ?? list[list.length - 1]
+    : list[list.length - 1];
+  const id = extractId(target);
+  assert.ok(id, `Could not extract oauth-client ID from: ${JSON.stringify(target)}`);
   (this as Record<string, unknown>).adminResourceId = id;
 });
 
@@ -172,6 +199,12 @@ When("I run admin oauth-clients get with the saved ID", async function (this: Gd
   const id = (this as Record<string, unknown>).adminResourceId as string;
   assert.ok(id, "No admin resource ID saved");
   await this.run(["admin", "oauth-clients", "get", id]);
+});
+
+When("I update the admin oauth-client with {string}", async function (this: GdbWorld, json: string) {
+  const id = (this as Record<string, unknown>).adminResourceId as string;
+  assert.ok(id, "No admin resource ID saved");
+  await this.run(["admin", "oauth-clients", "update", id, json]);
 });
 
 When("I delete the admin oauth-client", async function (this: GdbWorld) {

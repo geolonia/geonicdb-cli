@@ -7,6 +7,7 @@ Feature: Entity management
     Given I am logged in
     When I run "geonic entities list"
     Then the exit code should be 0
+    And stdout should be valid JSON
 
   Scenario: Create an entity
     Given I am logged in

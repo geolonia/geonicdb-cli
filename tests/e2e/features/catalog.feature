@@ -8,8 +8,10 @@ Feature: Catalog management
     Given I am logged in
     When I run "geonic catalog get"
     Then the exit code should be 0
+    And stdout should be valid JSON
 
   Scenario: List datasets
     Given I am logged in
     When I run "geonic catalog datasets list"
     Then the exit code should be 0
+    And stdout should be valid JSON

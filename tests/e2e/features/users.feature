@@ -23,6 +23,7 @@ Feature: Admin user management
     When I run admin users get with the saved ID
     Then the exit code should be 0
     And stdout should be valid JSON
+    And the output should contain "testuser02@example.com"
 
   Scenario: Delete a user
     Given I am logged in

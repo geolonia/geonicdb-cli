@@ -24,6 +24,16 @@ Feature: Admin OAuth client management
     Then the exit code should be 0
     And stdout should be valid JSON
 
+  Scenario: Update an OAuth client
+    Given I am logged in
+    And I create an admin oauth-client "test-client-04"
+    And I get the admin oauth-client ID
+    When I update the admin oauth-client with '{"description":"Updated client"}'
+    Then the exit code should be 0
+    When I run admin oauth-clients get with the saved ID
+    Then the exit code should be 0
+    And the output should contain "Updated client"
+
   Scenario: Delete an OAuth client
     Given I am logged in
     And I create an admin oauth-client "test-client-03"

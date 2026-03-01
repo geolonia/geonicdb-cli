@@ -1,4 +1,4 @@
-import { Given, When } from "@cucumber/cucumber";
+import { Given, When, Then } from "@cucumber/cucumber";
 import { strict as assert } from "node:assert";
 import type { GdbWorld } from "../support/world.js";
 
@@ -27,4 +27,10 @@ When("I clone the snapshot", async function (this: GdbWorld) {
   const id = (this as Record<string, unknown>).snapshotId as string;
   assert.ok(id, "No snapshot ID saved");
   await this.run(["snapshots", "clone", id]);
+});
+
+Then("the snapshot count should be at least {int}", function (this: GdbWorld, min: number) {
+  const data = JSON.parse(this.lastResult.stdout);
+  const snapshots = Array.isArray(data) ? data : data.snapshots ?? [];
+  assert.ok(snapshots.length >= min, `Expected at least ${min} snapshots, got ${snapshots.length}`);
 });

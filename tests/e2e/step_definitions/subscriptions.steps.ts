@@ -19,9 +19,10 @@ When("I create a subscription for type {string}", async function (this: GdbWorld
 Given("I get the subscription ID from the list", async function (this: GdbWorld) {
   await this.run(["subscriptions", "list", "--format", "json"]);
   assert.equal(this.lastResult.exitCode, 0, `Failed to list subscriptions: ${this.lastResult.stderr}`);
-  const subs = JSON.parse(this.lastResult.stdout);
-  assert.ok(Array.isArray(subs) && subs.length > 0, "No subscriptions found");
-  (this as Record<string, unknown>).subscriptionId = subs[0].id;
+  const data = JSON.parse(this.lastResult.stdout);
+  const subs = Array.isArray(data) ? data : data.subscriptions ?? [];
+  assert.ok(subs.length > 0, "No subscriptions found");
+  (this as Record<string, unknown>).subscriptionId = subs[0].id ?? subs[0]._id;
 });
 
 When("I delete the subscription", async function (this: GdbWorld) {

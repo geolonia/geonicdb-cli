@@ -2,7 +2,7 @@ import { When } from "@cucumber/cucumber";
 import type { GdbWorld } from "../support/world.js";
 
 function normalizeEntityId(id: string): string {
-  if (id.startsWith("urn:ngsi-ld:") || id.startsWith("http://") || id.startsWith("https://")) return id;
+  if (/^urn:|^https?:\/\//i.test(id)) return id;
   return `urn:ngsi-ld:${id}`;
 }
 

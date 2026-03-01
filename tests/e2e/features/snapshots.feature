@@ -43,3 +43,6 @@ Feature: Snapshot management
     And I get the snapshot ID from the list
     When I clone the snapshot
     Then the exit code should be 0
+    When I run "geonic snapshots list --format json"
+    Then the exit code should be 0
+    And the snapshot count should be at least 2

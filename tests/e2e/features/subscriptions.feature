@@ -46,11 +46,13 @@ Feature: Subscription management
     And I create a subscription for type "Room"
     When I run "geonic subscriptions list --count"
     Then the exit code should be 0
+    And stdout should be valid JSON
 
   Scenario: List subscriptions with limit
     Given I am logged in
     And I create a subscription for type "Room"
     And I create a subscription for type "Car"
-    When I run "geonic subscriptions list --limit 1"
+    When I run "geonic subscriptions list --limit 1 --format json"
     Then the exit code should be 0
     And stdout should be valid JSON
+    And the JSON array length should be 1

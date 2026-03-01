@@ -24,6 +24,16 @@ Feature: Admin policy management
     Then the exit code should be 0
     And stdout should be valid JSON
 
+  Scenario: Update a policy
+    Given I am logged in
+    And I create an admin policy "test-policy-05"
+    And I get the admin policy ID
+    When I update the admin policy with '{"description":"Updated policy"}'
+    Then the exit code should be 0
+    When I run admin policies get with the saved ID
+    Then the exit code should be 0
+    And the output should contain "Updated policy"
+
   Scenario: Delete a policy
     Given I am logged in
     And I create an admin policy "test-policy-03"
