@@ -98,12 +98,12 @@ export function registerEntitiesCommand(program: Command): void {
     {
       description: "Geo-query: entities near a point (within 1km)",
       command:
-        "geonic entities list --georel 'near;maxDistance==1000' --geometry Point --coords '35.6812,139.7671'",
+        "geonic entities list --georel 'near;maxDistance==1000' --geometry Point --coords '[139.7671,35.6812]'",
     },
     {
       description: "Geo-query: entities within a polygon",
       command:
-        "geonic entities list --georel within --geometry Polygon --coords '[[35.7,139.7],[35.7,139.8],[35.6,139.8],[35.6,139.7],[35.7,139.7]]'",
+        "geonic entities list --georel within --geometry Polygon --coords '[[[139.7,35.7],[139.8,35.7],[139.8,35.6],[139.7,35.6],[139.7,35.7]]]'",
     },
     {
       description: "Filter by Spatial ID (ZFXY tile)",
