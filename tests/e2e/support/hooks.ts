@@ -18,12 +18,16 @@ BeforeAll(async function () {
 });
 
 Before(async function (this: GdbWorld) {
-  // DB cleanup for scenario isolation
+  // DB cleanup for scenario isolation — drop collections to bypass server caching
   const db = mongoClient.db();
   const collections = await db.listCollections().toArray();
   for (const c of collections) {
     if (!c.name.startsWith("system.")) {
-      await db.collection(c.name).deleteMany({});
+      await db.collection(c.name).drop().catch((err: Error & { code?: number }) => {
+        if (err.code !== 26 && !err.message.includes("ns not found")) {
+          console.warn(`Warning: failed to drop collection ${c.name}: ${err.message}`);
+        }
+      });
     }
   }
 

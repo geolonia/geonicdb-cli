@@ -78,6 +78,12 @@ Then("the JSON output key {string} should be {string}", function (this: GdbWorld
   assert.equal(String(json[key]), value, `Expected json.${key} to be "${value}", got "${json[key]}".`);
 });
 
+Then("the JSON array length should be {int}", function (this: GdbWorld, expected: number) {
+  const data = JSON.parse(this.lastResult.stdout);
+  const arr = Array.isArray(data) ? data : [];
+  assert.equal(arr.length, expected, `Expected JSON array length ${expected}, got ${arr.length}.\nstdout: ${this.lastResult.stdout}`);
+});
+
 Then("the config should have key {string}", function (this: GdbWorld, key: string) {
   const config = this.readProfileConfig();
   assert.ok(key in config, `Expected config to have key "${key}". Config: ${JSON.stringify(config)}`);
