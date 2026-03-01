@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import { withErrorHandler, createClient, getFormat, outputResponse } from "../../helpers.js";
 import { parseJsonInput } from "../../input.js";
 import { printSuccess } from "../../output.js";
+import { addExamples } from "../help.js";
 
 export function registerOAuthClientsCommand(parent: Command): void {
   const oauthClients = parent
@@ -9,7 +10,7 @@ export function registerOAuthClientsCommand(parent: Command): void {
     .description("Manage OAuth clients");
 
   // oauth-clients list
-  oauthClients
+  const list = oauthClients
     .command("list")
     .description("List all OAuth clients")
     .action(
@@ -21,8 +22,15 @@ export function registerOAuthClientsCommand(parent: Command): void {
       }),
     );
 
+  addExamples(list, [
+    {
+      description: "List all OAuth clients",
+      command: "geonic admin oauth-clients list",
+    },
+  ]);
+
   // oauth-clients get
-  oauthClients
+  const get = oauthClients
     .command("get <id>")
     .description("Get an OAuth client by ID")
     .action(
@@ -37,8 +45,15 @@ export function registerOAuthClientsCommand(parent: Command): void {
       }),
     );
 
+  addExamples(get, [
+    {
+      description: "Get an OAuth client by ID",
+      command: "geonic admin oauth-clients get <client-id>",
+    },
+  ]);
+
   // oauth-clients create
-  oauthClients
+  const create = oauthClients
     .command("create <json>")
     .description("Create a new OAuth client")
     .action(
@@ -54,8 +69,15 @@ export function registerOAuthClientsCommand(parent: Command): void {
       }),
     );
 
+  addExamples(create, [
+    {
+      description: "Create an OAuth client from a JSON file",
+      command: "geonic admin oauth-clients create @client.json",
+    },
+  ]);
+
   // oauth-clients update
-  oauthClients
+  const update = oauthClients
     .command("update <id> <json>")
     .description("Update an OAuth client")
     .action(
@@ -75,8 +97,15 @@ export function registerOAuthClientsCommand(parent: Command): void {
       ),
     );
 
+  addExamples(update, [
+    {
+      description: "Update an OAuth client from a JSON file",
+      command: "geonic admin oauth-clients update <client-id> @client.json",
+    },
+  ]);
+
   // oauth-clients delete
-  oauthClients
+  const del = oauthClients
     .command("delete <id>")
     .description("Delete an OAuth client")
     .action(
@@ -89,6 +118,13 @@ export function registerOAuthClientsCommand(parent: Command): void {
         printSuccess("OAuth client deleted.");
       }),
     );
+
+  addExamples(del, [
+    {
+      description: "Delete an OAuth client",
+      command: "geonic admin oauth-clients delete <client-id>",
+    },
+  ]);
 }
 
 export function registerCaddeCommand(parent: Command): void {
@@ -97,7 +133,7 @@ export function registerCaddeCommand(parent: Command): void {
     .description("Manage CADDE configuration");
 
   // cadde get
-  cadde
+  const caddeGet = cadde
     .command("get")
     .description("Get CADDE configuration")
     .action(
@@ -109,8 +145,15 @@ export function registerCaddeCommand(parent: Command): void {
       }),
     );
 
+  addExamples(caddeGet, [
+    {
+      description: "Get CADDE configuration",
+      command: "geonic admin cadde get",
+    },
+  ]);
+
   // cadde set
-  cadde
+  const caddeSet = cadde
     .command("set <json>")
     .description("Set CADDE configuration")
     .action(
@@ -126,8 +169,15 @@ export function registerCaddeCommand(parent: Command): void {
       }),
     );
 
+  addExamples(caddeSet, [
+    {
+      description: "Set CADDE configuration from a JSON file",
+      command: "geonic admin cadde set @cadde-config.json",
+    },
+  ]);
+
   // cadde delete
-  cadde
+  const caddeDelete = cadde
     .command("delete")
     .description("Delete CADDE configuration")
     .action(
@@ -137,4 +187,11 @@ export function registerCaddeCommand(parent: Command): void {
         printSuccess("CADDE configuration deleted.");
       }),
     );
+
+  addExamples(caddeDelete, [
+    {
+      description: "Delete CADDE configuration",
+      command: "geonic admin cadde delete",
+    },
+  ]);
 }

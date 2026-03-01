@@ -6,6 +6,7 @@ import {
   outputResponse,
 } from "../helpers.js";
 import { printSuccess } from "../output.js";
+import { addExamples } from "./help.js";
 
 export function registerSnapshotsCommand(program: Command): void {
   const snapshots = program
@@ -13,7 +14,7 @@ export function registerSnapshotsCommand(program: Command): void {
     .description("Manage snapshots");
 
   // snapshots list
-  snapshots
+  const list = snapshots
     .command("list")
     .description("List snapshots")
     .option("--limit <n>", "Maximum number of snapshots to return", parseInt)
@@ -34,8 +35,19 @@ export function registerSnapshotsCommand(program: Command): void {
       }),
     );
 
+  addExamples(list, [
+    {
+      description: "List all snapshots",
+      command: "geonic snapshots list",
+    },
+    {
+      description: "List with a limit",
+      command: "geonic snapshots list --limit 10",
+    },
+  ]);
+
   // snapshots get
-  snapshots
+  const get = snapshots
     .command("get <id>")
     .description("Get a snapshot by ID")
     .action(
@@ -50,8 +62,15 @@ export function registerSnapshotsCommand(program: Command): void {
       }),
     );
 
+  addExamples(get, [
+    {
+      description: "Get a specific snapshot",
+      command: "geonic snapshots get <snapshot-id>",
+    },
+  ]);
+
   // snapshots create
-  snapshots
+  const create = snapshots
     .command("create")
     .description("Create a new snapshot")
     .action(
@@ -63,8 +82,15 @@ export function registerSnapshotsCommand(program: Command): void {
       }),
     );
 
+  addExamples(create, [
+    {
+      description: "Create a new snapshot",
+      command: "geonic snapshots create",
+    },
+  ]);
+
   // snapshots delete
-  snapshots
+  const del = snapshots
     .command("delete <id>")
     .description("Delete a snapshot by ID")
     .action(
@@ -78,8 +104,15 @@ export function registerSnapshotsCommand(program: Command): void {
       }),
     );
 
+  addExamples(del, [
+    {
+      description: "Delete a snapshot",
+      command: "geonic snapshots delete <snapshot-id>",
+    },
+  ]);
+
   // snapshots clone
-  snapshots
+  const clone = snapshots
     .command("clone <id>")
     .description("Clone a snapshot by ID")
     .action(
@@ -97,4 +130,11 @@ export function registerSnapshotsCommand(program: Command): void {
         }
       }),
     );
+
+  addExamples(clone, [
+    {
+      description: "Clone a snapshot",
+      command: "geonic snapshots clone <snapshot-id>",
+    },
+  ]);
 }

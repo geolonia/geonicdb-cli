@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import { withErrorHandler, createClient, getFormat, outputResponse } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
+import { addExamples } from "./help.js";
 
 export function registerModelsCommand(program: Command): void {
   const models = program
@@ -10,7 +11,7 @@ export function registerModelsCommand(program: Command): void {
     .description("Manage custom data models");
 
   // models list
-  models
+  const list = models
     .command("list")
     .description("List all models")
     .action(
@@ -22,8 +23,15 @@ export function registerModelsCommand(program: Command): void {
       }),
     );
 
+  addExamples(list, [
+    {
+      description: "List all models",
+      command: "geonic models list",
+    },
+  ]);
+
   // models get
-  models
+  const get = models
     .command("get <id>")
     .description("Get a model by ID")
     .action(
@@ -38,8 +46,15 @@ export function registerModelsCommand(program: Command): void {
       }),
     );
 
+  addExamples(get, [
+    {
+      description: "Get a specific model",
+      command: "geonic models get <model-id>",
+    },
+  ]);
+
   // models create
-  models
+  const create = models
     .command("create <json>")
     .description("Create a new model")
     .action(
@@ -53,8 +68,15 @@ export function registerModelsCommand(program: Command): void {
       }),
     );
 
+  addExamples(create, [
+    {
+      description: "Create a model from a file",
+      command: "geonic models create @model.json",
+    },
+  ]);
+
   // models update
-  models
+  const update = models
     .command("update <id> <json>")
     .description("Update a model")
     .action(
@@ -74,8 +96,15 @@ export function registerModelsCommand(program: Command): void {
       ),
     );
 
+  addExamples(update, [
+    {
+      description: "Update a model from a file",
+      command: "geonic models update <model-id> @model.json",
+    },
+  ]);
+
   // models delete
-  models
+  const del = models
     .command("delete <id>")
     .description("Delete a model")
     .action(
@@ -88,4 +117,11 @@ export function registerModelsCommand(program: Command): void {
         printSuccess("Model deleted.");
       }),
     );
+
+  addExamples(del, [
+    {
+      description: "Delete a model",
+      command: "geonic models delete <model-id>",
+    },
+  ]);
 }

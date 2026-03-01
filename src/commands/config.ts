@@ -62,7 +62,7 @@ export function registerConfigCommand(program: Command): void {
     },
   ]);
 
-  config
+  const get = config
     .command("get")
     .description("Get a config value")
     .argument("<key>", "Configuration key")
@@ -78,7 +78,18 @@ export function registerConfigCommand(program: Command): void {
       }
     });
 
-  config
+  addExamples(get, [
+    {
+      description: "Get server URL",
+      command: "geonic config get url",
+    },
+    {
+      description: "Get config value for a specific profile",
+      command: "geonic config get url --profile staging",
+    },
+  ]);
+
+  const list = config
     .command("list")
     .description("List all config values")
     .action((...args: unknown[]) => {
@@ -92,7 +103,14 @@ export function registerConfigCommand(program: Command): void {
       }
     });
 
-  config
+  addExamples(list, [
+    {
+      description: "List all configuration values",
+      command: "geonic config list",
+    },
+  ]);
+
+  const del = config
     .command("delete")
     .description("Delete a config value")
     .argument("<key>", "Configuration key")
@@ -103,4 +121,11 @@ export function registerConfigCommand(program: Command): void {
       deleteConfigValue(key, profile);
       printSuccess(`Deleted key "${key}".`);
     });
+
+  addExamples(del, [
+    {
+      description: "Delete a config value",
+      command: "geonic config delete url",
+    },
+  ]);
 }

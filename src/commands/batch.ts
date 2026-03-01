@@ -67,9 +67,9 @@ export function registerBatchCommand(program: Command): void {
   ]);
 
   // batch update
-  batch
+  const update = batch
     .command("update <json>")
-    .description("Batch update entities")
+    .description("Batch update entity attributes")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -81,10 +81,21 @@ export function registerBatchCommand(program: Command): void {
       }),
     );
 
+  addExamples(update, [
+    {
+      description: "Batch update from a file",
+      command: "geonic batch update @updates.json",
+    },
+    {
+      description: "Batch update from stdin",
+      command: "cat updates.json | geonic batch update -",
+    },
+  ]);
+
   // batch delete
-  batch
+  const del = batch
     .command("delete <json>")
-    .description("Batch delete entities")
+    .description("Batch delete entities by ID")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -96,10 +107,21 @@ export function registerBatchCommand(program: Command): void {
       }),
     );
 
+  addExamples(del, [
+    {
+      description: "Batch delete from a file",
+      command: "geonic batch delete @entity-ids.json",
+    },
+    {
+      description: "Batch delete from stdin",
+      command: "cat entity-ids.json | geonic batch delete -",
+    },
+  ]);
+
   // batch query
-  batch
+  const query = batch
     .command("query <json>")
-    .description("Batch query entities")
+    .description("Query entities by posting a query payload")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -111,10 +133,21 @@ export function registerBatchCommand(program: Command): void {
       }),
     );
 
+  addExamples(query, [
+    {
+      description: "Query entities from a file",
+      command: "geonic batch query @query.json",
+    },
+    {
+      description: "Query entities from stdin",
+      command: "cat query.json | geonic batch query -",
+    },
+  ]);
+
   // batch merge
-  batch
+  const merge = batch
     .command("merge <json>")
-    .description("Batch merge entities")
+    .description("Batch merge-patch entities")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -125,4 +158,15 @@ export function registerBatchCommand(program: Command): void {
         outputResponse(response, format);
       }),
     );
+
+  addExamples(merge, [
+    {
+      description: "Batch merge-patch from a file",
+      command: "geonic batch merge @patches.json",
+    },
+    {
+      description: "Batch merge-patch from stdin",
+      command: "cat patches.json | geonic batch merge -",
+    },
+  ]);
 }

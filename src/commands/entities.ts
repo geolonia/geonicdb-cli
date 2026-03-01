@@ -188,7 +188,7 @@ export function registerEntitiesCommand(program: Command): void {
   ]);
 
   // entities update
-  entities
+  const update = entities
     .command("update")
     .description("Update attributes of an entity (PATCH)")
     .argument("<id>", "Entity ID")
@@ -208,8 +208,20 @@ export function registerEntitiesCommand(program: Command): void {
       ),
     );
 
+  addExamples(update, [
+    {
+      description: "Update entity attributes from inline JSON",
+      command:
+        "geonic entities update urn:ngsi-ld:Sensor:001 '{\"temperature\":{\"value\":25}}'",
+    },
+    {
+      description: "Update entity attributes from a file",
+      command: "geonic entities update urn:ngsi-ld:Sensor:001 @attrs.json",
+    },
+  ]);
+
   // entities replace
-  entities
+  const replace = entities
     .command("replace")
     .description("Replace all attributes of an entity (PUT)")
     .argument("<id>", "Entity ID")
@@ -229,8 +241,15 @@ export function registerEntitiesCommand(program: Command): void {
       ),
     );
 
+  addExamples(replace, [
+    {
+      description: "Replace all attributes from a file",
+      command: "geonic entities replace urn:ngsi-ld:Sensor:001 @attrs.json",
+    },
+  ]);
+
   // entities upsert
-  entities
+  const upsert = entities
     .command("upsert")
     .description("Create or update entities")
     .argument("<json>", "JSON payload (inline, @file, or - for stdin)")
@@ -244,8 +263,19 @@ export function registerEntitiesCommand(program: Command): void {
       }),
     );
 
+  addExamples(upsert, [
+    {
+      description: "Upsert entities from a file",
+      command: "geonic entities upsert @entities.json",
+    },
+    {
+      description: "Upsert from stdin",
+      command: "cat entities.json | geonic entities upsert -",
+    },
+  ]);
+
   // entities delete
-  entities
+  const del = entities
     .command("delete")
     .description("Delete an entity by ID")
     .argument("<id>", "Entity ID")
@@ -257,6 +287,13 @@ export function registerEntitiesCommand(program: Command): void {
         printSuccess("Entity deleted.");
       }),
     );
+
+  addExamples(del, [
+    {
+      description: "Delete an entity by ID",
+      command: "geonic entities delete urn:ngsi-ld:Sensor:001",
+    },
+  ]);
 
   // Register attrs as a subcommand of entities
   registerAttrsSubcommand(entities);

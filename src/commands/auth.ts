@@ -212,13 +212,28 @@ export function registerAuthCommands(program: Command): void {
     },
   ]);
   auth.addCommand(login);
-  auth.addCommand(createLogoutCommand());
+
+  const logout = createLogoutCommand();
+  addExamples(logout, [
+    {
+      description: "Clear saved authentication token",
+      command: "geonic auth logout",
+    },
+  ]);
+  auth.addCommand(logout);
 
   // me command (top-level, maps to /me API endpoint)
-  program
+  const me = program
     .command("me")
     .description("Display current authenticated user")
     .action(createMeAction());
+
+  addExamples(me, [
+    {
+      description: "Show current user info",
+      command: "geonic me",
+    },
+  ]);
 
   // Backward-compatible hidden aliases
   program.addCommand(createLoginCommand(), { hidden: true });

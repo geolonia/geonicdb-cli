@@ -187,16 +187,30 @@ export function registerTemporalCommand(program: Command): void {
   ]);
 
   // temporal entities create
-  entities
+  const create = entities
     .command("create <json>")
     .description("Create a temporal entity")
     .action(createCreateAction());
 
+  addExamples(create, [
+    {
+      description: "Create temporal entity from a file",
+      command: "geonic temporal entities create @temporal-entity.json",
+    },
+  ]);
+
   // temporal entities delete
-  entities
+  const del = entities
     .command("delete <id>")
     .description("Delete a temporal entity by ID")
     .action(createDeleteAction());
+
+  addExamples(del, [
+    {
+      description: "Delete temporal data for an entity",
+      command: "geonic temporal entities delete urn:ngsi-ld:Sensor:001",
+    },
+  ]);
 
   // temporal entityOperations query
   const opsQuery = addQueryOptions(

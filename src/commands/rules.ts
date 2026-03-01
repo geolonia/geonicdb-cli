@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import { withErrorHandler, createClient, getFormat, outputResponse } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
+import { addExamples } from "./help.js";
 
 export function registerRulesCommand(program: Command): void {
   const rules = program
@@ -9,7 +10,7 @@ export function registerRulesCommand(program: Command): void {
     .description("Manage rule engine");
 
   // rules list
-  rules
+  const list = rules
     .command("list")
     .description("List all rules")
     .action(
@@ -21,8 +22,15 @@ export function registerRulesCommand(program: Command): void {
       }),
     );
 
+  addExamples(list, [
+    {
+      description: "List all rules",
+      command: "geonic rules list",
+    },
+  ]);
+
   // rules get
-  rules
+  const get = rules
     .command("get <id>")
     .description("Get a rule by ID")
     .action(
@@ -37,8 +45,15 @@ export function registerRulesCommand(program: Command): void {
       }),
     );
 
+  addExamples(get, [
+    {
+      description: "Get a specific rule",
+      command: "geonic rules get <rule-id>",
+    },
+  ]);
+
   // rules create
-  rules
+  const create = rules
     .command("create <json>")
     .description("Create a new rule")
     .action(
@@ -52,8 +67,15 @@ export function registerRulesCommand(program: Command): void {
       }),
     );
 
+  addExamples(create, [
+    {
+      description: "Create a rule from a file",
+      command: "geonic rules create @rule.json",
+    },
+  ]);
+
   // rules update
-  rules
+  const update = rules
     .command("update <id> <json>")
     .description("Update a rule")
     .action(
@@ -73,8 +95,15 @@ export function registerRulesCommand(program: Command): void {
       ),
     );
 
+  addExamples(update, [
+    {
+      description: "Update a rule from a file",
+      command: "geonic rules update <rule-id> @rule.json",
+    },
+  ]);
+
   // rules delete
-  rules
+  const del = rules
     .command("delete <id>")
     .description("Delete a rule")
     .action(
@@ -88,8 +117,15 @@ export function registerRulesCommand(program: Command): void {
       }),
     );
 
+  addExamples(del, [
+    {
+      description: "Delete a rule",
+      command: "geonic rules delete <rule-id>",
+    },
+  ]);
+
   // rules activate
-  rules
+  const activate = rules
     .command("activate <id>")
     .description("Activate a rule")
     .action(
@@ -103,8 +139,15 @@ export function registerRulesCommand(program: Command): void {
       }),
     );
 
+  addExamples(activate, [
+    {
+      description: "Activate a rule",
+      command: "geonic rules activate <rule-id>",
+    },
+  ]);
+
   // rules deactivate
-  rules
+  const deactivate = rules
     .command("deactivate <id>")
     .description("Deactivate a rule")
     .action(
@@ -117,4 +160,11 @@ export function registerRulesCommand(program: Command): void {
         printSuccess("Rule deactivated.");
       }),
     );
+
+  addExamples(deactivate, [
+    {
+      description: "Deactivate a rule",
+      command: "geonic rules deactivate <rule-id>",
+    },
+  ]);
 }

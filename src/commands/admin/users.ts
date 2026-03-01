@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import { withErrorHandler, createClient, getFormat, outputResponse } from "../../helpers.js";
 import { parseJsonInput } from "../../input.js";
 import { printSuccess } from "../../output.js";
+import { addExamples } from "../help.js";
 
 export function registerUsersCommand(parent: Command): void {
   const users = parent
@@ -9,7 +10,7 @@ export function registerUsersCommand(parent: Command): void {
     .description("Manage users");
 
   // users list
-  users
+  const list = users
     .command("list")
     .description("List all users")
     .action(
@@ -21,8 +22,15 @@ export function registerUsersCommand(parent: Command): void {
       }),
     );
 
+  addExamples(list, [
+    {
+      description: "List all users",
+      command: "geonic admin users list",
+    },
+  ]);
+
   // users get
-  users
+  const get = users
     .command("get <id>")
     .description("Get a user by ID")
     .action(
@@ -37,8 +45,15 @@ export function registerUsersCommand(parent: Command): void {
       }),
     );
 
+  addExamples(get, [
+    {
+      description: "Get a user by ID",
+      command: "geonic admin users get <user-id>",
+    },
+  ]);
+
   // users create
-  users
+  const create = users
     .command("create <json>")
     .description("Create a new user")
     .action(
@@ -54,8 +69,15 @@ export function registerUsersCommand(parent: Command): void {
       }),
     );
 
+  addExamples(create, [
+    {
+      description: "Create a user from a JSON file",
+      command: "geonic admin users create @user.json",
+    },
+  ]);
+
   // users update
-  users
+  const update = users
     .command("update <id> <json>")
     .description("Update a user")
     .action(
@@ -75,8 +97,15 @@ export function registerUsersCommand(parent: Command): void {
       ),
     );
 
+  addExamples(update, [
+    {
+      description: "Update a user from a JSON file",
+      command: "geonic admin users update <user-id> @user.json",
+    },
+  ]);
+
   // users delete
-  users
+  const del = users
     .command("delete <id>")
     .description("Delete a user")
     .action(
@@ -90,8 +119,15 @@ export function registerUsersCommand(parent: Command): void {
       }),
     );
 
+  addExamples(del, [
+    {
+      description: "Delete a user",
+      command: "geonic admin users delete <user-id>",
+    },
+  ]);
+
   // users activate
-  users
+  const activate = users
     .command("activate <id>")
     .description("Activate a user")
     .action(
@@ -105,8 +141,15 @@ export function registerUsersCommand(parent: Command): void {
       }),
     );
 
+  addExamples(activate, [
+    {
+      description: "Activate a user",
+      command: "geonic admin users activate <user-id>",
+    },
+  ]);
+
   // users deactivate
-  users
+  const deactivate = users
     .command("deactivate <id>")
     .description("Deactivate a user")
     .action(
@@ -120,8 +163,15 @@ export function registerUsersCommand(parent: Command): void {
       }),
     );
 
+  addExamples(deactivate, [
+    {
+      description: "Deactivate a user",
+      command: "geonic admin users deactivate <user-id>",
+    },
+  ]);
+
   // users unlock
-  users
+  const unlock = users
     .command("unlock <id>")
     .description("Unlock a user")
     .action(
@@ -134,4 +184,11 @@ export function registerUsersCommand(parent: Command): void {
         printSuccess("User unlocked.");
       }),
     );
+
+  addExamples(unlock, [
+    {
+      description: "Unlock a locked user account",
+      command: "geonic admin users unlock <user-id>",
+    },
+  ]);
 }

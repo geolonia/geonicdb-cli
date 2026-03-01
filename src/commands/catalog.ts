@@ -1,5 +1,6 @@
 import type { Command } from "commander";
 import { withErrorHandler, createClient, getFormat, outputResponse } from "../helpers.js";
+import { addExamples } from "./help.js";
 
 export function registerCatalogCommand(program: Command): void {
   const catalog = program
@@ -7,7 +8,7 @@ export function registerCatalogCommand(program: Command): void {
     .description("Browse DCAT-AP catalog");
 
   // catalog get
-  catalog
+  const get = catalog
     .command("get")
     .description("Get the catalog")
     .action(
@@ -19,13 +20,20 @@ export function registerCatalogCommand(program: Command): void {
       }),
     );
 
+  addExamples(get, [
+    {
+      description: "Get the DCAT-AP catalog",
+      command: "geonic catalog get",
+    },
+  ]);
+
   // catalog datasets
   const datasets = catalog
     .command("datasets")
     .description("Manage catalog datasets");
 
   // catalog datasets list
-  datasets
+  const datasetsList = datasets
     .command("list")
     .description("List all datasets")
     .action(
@@ -37,8 +45,15 @@ export function registerCatalogCommand(program: Command): void {
       }),
     );
 
+  addExamples(datasetsList, [
+    {
+      description: "List all catalog datasets",
+      command: "geonic catalog datasets list",
+    },
+  ]);
+
   // catalog datasets get
-  datasets
+  const datasetsGet = datasets
     .command("get <id>")
     .description("Get a dataset by ID")
     .action(
@@ -53,8 +68,15 @@ export function registerCatalogCommand(program: Command): void {
       }),
     );
 
+  addExamples(datasetsGet, [
+    {
+      description: "Get a specific dataset",
+      command: "geonic catalog datasets get <dataset-id>",
+    },
+  ]);
+
   // catalog datasets sample
-  datasets
+  const datasetsSample = datasets
     .command("sample <id>")
     .description("Get sample data for a dataset")
     .action(
@@ -68,4 +90,11 @@ export function registerCatalogCommand(program: Command): void {
         outputResponse(response, format);
       }),
     );
+
+  addExamples(datasetsSample, [
+    {
+      description: "Get sample data for a dataset",
+      command: "geonic catalog datasets sample <dataset-id>",
+    },
+  ]);
 }
