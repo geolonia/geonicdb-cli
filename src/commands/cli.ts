@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import type { Command, Option } from "commander";
 import { addExamples } from "./help.js";
 
@@ -193,8 +194,9 @@ complete -o default -F _geonic_completions geonic`;
 
 export function registerCliCommand(program: Command): void {
   const cli = program
-    .command("cli", { hidden: true })
-    .description("Manage CLI internals");
+    .command("cli")
+    .summary("Manage CLI internals")
+    .description("Manage CLI internals such as shell completions.");
 
   const completions = cli
     .command("completions")
@@ -255,6 +257,22 @@ export function registerCliCommand(program: Command): void {
       description: "Persist in ~/.zshrc",
       command:
         'echo \'eval "$(geonic cli completions zsh)"\' >> ~/.zshrc',
+    },
+  ]);
+
+  const version = cli
+    .command("version")
+    .description("Display the CLI version")
+    .action(() => {
+      const require = createRequire(import.meta.url);
+      const pkg = require("../package.json") as { version: string };
+      console.log(pkg.version);
+    });
+
+  addExamples(version, [
+    {
+      description: "Show CLI version",
+      command: "geonic cli version",
     },
   ]);
 }

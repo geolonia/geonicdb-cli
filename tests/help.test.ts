@@ -38,6 +38,7 @@ describe("help", () => {
     it("lists all command groups", () => {
       const commands = [
         "auth",
+        "cli",
         "entities",
         "entityOperations",
         "custom-data-models",

@@ -26,7 +26,6 @@ describe("completions", () => {
       expect(result).not.toContain("login");
       expect(result).not.toContain("logout");
       expect(result).not.toContain("whoami");
-      expect(result).not.toContain("cli");
     });
 
     it("filters by partial input", () => {
@@ -213,7 +212,6 @@ describe("completions", () => {
 
     it("excludes hidden commands after help", () => {
       const result = complete("geonic help ");
-      expect(result).not.toContain("cli");
       expect(result).not.toContain("attrs");
     });
 
