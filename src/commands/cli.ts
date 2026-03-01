@@ -1,4 +1,5 @@
 import type { Command, Option } from "commander";
+import { addExamples } from "./help.js";
 
 function findOption(
   cmd: Command,
@@ -187,17 +188,7 @@ export function registerCliCommand(program: Command): void {
   const completions = cli
     .command("completions")
     .summary("Generate shell completions")
-    .description(
-      [
-        "Generate shell completions for geonic CLI.",
-        "",
-        "To enable bash completion, add the following to ~/.bashrc or ~/.bash_profile:",
-        "",
-        "  eval \"$(geonic cli completions bash)\"",
-        "",
-        "Then reload your shell or run: source ~/.bashrc",
-      ].join("\n"),
-    )
+    .description("Generate shell completions for geonic CLI.")
     .option("--line <line>", "Current command line content")
     .option("--point <point>", "Cursor position in the command line")
     .action((opts: { line?: string; point?: string }) => {
@@ -210,10 +201,26 @@ export function registerCliCommand(program: Command): void {
       }
     });
 
-  completions
+  const bash = completions
     .command("bash")
     .description("Output bash completion script")
     .action(() => {
       console.log(BASH_SCRIPT);
     });
+
+  addExamples(bash, [
+    {
+      description: "Print the bash completion script",
+      command: "geonic cli completions bash",
+    },
+    {
+      description: "Enable in current shell session",
+      command: 'eval "$(geonic cli completions bash)"',
+    },
+    {
+      description: "Persist in ~/.bashrc",
+      command:
+        'echo \'eval "$(geonic cli completions bash)"\' >> ~/.bashrc',
+    },
+  ]);
 }
