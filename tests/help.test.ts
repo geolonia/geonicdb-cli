@@ -28,7 +28,7 @@ describe("help", () => {
 
     it("includes DESCRIPTION section from package.json", () => {
       expect(output).toContain("DESCRIPTION");
-      expect(output).toContain("CLI tool for GeonicDB - FIWARE Orion compatible Context Broker");
+      expect(output).toContain("A CLI client for the GeonicDB");
     });
 
     it("includes AVAILABLE COMMANDS section", () => {
