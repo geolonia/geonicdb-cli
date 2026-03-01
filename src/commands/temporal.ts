@@ -7,6 +7,7 @@ import {
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
+import { addExamples } from "./help.js";
 
 function addTemporalListOptions(cmd: Command): Command {
   return cmd
@@ -145,14 +146,45 @@ export function registerTemporalCommand(program: Command): void {
     .description("Perform batch operations on temporal entities");
 
   // temporal entities list
-  addTemporalListOptions(
+  const entitiesList = addTemporalListOptions(
     entities.command("list").description("List temporal entities with optional filters"),
-  ).action(createListAction());
+  );
+  entitiesList.action(createListAction());
+
+  addExamples(entitiesList, [
+    {
+      description: "List by type with time range",
+      command:
+        "geonic temporal entities list --type Sensor --time-rel between --time-at 2025-01-01T00:00:00Z --end-time-at 2025-01-31T23:59:59Z",
+    },
+    {
+      description: "Get last 5 temporal values",
+      command: "geonic temporal entities list --type Sensor --last-n 5",
+    },
+    {
+      description: "Filter by time (after a point)",
+      command:
+        "geonic temporal entities list --time-rel after --time-at 2025-06-01T00:00:00Z",
+    },
+  ]);
 
   // temporal entities get
-  addTemporalGetOptions(
+  const entitiesGet = addTemporalGetOptions(
     entities.command("get <id>").description("Get a temporal entity by ID"),
-  ).action(createGetAction());
+  );
+  entitiesGet.action(createGetAction());
+
+  addExamples(entitiesGet, [
+    {
+      description: "Get temporal entity with specific attributes",
+      command:
+        "geonic temporal entities get urn:ngsi-ld:Sensor:001 --attrs temperature,humidity",
+    },
+    {
+      description: "Get last 10 values for an entity",
+      command: "geonic temporal entities get urn:ngsi-ld:Sensor:001 --last-n 10",
+    },
+  ]);
 
   // temporal entities create
   entities
@@ -167,9 +199,22 @@ export function registerTemporalCommand(program: Command): void {
     .action(createDeleteAction());
 
   // temporal entityOperations query
-  addQueryOptions(
+  const opsQuery = addQueryOptions(
     entityOperations.command("query <json>").description("Query temporal entities (POST)"),
-  ).action(createQueryAction());
+  );
+  opsQuery.action(createQueryAction());
+
+  addExamples(opsQuery, [
+    {
+      description: "Query with aggregation (hourly count)",
+      command:
+        "geonic temporal entityOperations query @query.json --aggr-methods totalCount --aggr-period PT1H",
+    },
+    {
+      description: "Query from a file",
+      command: "geonic temporal entityOperations query @query.json",
+    },
+  ]);
 
   // Backward-compatible hidden aliases at the temporal level
   addTemporalListOptions(

@@ -8,6 +8,7 @@ import {
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
 import { registerAttrsSubcommand } from "./attrs.js";
+import { addExamples } from "./help.js";
 
 export function registerEntitiesCommand(program: Command): void {
   const entities = program
@@ -15,7 +16,7 @@ export function registerEntitiesCommand(program: Command): void {
     .description("Manage context entities");
 
   // entities list
-  entities
+  const list = entities
     .command("list")
     .description("List entities with optional filters")
     .option("--type <type>", "Filter by entity type")
@@ -61,8 +62,35 @@ export function registerEntitiesCommand(program: Command): void {
       }),
     );
 
+  addExamples(list, [
+    {
+      description: "Filter by entity type",
+      command: "geonic entities list --type Sensor",
+    },
+    {
+      description: "Filter by attribute value",
+      command: "geonic entities list --query 'temperature>30'",
+    },
+    {
+      description: "AND conditions (semicolon)",
+      command: "geonic entities list --query 'temperature>30;humidity<50'",
+    },
+    {
+      description: "String match",
+      command: "geonic entities list --query 'name==\"Tokyo\"'",
+    },
+    {
+      description: "Pattern match",
+      command: "geonic entities list --query 'name~=\"Tok.*\"'",
+    },
+    {
+      description: "Check attribute existence",
+      command: "geonic entities list --query 'temperature'",
+    },
+  ]);
+
   // entities get
-  entities
+  const get = entities
     .command("get")
     .description("Get a single entity by ID")
     .argument("<id>", "Entity ID")
@@ -84,8 +112,19 @@ export function registerEntitiesCommand(program: Command): void {
       }),
     );
 
+  addExamples(get, [
+    {
+      description: "Get entity by ID",
+      command: "geonic entities get urn:ngsi-ld:Sensor:001",
+    },
+    {
+      description: "Get entity in keyValues format",
+      command: "geonic entities get urn:ngsi-ld:Sensor:001 --format keyValues",
+    },
+  ]);
+
   // entities create
-  entities
+  const create = entities
     .command("create")
     .description("Create a new entity")
     .argument("<json>", "JSON payload (inline, @file, or - for stdin)")
@@ -98,6 +137,21 @@ export function registerEntitiesCommand(program: Command): void {
         printSuccess("Entity created.");
       }),
     );
+
+  addExamples(create, [
+    {
+      description: "Create from inline JSON",
+      command: `geonic entities create '{"id":"urn:ngsi-ld:Sensor:001","type":"Sensor"}'`,
+    },
+    {
+      description: "Create from a file",
+      command: "geonic entities create @entity.json",
+    },
+    {
+      description: "Create from stdin",
+      command: "cat entity.json | geonic entities create -",
+    },
+  ]);
 
   // entities update
   entities

@@ -12,6 +12,7 @@ import { isInteractive, promptEmail, promptPassword } from "../prompt.js";
 import { getTokenStatus, formatDuration } from "../token.js";
 import { clientCredentialsGrant } from "../oauth.js";
 import chalk from "chalk";
+import { addExamples } from "./help.js";
 
 function createLoginCommand(): Command {
   return new Command("login")
@@ -190,7 +191,27 @@ export function registerAuthCommands(program: Command): void {
     .command("auth")
     .description("Manage authentication");
 
-  auth.addCommand(createLoginCommand());
+  const login = createLoginCommand();
+  addExamples(login, [
+    {
+      description: "Interactive login (email/password prompt)",
+      command: "geonic auth login",
+    },
+    {
+      description: "Login with OAuth client credentials",
+      command:
+        "geonic auth login --client-credentials --client-id MY_ID --client-secret MY_SECRET",
+    },
+    {
+      description: "Login with environment variables",
+      command: "GDB_EMAIL=user@example.com GDB_PASSWORD=pass geonic auth login",
+    },
+    {
+      description: "Login to a specific tenant",
+      command: "geonic auth login --tenant-id my-tenant",
+    },
+  ]);
+  auth.addCommand(login);
   auth.addCommand(createLogoutCommand());
 
   // me command (top-level, maps to /me API endpoint)

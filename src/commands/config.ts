@@ -7,6 +7,7 @@ import {
   getConfigPath,
 } from "../config.js";
 import { printOutput, printSuccess, printInfo } from "../output.js";
+import { addExamples } from "./help.js";
 
 const SENSITIVE_CONFIG_KEYS = new Set(["token", "refreshToken", "apiKey"]);
 
@@ -15,7 +16,7 @@ export function registerConfigCommand(program: Command): void {
     .command("config")
     .description("Manage CLI configuration");
 
-  config
+  const set = config
     .command("set")
     .description("Save a config value")
     .argument("<key>", "Configuration key")
@@ -29,6 +30,21 @@ export function registerConfigCommand(program: Command): void {
       const display = SENSITIVE_CONFIG_KEYS.has(key) ? "***" : value;
       printSuccess(`Set ${key} = ${display}`);
     });
+
+  addExamples(set, [
+    {
+      description: "Set server URL",
+      command: "geonic config set url https://api.example.com",
+    },
+    {
+      description: "Set tenant (NGSILD-Tenant header)",
+      command: "geonic config set service my-tenant",
+    },
+    {
+      description: "Set config for a specific profile",
+      command: "geonic config set url https://staging.example.com --profile staging",
+    },
+  ]);
 
   config
     .command("get")

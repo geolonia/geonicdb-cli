@@ -171,6 +171,50 @@ describe("help", () => {
     });
   });
 
+  describe("formatCommandDetails — EXAMPLES section", () => {
+    const entitiesList = findCommand(program, "entities", "list");
+    const output = stripAnsi(
+      formatCommandDetails(
+        program,
+        entitiesList as never,
+        "geonic entities list",
+      ),
+    );
+
+    it("includes EXAMPLES section for commands with examples", () => {
+      expect(output).toContain("EXAMPLES");
+    });
+
+    it("includes example commands", () => {
+      expect(output).toContain("$ geonic entities list --type Sensor");
+      expect(output).toContain("$ geonic entities list --query 'temperature>30'");
+    });
+
+    it("includes example descriptions", () => {
+      expect(output).toContain("Filter by entity type:");
+      expect(output).toContain("Pattern match:");
+    });
+
+    it("places EXAMPLES between OPTIONS and GLOBAL PARAMETERS", () => {
+      const optionsIdx = output.indexOf("OPTIONS");
+      const examplesIdx = output.indexOf("EXAMPLES");
+      const globalIdx = output.indexOf("GLOBAL PARAMETERS");
+      expect(optionsIdx).toBeLessThan(examplesIdx);
+      expect(examplesIdx).toBeLessThan(globalIdx);
+    });
+  });
+
+  describe("formatCommandDetails — no EXAMPLES when none registered", () => {
+    const health = findCommand(program, "health");
+    const output = stripAnsi(
+      formatCommandDetails(program, health as never, "geonic health"),
+    );
+
+    it("does not include EXAMPLES section", () => {
+      expect(output).not.toContain("EXAMPLES");
+    });
+  });
+
   describe("formatCommandDetails — alias display", () => {
     const subscriptions = findCommand(program, "subscriptions");
     const output = stripAnsi(

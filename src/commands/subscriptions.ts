@@ -7,6 +7,7 @@ import {
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
+import { addExamples } from "./help.js";
 
 export function registerSubscriptionsCommand(program: Command): void {
   const subscriptions = program
@@ -15,7 +16,7 @@ export function registerSubscriptionsCommand(program: Command): void {
     .description("Manage context subscriptions");
 
   // subscriptions list
-  subscriptions
+  const list = subscriptions
     .command("list")
     .description("List subscriptions")
     .option("--limit <n>", "Maximum number of results", parseInt)
@@ -37,6 +38,21 @@ export function registerSubscriptionsCommand(program: Command): void {
       }),
     );
 
+  addExamples(list, [
+    {
+      description: "List all subscriptions",
+      command: "geonic subscriptions list",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic subscriptions list --limit 10 --offset 20",
+    },
+    {
+      description: "List with total count",
+      command: "geonic subscriptions list --count",
+    },
+  ]);
+
   // subscriptions get
   subscriptions
     .command("get <id>")
@@ -54,7 +70,7 @@ export function registerSubscriptionsCommand(program: Command): void {
     );
 
   // subscriptions create
-  subscriptions
+  const create = subscriptions
     .command("create <json>")
     .description("Create a subscription")
     .action(
@@ -68,6 +84,17 @@ export function registerSubscriptionsCommand(program: Command): void {
         printSuccess("Subscription created.");
       }),
     );
+
+  addExamples(create, [
+    {
+      description: "Create from a JSON file",
+      command: "geonic subscriptions create @subscription.json",
+    },
+    {
+      description: "Create from stdin",
+      command: "cat subscription.json | geonic subscriptions create -",
+    },
+  ]);
 
   // subscriptions update
   subscriptions

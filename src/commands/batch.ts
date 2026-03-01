@@ -6,6 +6,7 @@ import {
   outputResponse,
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
+import { addExamples } from "./help.js";
 
 export function registerBatchCommand(program: Command): void {
   const batch = program
@@ -14,7 +15,7 @@ export function registerBatchCommand(program: Command): void {
     .description("Perform batch operations on entities");
 
   // batch create
-  batch
+  const create = batch
     .command("create <json>")
     .description("Batch create entities")
     .action(
@@ -28,8 +29,19 @@ export function registerBatchCommand(program: Command): void {
       }),
     );
 
+  addExamples(create, [
+    {
+      description: "Batch create from a file",
+      command: "geonic batch create @entities.json",
+    },
+    {
+      description: "Batch create from stdin",
+      command: "cat entities.json | geonic batch create -",
+    },
+  ]);
+
   // batch upsert
-  batch
+  const upsert = batch
     .command("upsert <json>")
     .description("Batch upsert entities")
     .action(
@@ -42,6 +54,17 @@ export function registerBatchCommand(program: Command): void {
         outputResponse(response, format);
       }),
     );
+
+  addExamples(upsert, [
+    {
+      description: "Batch upsert from a file",
+      command: "geonic batch upsert @entities.json",
+    },
+    {
+      description: "Batch upsert from stdin",
+      command: "cat entities.json | geonic batch upsert -",
+    },
+  ]);
 
   // batch update
   batch
