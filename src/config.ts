@@ -99,9 +99,17 @@ export function getConfigValue(key: string, profileName?: string): unknown {
   return config[key as keyof GdbConfig];
 }
 
+export function normalizeUrl(url: string): string {
+  if (!/^https?:\/\//i.test(url)) {
+    return `http://${url}`;
+  }
+  return url;
+}
+
 export function setConfigValue(key: string, value: string, profileName?: string): void {
   const config = loadConfig(profileName);
-  (config as Record<string, unknown>)[key] = value;
+  const normalized = key === "url" ? normalizeUrl(value) : value;
+  (config as Record<string, unknown>)[key] = normalized;
   saveConfig(config, profileName);
 }
 

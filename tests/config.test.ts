@@ -45,6 +45,21 @@ describe("config", () => {
     expect(getConfigValue("url")).toBe("http://example.com");
   });
 
+  it("auto-prepends http:// when setting url without protocol", () => {
+    setConfigValue("url", "localhost:3000");
+    expect(getConfigValue("url")).toBe("http://localhost:3000");
+  });
+
+  it("preserves https:// when setting url with protocol", () => {
+    setConfigValue("url", "https://example.com");
+    expect(getConfigValue("url")).toBe("https://example.com");
+  });
+
+  it("does not modify non-url config values", () => {
+    setConfigValue("service", "my-tenant");
+    expect(getConfigValue("service")).toBe("my-tenant");
+  });
+
   it("deletes config values", () => {
     setConfigValue("url", "http://example.com");
     deleteConfigValue("url");
