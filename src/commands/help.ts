@@ -86,6 +86,7 @@ function formatGlobalParameters(program: Command): string {
   lines.push(header("GLOBAL PARAMETERS"));
   lines.push("");
   lines.push(...formatOptionList(program.options));
+  lines.push("");
   return lines.join("\n");
 }
 

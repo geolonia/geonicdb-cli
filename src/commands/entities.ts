@@ -31,6 +31,7 @@ export function registerEntitiesCommand(program: Command): void {
     .option("--offset <n>", "Skip first N entities", parseInt)
     .option("--order-by <field>", "Order results by field")
     .option("--count", "Include total count in response")
+    .option("--key-values", "Request simplified key-value format")
     .action(
       withErrorHandler(async (opts: Record<string, unknown>, cmd: Command) => {
         const client = createClient(cmd);
@@ -51,7 +52,7 @@ export function registerEntitiesCommand(program: Command): void {
         if (opts.orderBy) params.orderBy = String(opts.orderBy);
         if (opts.count) params.options = "count";
 
-        if (format === "keyValues") {
+        if (opts.keyValues) {
           params.options = params.options
             ? `${params.options},keyValues`
             : "keyValues";
@@ -128,13 +129,14 @@ export function registerEntitiesCommand(program: Command): void {
     .command("get")
     .description("Get a single entity by ID")
     .argument("<id>", "Entity ID")
+    .option("--key-values", "Request simplified key-value format")
     .action(
-      withErrorHandler(async (id: string, _opts: unknown, cmd: Command) => {
+      withErrorHandler(async (id: string, opts: Record<string, unknown>, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
 
         const params: Record<string, string> = {};
-        if (format === "keyValues") {
+        if (opts.keyValues) {
           params.options = "keyValues";
         }
 
@@ -153,7 +155,7 @@ export function registerEntitiesCommand(program: Command): void {
     },
     {
       description: "Get entity in keyValues format",
-      command: "geonic entities get urn:ngsi-ld:Sensor:001 --format keyValues",
+      command: "geonic entities get urn:ngsi-ld:Sensor:001 --key-values",
     },
   ]);
 

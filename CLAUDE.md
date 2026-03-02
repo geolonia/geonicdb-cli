@@ -50,7 +50,7 @@ src/
 ├── config.ts          # Configuration management (~/.config/geonic/config.json)
 ├── helpers.ts         # Shared utility functions
 ├── input.ts           # Input parsing (JSON5, stdin auto-detect, interactive mode)
-├── output.ts          # Output formatting (json, table, keyValues, geojson)
+├── output.ts          # Output formatting (json, table, geojson)
 ├── types.ts           # Shared TypeScript types
 └── commands/          # One file per command group
     ├── entities.ts    # Entity CRUD + attrs subcommand (list, get, create, update, delete, attrs)
@@ -87,7 +87,7 @@ tests/
 - **Commander.js**: Each command group exports a `register*Command(program)` function called from `cli.ts`
 - **HTTP Client**: `client.ts` handles all API communication with GeonicDB server
 - **Config**: Persistent config stored in `~/.config/geonic/config.json` (URL, service, token, etc.)
-- **Output Formatting**: Supports `json`, `table`, `keyValues`, `geojson` via `--format` flag
+- **Output Formatting**: Supports `json`, `table`, `geojson` via `--format` flag
 - **Help System**: wp-cli style help via `geonic help [command] [subcommand]` and `--help`
 - **Global Options**: `--url`, `--service`, `--token`, `--profile`, `--api-key`, `--format`, `--verbose`
 

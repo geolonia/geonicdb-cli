@@ -7,8 +7,6 @@ export function formatOutput(data: unknown, format: OutputFormat): string {
       return JSON.stringify(data, null, 2);
     case "table":
       return formatTable(data);
-    case "keyValues":
-      return JSON.stringify(data, null, 2);
     case "geojson":
       return JSON.stringify(toGeoJSON(data), null, 2);
     default:

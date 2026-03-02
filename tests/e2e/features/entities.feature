@@ -121,6 +121,32 @@ Feature: Entity management
     Then the exit code should be 0
     And stdout should be valid JSON
 
+  # --key-values flag
+
+  Scenario: List entities with --key-values flag
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:KV1","type":"Room","temperature":{"value":25,"type":"Property"}}'`
+    When I run `geonic entities list --type Room --key-values`
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the output should not contain "\"type\": \"Property\""
+
+  Scenario: Get entity with --key-values flag
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:KV2","type":"Room","temperature":{"value":30,"type":"Property"}}'`
+    When I run `geonic entities get urn:ngsi-ld:Room:KV2 --key-values`
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the JSON output should have key "temperature"
+    And the output should not contain "\"type\": \"Property\""
+
+  Scenario: List entities with --key-values and --count combined
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:KV3","type":"Room","temperature":{"value":20,"type":"Property"}}'`
+    When I run `geonic entities list --type Room --key-values --count`
+    Then the exit code should be 0
+    And stdout should be valid JSON
+
   # Stdin and JSON5 input
 
   Scenario: Create entity via stdin (without -)

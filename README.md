@@ -74,7 +74,7 @@ geonic entities list --help
 | `--token <token>` | Authentication token |
 | `-p, --profile <name>` | Use a named profile |
 | `--api-key <key>` | API key for authentication |
-| `-f, --format <fmt>` | Output format: `json`, `table`, `keyValues`, `geojson` |
+| `-f, --format <fmt>` | Output format: `json`, `table`, `geojson` |
 | `--no-color` | Disable color output |
 | `-v, --verbose` | Verbose output |
 
@@ -384,8 +384,9 @@ Specify the output format with `--format` or `geonic config set format <fmt>`.
 |---|---|
 | `json` | Pretty-printed JSON (default) |
 | `table` | ASCII table |
-| `keyValues` | Simplified key-value JSON |
 | `geojson` | GeoJSON FeatureCollection |
+
+Use `--key-values` on `entities list` and `entities get` to request simplified key-value format from the API.
 
 ## Configuration
 

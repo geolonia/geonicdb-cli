@@ -162,7 +162,7 @@ function getOptionValueCompletions(
   partial: string,
 ): string[] {
   if (optionFlag === "--format" || optionFlag === "-f") {
-    return ["json", "table", "keyValues", "geojson"].filter((v) =>
+    return ["json", "table", "geojson"].filter((v) =>
       v.startsWith(partial),
     );
   }
