@@ -32,7 +32,7 @@ export function createProgram(): Command {
     .option("--token <token>", "Authentication token")
     .option("-p, --profile <name>", "Use a named profile")
     .option("--api-key <key>", "API key for authentication")
-    .option("-f, --format <fmt>", "Output format: json, table, keyValues, geojson")
+    .option("-f, --format <fmt>", "Output format: json, table, geojson")
     .option("--no-color", "Disable color output")
     .option("-v, --verbose", "Verbose output");
 

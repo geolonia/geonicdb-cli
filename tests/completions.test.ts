@@ -116,12 +116,12 @@ describe("completions", () => {
   describe("--format value completion", () => {
     it("completes format values after --format", () => {
       const result = complete("geonic entities list --format ");
-      expect(result).toEqual(["json", "table", "keyValues", "geojson"]);
+      expect(result).toEqual(["json", "table", "geojson"]);
     });
 
     it("completes format values after -f", () => {
       const result = complete("geonic entities list -f ");
-      expect(result).toEqual(["json", "table", "keyValues", "geojson"]);
+      expect(result).toEqual(["json", "table", "geojson"]);
     });
 
     it("filters format values by partial input", () => {
@@ -131,7 +131,7 @@ describe("completions", () => {
 
     it("returns all format values when partial is empty", () => {
       const result = complete("geonic entities list --format ");
-      expect(result).toHaveLength(4);
+      expect(result).toHaveLength(3);
     });
   });
 

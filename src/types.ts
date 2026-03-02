@@ -1,4 +1,4 @@
-export type OutputFormat = "json" | "table" | "keyValues" | "geojson";
+export type OutputFormat = "json" | "table" | "geojson";
 
 export interface GdbConfig {
   url?: string;
