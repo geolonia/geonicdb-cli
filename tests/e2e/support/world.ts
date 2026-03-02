@@ -51,8 +51,8 @@ export class GdbWorld extends World {
       });
       if (stdinData !== undefined) {
         child.stdin?.write(stdinData);
-        child.stdin?.end();
       }
+      child.stdin?.end();
     });
   }
 

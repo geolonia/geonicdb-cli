@@ -151,6 +151,7 @@ Displays the current authenticated user, token expiry, and active profile.
 | `entities attrs add <entityId> [json]` | Add attributes |
 | `entities attrs update <entityId> <attrName> [json]` | Update an attribute |
 | `entities attrs delete <entityId> <attrName>` | Delete an attribute |
+
 ### entityOperations (batch) — Batch operations
 
 | Subcommand | Description |
@@ -365,7 +366,7 @@ cat payload.json | geonic entities create -
 
 When no argument is given and the terminal is a TTY (no pipe), the CLI enters interactive mode with a `json>` prompt. Type or paste JSON and the input auto-submits when braces/brackets are balanced:
 
-```
+```text
 $ geonic entities create
 Enter JSON (auto-submits when braces close, Ctrl+C to cancel):
 json> {

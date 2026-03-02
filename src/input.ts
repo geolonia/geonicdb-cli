@@ -51,13 +51,15 @@ async function readInteractiveJson(): Promise<unknown> {
   const lines: string[] = [];
   let depth = 0;
   let started = false;
+  let inBlockComment = false;
 
   return new Promise<unknown>((resolve, reject) => {
     rl.on("line", (line) => {
       lines.push(line);
-      const result = trackDepth(line, depth, started);
+      const result = trackDepth(line, depth, started, inBlockComment);
       depth = result.depth;
       started = result.started;
+      inBlockComment = result.inBlockComment;
 
       if (started && depth <= 0) {
         rl.close();
@@ -88,18 +90,28 @@ async function readInteractiveJson(): Promise<unknown> {
 }
 
 /**
- * Track brace/bracket depth for a line, respecting string literals.
+ * Track brace/bracket depth for a line, respecting string literals and JSON5 comments.
  */
 function trackDepth(
   line: string,
   depth: number,
   started: boolean,
-): { depth: number; started: boolean } {
+  inBlockComment: boolean,
+): { depth: number; started: boolean; inBlockComment: boolean } {
   let inString = false;
   let stringChar = "";
 
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
+    const next = i + 1 < line.length ? line[i + 1] : "";
+
+    if (inBlockComment) {
+      if (ch === "*" && next === "/") {
+        inBlockComment = false;
+        i++;
+      }
+      continue;
+    }
 
     if (inString) {
       if (ch === "\\" && i + 1 < line.length) {
@@ -107,6 +119,15 @@ function trackDepth(
       } else if (ch === stringChar) {
         inString = false;
       }
+      continue;
+    }
+
+    // Line comment — skip rest of line
+    if (ch === "/" && next === "/") break;
+    // Block comment start
+    if (ch === "/" && next === "*") {
+      inBlockComment = true;
+      i++;
       continue;
     }
 
@@ -121,5 +142,5 @@ function trackDepth(
     }
   }
 
-  return { depth, started };
+  return { depth, started, inBlockComment };
 }
