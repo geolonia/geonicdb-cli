@@ -125,7 +125,7 @@ Feature: Entity management
 
   Scenario: Create entity via stdin (without -)
     Given I am logged in
-    When I run "geonic entities create" with stdin:
+    When I run `geonic entities create` with stdin:
       """
       {"id":"urn:ngsi-ld:Room:S01","type":"Room"}
       """
@@ -134,7 +134,7 @@ Feature: Entity management
 
   Scenario: Create entity with JSON5 syntax
     Given I am logged in
-    When I run "geonic entities create" with stdin:
+    When I run `geonic entities create` with stdin:
       """
       {id: 'urn:ngsi-ld:Room:S02', type: 'Room'}
       """

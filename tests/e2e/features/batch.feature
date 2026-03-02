@@ -65,7 +65,7 @@ Feature: Batch entity operations
 
   Scenario: Batch create via stdin
     Given I am logged in
-    When I run "geonic batch create" with stdin:
+    When I run `geonic batch create` with stdin:
       """
       [{"id":"urn:ngsi-ld:Room:S10","type":"Room"},{"id":"urn:ngsi-ld:Room:S11","type":"Room"}]
       """
