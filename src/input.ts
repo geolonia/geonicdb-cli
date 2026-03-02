@@ -52,14 +52,18 @@ async function readInteractiveJson(): Promise<unknown> {
   let depth = 0;
   let started = false;
   let inBlockComment = false;
+  let inString = false;
+  let stringChar = "";
 
   return new Promise<unknown>((resolve, reject) => {
     rl.on("line", (line) => {
       lines.push(line);
-      const result = trackDepth(line, depth, started, inBlockComment);
+      const result = trackDepth(line, depth, started, inBlockComment, inString, stringChar);
       depth = result.depth;
       started = result.started;
       inBlockComment = result.inBlockComment;
+      inString = result.inString;
+      stringChar = result.stringChar;
 
       if (started && depth <= 0) {
         rl.close();
@@ -91,15 +95,16 @@ async function readInteractiveJson(): Promise<unknown> {
 
 /**
  * Track brace/bracket depth for a line, respecting string literals and JSON5 comments.
+ * String and block-comment state is passed in and returned to handle multi-line constructs.
  */
 function trackDepth(
   line: string,
   depth: number,
   started: boolean,
   inBlockComment: boolean,
-): { depth: number; started: boolean; inBlockComment: boolean } {
-  let inString = false;
-  let stringChar = "";
+  inString: boolean,
+  stringChar: string,
+): { depth: number; started: boolean; inBlockComment: boolean; inString: boolean; stringChar: string } {
 
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
@@ -142,5 +147,5 @@ function trackDepth(
     }
   }
 
-  return { depth, started, inBlockComment };
+  return { depth, started, inBlockComment, inString, stringChar };
 }
