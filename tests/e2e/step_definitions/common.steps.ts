@@ -20,12 +20,12 @@ Given("no config file exists", function (this: GdbWorld) {
   // configDir is already empty from Before hook
 });
 
-When("I run {string}", async function (this: GdbWorld, command: string) {
+When(/^I run `([^`]+)`$/, async function (this: GdbWorld, command: string) {
   const args = stripCommandPrefix(parseArgs(command));
   await this.run(args);
 });
 
-When("I run {string} with URL", async function (this: GdbWorld, command: string) {
+When(/^I run `([^`]+)` with URL$/, async function (this: GdbWorld, command: string) {
   const args = stripCommandPrefix(parseArgs(command));
   args.push("--url", this.serverUrl);
   await this.run(args);
@@ -36,7 +36,7 @@ When(/^I run `([^`]+)` with stdin:$/, async function (this: GdbWorld, command: s
   await this.run(args, undefined, docString);
 });
 
-When("I run {string} with env {string}", async function (this: GdbWorld, command: string, envPair: string) {
+When(/^I run `([^`]+)` with env "([^"]+)"$/, async function (this: GdbWorld, command: string, envPair: string) {
   const args = stripCommandPrefix(parseArgs(command));
   const eqIdx = envPair.indexOf("=");
   const key = envPair.substring(0, eqIdx);
@@ -44,7 +44,7 @@ When("I run {string} with env {string}", async function (this: GdbWorld, command
   await this.run(args, { [key]: value });
 });
 
-When("I run {string} replacing ID", async function (this: GdbWorld, command: string) {
+When(/^I run `([^`]+)` replacing ID$/, async function (this: GdbWorld, command: string) {
   const savedId = (this as Record<string, unknown>).savedId as string;
   assert.ok(savedId, "No saved ID available. Run 'I save the ID from the JSON output' first.");
   const resolved = command.replace(/\$ID/g, savedId);
