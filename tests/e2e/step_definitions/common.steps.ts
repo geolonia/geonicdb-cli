@@ -48,12 +48,14 @@ When("I run {string} replacing ID", async function (this: GdbWorld, command: str
 });
 
 Given("I save the ID from the JSON output", function (this: GdbWorld) {
-  const data = JSON.parse(this.lastResult.stdout);
+  const parsed = extractJson(this.lastResult.stdout);
+  assert.ok(parsed !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);
+  const data: unknown = parsed;
   let list: Record<string, unknown>[];
   if (Array.isArray(data)) {
     list = data;
   } else {
-    const nested = Object.values(data).find((v) => Array.isArray(v));
+    const nested = Object.values(data as Record<string, unknown>).find((v) => Array.isArray(v));
     list = (nested as Record<string, unknown>[]) ?? [];
   }
   assert.ok(list.length > 0, `No items found in JSON output.\nstdout: ${this.lastResult.stdout}`);
