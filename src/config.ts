@@ -99,17 +99,24 @@ export function getConfigValue(key: string, profileName?: string): unknown {
   return config[key as keyof GdbConfig];
 }
 
-export function normalizeUrl(url: string): string {
+export function validateUrl(url: string): string {
   if (!/^https?:\/\//i.test(url)) {
-    return `http://${url}`;
+    throw new Error(`Invalid URL: "${url}". URL must start with http:// or https://.`);
   }
-  return url;
+  try {
+    new URL(url);
+  } catch {
+    throw new Error(`Invalid URL: "${url}".`);
+  }
+  return url.replace(/\/+$/, "") + "/";
 }
 
 export function setConfigValue(key: string, value: string, profileName?: string): void {
   const config = loadConfig(profileName);
-  const normalized = key === "url" ? normalizeUrl(value) : value;
-  (config as Record<string, unknown>)[key] = normalized;
+  if (key === "url") {
+    value = validateUrl(value);
+  }
+  (config as Record<string, unknown>)[key] = value;
   saveConfig(config, profileName);
 }
 

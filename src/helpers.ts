@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { loadConfig, saveConfig, normalizeUrl } from "./config.js";
+import { loadConfig, saveConfig, validateUrl } from "./config.js";
 import { GdbClient, GdbClientError } from "./client.js";
 import { printError, printOutput, printCount } from "./output.js";
 import type { ClientResponse, GlobalOptions, OutputFormat } from "./types.js";
@@ -31,7 +31,7 @@ export function createClient(cmd: Command): GdbClient {
     printError("No URL configured. Use `geonic config set url <url>` or pass --url.");
     process.exit(1);
   }
-  opts.url = normalizeUrl(opts.url);
+  opts.url = validateUrl(opts.url);
   const cliOpts = cmd.optsWithGlobals() as GlobalOptions;
   const usingCliToken = !!cliOpts.token;
   const config = loadConfig(opts.profile);

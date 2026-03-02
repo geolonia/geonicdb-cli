@@ -42,17 +42,25 @@ describe("config", () => {
 
   it("sets individual config values", () => {
     setConfigValue("url", "http://example.com");
-    expect(getConfigValue("url")).toBe("http://example.com");
+    expect(getConfigValue("url")).toBe("http://example.com/");
   });
 
-  it("auto-prepends http:// when setting url without protocol", () => {
-    setConfigValue("url", "localhost:3000");
-    expect(getConfigValue("url")).toBe("http://localhost:3000");
+  it("throws when setting url without protocol", () => {
+    expect(() => setConfigValue("url", "localhost:3000")).toThrow(
+      'Invalid URL: "localhost:3000". URL must start with http:// or https://.',
+    );
   });
 
   it("preserves https:// when setting url with protocol", () => {
     setConfigValue("url", "https://example.com");
-    expect(getConfigValue("url")).toBe("https://example.com");
+    expect(getConfigValue("url")).toBe("https://example.com/");
+  });
+
+  it("normalizes trailing slash on url", () => {
+    setConfigValue("url", "http://localhost:3000/");
+    expect(getConfigValue("url")).toBe("http://localhost:3000/");
+    setConfigValue("url", "http://localhost:3000");
+    expect(getConfigValue("url")).toBe("http://localhost:3000/");
   });
 
   it("does not modify non-url config values", () => {
@@ -177,7 +185,7 @@ describe("config", () => {
     it("sets config values per profile", () => {
       createProfile("staging");
       setConfigValue("url", "http://staging.example.com", "staging");
-      expect(getConfigValue("url", "staging")).toBe("http://staging.example.com");
+      expect(getConfigValue("url", "staging")).toBe("http://staging.example.com/");
       expect(getConfigValue("url")).toBeUndefined();
     });
   });
