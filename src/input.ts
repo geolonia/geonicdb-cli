@@ -14,7 +14,7 @@ import { createInterface } from "node:readline";
  */
 export async function parseJsonInput(input?: string): Promise<unknown> {
   // 1. Explicit input
-  if (input !== undefined && input !== "") {
+  if (input !== undefined) {
     if (input === "-") return parseData(readFileSync(0, "utf-8"));
     if (input.startsWith("@")) return parseData(readFileSync(input.slice(1), "utf-8"));
     return parseData(input);
