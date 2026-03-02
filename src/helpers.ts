@@ -31,6 +31,9 @@ export function createClient(cmd: Command): GdbClient {
     printError("No URL configured. Use `geonic config set url <url>` or pass --url.");
     process.exit(1);
   }
+  if (!/^https?:\/\//i.test(opts.url)) {
+    opts.url = `http://${opts.url}`;
+  }
   const cliOpts = cmd.optsWithGlobals() as GlobalOptions;
   const usingCliToken = !!cliOpts.token;
   const config = loadConfig(opts.profile);

@@ -127,6 +127,18 @@ describe("helpers", () => {
       expect(client).toBeInstanceOf(GdbClient);
     });
 
+    it("auto-prepends http:// when URL lacks protocol", () => {
+      saveConfig({ url: "localhost:3000" });
+      const client = createClient(fakeCmd());
+      expect(client).toBeInstanceOf(GdbClient);
+    });
+
+    it("preserves https:// URLs as-is", () => {
+      saveConfig({ url: "https://example.com" });
+      const client = createClient(fakeCmd());
+      expect(client).toBeInstanceOf(GdbClient);
+    });
+
     it("sets onTokenRefresh callback when token comes from config", () => {
       saveConfig({
         url: "http://localhost:3000",
