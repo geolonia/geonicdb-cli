@@ -54,8 +54,14 @@ async function readInteractiveJson(): Promise<unknown> {
   let inBlockComment = false;
   let inString = false;
   let stringChar = "";
+  let cancelled = false;
 
   return new Promise<unknown>((resolve, reject) => {
+    rl.on("SIGINT", () => {
+      cancelled = true;
+      rl.close();
+    });
+
     rl.on("line", (line) => {
       lines.push(line);
       const result = trackDepth(line, depth, started, inBlockComment, inString, stringChar);
@@ -79,6 +85,10 @@ async function readInteractiveJson(): Promise<unknown> {
     });
 
     rl.on("close", () => {
+      if (cancelled) {
+        reject(new Error("Input cancelled."));
+        return;
+      }
       if (lines.length > 0 && (!started || depth > 0 || inBlockComment || inString)) {
         // EOF before balanced — attempt to parse what we have
         try {
