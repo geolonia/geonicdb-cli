@@ -54,11 +54,11 @@ export function registerTenantsCommand(parent: Command): void {
 
   // tenants create
   const create = tenants
-    .command("create <json>")
+    .command("create [json]")
     .description("Create a new tenant")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-        const body = parseJsonInput(String(json));
+        const body = await parseJsonInput(json as string | undefined);
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const response = await client.rawRequest("POST", "/admin/tenants", {
@@ -78,12 +78,12 @@ export function registerTenantsCommand(parent: Command): void {
 
   // tenants update
   const update = tenants
-    .command("update <id> <json>")
+    .command("update <id> [json]")
     .description("Update a tenant")
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
-          const body = parseJsonInput(String(json));
+          const body = await parseJsonInput(json as string | undefined);
           const client = createClient(cmd);
           const format = getFormat(cmd);
           const response = await client.rawRequest(

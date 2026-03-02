@@ -54,11 +54,11 @@ export function registerPoliciesCommand(parent: Command): void {
 
   // policies create
   const create = policies
-    .command("create <json>")
+    .command("create [json]")
     .description("Create a new policy")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-        const body = parseJsonInput(String(json));
+        const body = await parseJsonInput(json as string | undefined);
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const response = await client.rawRequest("POST", "/admin/policies", {
@@ -78,12 +78,12 @@ export function registerPoliciesCommand(parent: Command): void {
 
   // policies update
   const update = policies
-    .command("update <id> <json>")
+    .command("update <id> [json]")
     .description("Update a policy")
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
-          const body = parseJsonInput(String(json));
+          const body = await parseJsonInput(json as string | undefined);
           const client = createClient(cmd);
           const format = getFormat(cmd);
           const response = await client.rawRequest(

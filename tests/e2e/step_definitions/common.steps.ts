@@ -31,6 +31,11 @@ When("I run {string} with URL", async function (this: GdbWorld, command: string)
   await this.run(args);
 });
 
+When("I run {string} with stdin:", async function (this: GdbWorld, command: string, docString: string) {
+  const args = stripCommandPrefix(parseArgs(command));
+  await this.run(args, undefined, docString);
+});
+
 When("I run {string} with env {string}", async function (this: GdbWorld, command: string, envPair: string) {
   const args = stripCommandPrefix(parseArgs(command));
   const eqIdx = envPair.indexOf("=");

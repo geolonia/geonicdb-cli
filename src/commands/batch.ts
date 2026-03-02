@@ -16,13 +16,13 @@ export function registerBatchCommand(program: Command): void {
 
   // batch create
   const create = batch
-    .command("create <json>")
+    .command("create [json]")
     .description("Batch create entities")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const data = parseJsonInput(String(json));
+        const data = await parseJsonInput(json as string | undefined);
 
         const response = await client.post("/entityOperations/create", data);
         outputResponse(response, format);
@@ -36,19 +36,19 @@ export function registerBatchCommand(program: Command): void {
     },
     {
       description: "Batch create from stdin",
-      command: "cat entities.json | geonic batch create -",
+      command: "cat entities.json | geonic batch create",
     },
   ]);
 
   // batch upsert
   const upsert = batch
-    .command("upsert <json>")
+    .command("upsert [json]")
     .description("Batch upsert entities")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const data = parseJsonInput(String(json));
+        const data = await parseJsonInput(json as string | undefined);
 
         const response = await client.post("/entityOperations/upsert", data);
         outputResponse(response, format);
@@ -62,19 +62,19 @@ export function registerBatchCommand(program: Command): void {
     },
     {
       description: "Batch upsert from stdin",
-      command: "cat entities.json | geonic batch upsert -",
+      command: "cat entities.json | geonic batch upsert",
     },
   ]);
 
   // batch update
   const update = batch
-    .command("update <json>")
+    .command("update [json]")
     .description("Batch update entity attributes")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const data = parseJsonInput(String(json));
+        const data = await parseJsonInput(json as string | undefined);
 
         const response = await client.post("/entityOperations/update", data);
         outputResponse(response, format);
@@ -88,19 +88,19 @@ export function registerBatchCommand(program: Command): void {
     },
     {
       description: "Batch update from stdin",
-      command: "cat updates.json | geonic batch update -",
+      command: "cat updates.json | geonic batch update",
     },
   ]);
 
   // batch delete
   const del = batch
-    .command("delete <json>")
+    .command("delete [json]")
     .description("Batch delete entities by ID")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const data = parseJsonInput(String(json));
+        const data = await parseJsonInput(json as string | undefined);
 
         const response = await client.post("/entityOperations/delete", data);
         outputResponse(response, format);
@@ -114,19 +114,19 @@ export function registerBatchCommand(program: Command): void {
     },
     {
       description: "Batch delete from stdin",
-      command: "cat entity-ids.json | geonic batch delete -",
+      command: "cat entity-ids.json | geonic batch delete",
     },
   ]);
 
   // batch query
   const query = batch
-    .command("query <json>")
+    .command("query [json]")
     .description("Query entities by posting a query payload")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const data = parseJsonInput(String(json));
+        const data = await parseJsonInput(json as string | undefined);
 
         const response = await client.post("/entityOperations/query", data);
         outputResponse(response, format);
@@ -140,19 +140,19 @@ export function registerBatchCommand(program: Command): void {
     },
     {
       description: "Query entities from stdin",
-      command: "cat query.json | geonic batch query -",
+      command: "cat query.json | geonic batch query",
     },
   ]);
 
   // batch merge
   const merge = batch
-    .command("merge <json>")
+    .command("merge [json]")
     .description("Batch merge-patch entities")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const data = parseJsonInput(String(json));
+        const data = await parseJsonInput(json as string | undefined);
 
         const response = await client.post("/entityOperations/merge", data);
         outputResponse(response, format);
@@ -166,7 +166,7 @@ export function registerBatchCommand(program: Command): void {
     },
     {
       description: "Batch merge-patch from stdin",
-      command: "cat patches.json | geonic batch merge -",
+      command: "cat patches.json | geonic batch merge",
     },
   ]);
 }

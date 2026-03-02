@@ -49,7 +49,7 @@ src/
 ├── client.ts          # HTTP client for GeonicDB API
 ├── config.ts          # Configuration management (~/.config/geonic/config.json)
 ├── helpers.ts         # Shared utility functions
-├── input.ts           # Input parsing (stdin, files, JSON)
+├── input.ts           # Input parsing (JSON5, stdin auto-detect, interactive mode)
 ├── output.ts          # Output formatting (json, table, keyValues, geojson)
 ├── types.ts           # Shared TypeScript types
 └── commands/          # One file per command group

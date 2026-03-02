@@ -24,7 +24,7 @@ export class GdbWorld extends World {
   serverUrl!: string;
 
   /** Run the CLI with given arguments */
-  async run(args: string[], extraEnv?: Record<string, string>): Promise<CliResult> {
+  async run(args: string[], extraEnv?: Record<string, string>, stdinData?: string): Promise<CliResult> {
     const cliPath = join(process.cwd(), "dist", "index.js");
 
     const env: Record<string, string> = {
@@ -36,7 +36,7 @@ export class GdbWorld extends World {
     };
 
     return new Promise((resolve) => {
-      execFile("node", [cliPath, ...args], { env, timeout: 15_000 }, (error, stdout, stderr) => {
+      const child = execFile("node", [cliPath, ...args], { env, timeout: 15_000 }, (error, stdout, stderr) => {
         const result: CliResult = {
           stdout: stdout.toString().trim(),
           stderr: stderr.toString().trim(),
@@ -49,6 +49,10 @@ export class GdbWorld extends World {
         this.lastResult = result;
         resolve(result);
       });
+      if (stdinData !== undefined) {
+        child.stdin?.write(stdinData);
+      }
+      child.stdin?.end();
     });
   }
 
