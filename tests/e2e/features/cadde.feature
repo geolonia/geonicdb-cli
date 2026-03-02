@@ -7,17 +7,17 @@ Feature: Admin CADDE configuration
 
   Scenario: Get CADDE configuration
     Given I am logged in
-    When I run "geonic admin cadde get"
+    When I run `geonic admin cadde get`
     Then the exit code should be 0
 
   Scenario: Set CADDE configuration
     Given I am logged in
-    When I run "geonic admin cadde set '{\"provider\":\"test\",\"endpoint\":\"http://localhost:6000\"}'"
+    When I run `geonic admin cadde set '{"provider":"test","endpoint":"http://localhost:6000"}'`
     Then the exit code should be 0
     And the output should contain "CADDE configuration set."
 
   Scenario: Delete CADDE configuration
     Given I am logged in
-    When I run "geonic admin cadde delete"
+    When I run `geonic admin cadde delete`
     Then the exit code should be 0
     And the output should contain "CADDE configuration deleted."

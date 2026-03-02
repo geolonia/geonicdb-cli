@@ -5,14 +5,14 @@ Feature: Entity types
 
   Scenario: List entity types
     Given I am logged in
-    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:100\",\"type\":\"Room\"}'"
-    When I run "geonic types list"
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:100","type":"Room"}'`
+    When I run `geonic types list`
     Then the exit code should be 0
     And the output should contain "Room"
 
   Scenario: Get entity type details
     Given I am logged in
-    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:101\",\"type\":\"Room\"}'"
-    When I run "geonic types get Room"
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:101","type":"Room"}'`
+    When I run `geonic types get Room`
     Then the exit code should be 0
     And stdout should be valid JSON
