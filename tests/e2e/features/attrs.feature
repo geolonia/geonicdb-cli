@@ -6,21 +6,21 @@ Feature: Entity attribute management
 
   Scenario: List entity attributes
     Given I am logged in
-    And I create entity "Room:A01" of type "Room"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:A01\",\"type\":\"Room\"}'"
     When I run "geonic entities attrs list urn:ngsi-ld:Room:A01"
     Then the exit code should be 0
     And stdout should be valid JSON
 
   Scenario: Add attributes to an entity
     Given I am logged in
-    And I create entity "Room:A02" of type "Room"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:A02\",\"type\":\"Room\"}'"
     When I run "geonic entities attrs add urn:ngsi-ld:Room:A02 '{\"humidity\":{\"value\":60,\"type\":\"Property\"}}'"
     Then the exit code should be 0
     And the output should contain "Attributes added."
 
   Scenario: Get a specific attribute
     Given I am logged in
-    And I create entity "Room:A03" of type "Room"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:A03\",\"type\":\"Room\"}'"
     And I run "geonic entities attrs add urn:ngsi-ld:Room:A03 '{\"humidity\":{\"value\":60,\"type\":\"Property\"}}'"
     When I run "geonic entities attrs get urn:ngsi-ld:Room:A03 humidity"
     Then the exit code should be 0
@@ -28,7 +28,7 @@ Feature: Entity attribute management
 
   Scenario: Update a specific attribute
     Given I am logged in
-    And I create entity "Room:A04" of type "Room"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:A04\",\"type\":\"Room\"}'"
     And I run "geonic entities attrs add urn:ngsi-ld:Room:A04 '{\"humidity\":{\"value\":60,\"type\":\"Property\"}}'"
     When I run "geonic entities attrs update urn:ngsi-ld:Room:A04 humidity '{\"value\":80,\"type\":\"Property\"}'"
     Then the exit code should be 0
@@ -39,7 +39,7 @@ Feature: Entity attribute management
 
   Scenario: Delete a specific attribute
     Given I am logged in
-    And I create entity "Room:A05" of type "Room"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:A05\",\"type\":\"Room\"}'"
     And I run "geonic entities attrs add urn:ngsi-ld:Room:A05 '{\"humidity\":{\"value\":60,\"type\":\"Property\"}}'"
     And I run "geonic entities attrs add urn:ngsi-ld:Room:A05 '{\"pressure\":{\"value\":1013,\"type\":\"Property\"}}'"
     When I run "geonic entities attrs delete urn:ngsi-ld:Room:A05 humidity"

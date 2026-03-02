@@ -12,30 +12,32 @@ Feature: Custom data model management
 
   Scenario: Create a model
     Given I am logged in
-    When I create a model "TestModel01"
+    When I run "geonic models create '{\"type\":\"TestModel01\",\"domain\":\"test\",\"description\":\"Model TestModel01\",\"propertyDetails\":{\"temperature\":{\"ngsiType\":\"Property\",\"valueType\":\"Number\",\"example\":25},\"humidity\":{\"ngsiType\":\"Property\",\"valueType\":\"Number\",\"example\":60}}}'"
     Then the exit code should be 0
     And the output should contain "Model created."
 
   Scenario: List models after creation
     Given I am logged in
-    And I create a model "TestModel02"
+    And I run "geonic models create '{\"type\":\"TestModel02\",\"domain\":\"test\",\"description\":\"Model TestModel02\",\"propertyDetails\":{\"temperature\":{\"ngsiType\":\"Property\",\"valueType\":\"Number\",\"example\":25},\"humidity\":{\"ngsiType\":\"Property\",\"valueType\":\"Number\",\"example\":60}}}'"
     When I run "geonic models list"
     Then the exit code should be 0
     And the output should contain "TestModel02"
 
   Scenario: Get a model by ID
     Given I am logged in
-    And I create a model "TestModel03"
-    And I get the model ID from the list
-    When I get the model by ID
+    And I run "geonic models create '{\"type\":\"TestModel03\",\"domain\":\"test\",\"description\":\"Model TestModel03\",\"propertyDetails\":{\"temperature\":{\"ngsiType\":\"Property\",\"valueType\":\"Number\",\"example\":25},\"humidity\":{\"ngsiType\":\"Property\",\"valueType\":\"Number\",\"example\":60}}}'"
+    And I run "geonic models list --format json"
+    And I save the ID from the JSON output
+    When I run "geonic models get $ID" replacing ID
     Then the exit code should be 0
     And stdout should be valid JSON
 
   Scenario: Delete a model
     Given I am logged in
-    And I create a model "TestModel04"
-    And I get the model ID from the list
-    When I delete the model
+    And I run "geonic models create '{\"type\":\"TestModel04\",\"domain\":\"test\",\"description\":\"Model TestModel04\",\"propertyDetails\":{\"temperature\":{\"ngsiType\":\"Property\",\"valueType\":\"Number\",\"example\":25},\"humidity\":{\"ngsiType\":\"Property\",\"valueType\":\"Number\",\"example\":60}}}'"
+    And I run "geonic models list --format json"
+    And I save the ID from the JSON output
+    When I run "geonic models delete $ID" replacing ID
     Then the exit code should be 0
     And the output should contain "Model deleted."
 

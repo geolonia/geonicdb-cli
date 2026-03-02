@@ -39,6 +39,32 @@ When("I run {string} with env {string}", async function (this: GdbWorld, command
   await this.run(args, { [key]: value });
 });
 
+When("I run {string} replacing ID", async function (this: GdbWorld, command: string) {
+  const savedId = (this as Record<string, unknown>).savedId as string;
+  assert.ok(savedId, "No saved ID available. Run 'I save the ID from the JSON output' first.");
+  const resolved = command.replace(/\$ID/g, savedId);
+  const args = stripCommandPrefix(parseArgs(resolved));
+  await this.run(args);
+});
+
+Given("I save the ID from the JSON output", function (this: GdbWorld) {
+  const parsed = extractJson(this.lastResult.stdout);
+  assert.ok(parsed !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);
+  const data: unknown = parsed;
+  let list: Record<string, unknown>[];
+  if (Array.isArray(data)) {
+    list = data;
+  } else {
+    const nested = Object.values(data as Record<string, unknown>).find((v) => Array.isArray(v));
+    list = (nested as Record<string, unknown>[]) ?? [];
+  }
+  assert.ok(list.length > 0, `No items found in JSON output.\nstdout: ${this.lastResult.stdout}`);
+  const item = list[list.length - 1];
+  const id = item.id ?? item._id ?? item.policyId ?? item.tenantId ?? item.userId ?? item.clientId ?? item.ruleId;
+  assert.ok(id, `Could not extract ID from: ${JSON.stringify(item)}`);
+  (this as Record<string, unknown>).savedId = String(id);
+});
+
 Then("the exit code should be {int}", function (this: GdbWorld, code: number) {
   assert.equal(this.lastResult.exitCode, code, `Expected exit code ${code}, got ${this.lastResult.exitCode}.\nstdout: ${this.lastResult.stdout}\nstderr: ${this.lastResult.stderr}`);
 });
