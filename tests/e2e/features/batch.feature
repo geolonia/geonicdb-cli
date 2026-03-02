@@ -60,3 +60,13 @@ Feature: Batch entity operations
     When I run "geonic entities get urn:ngsi-ld:Room:B60"
     Then the exit code should be 0
     And stdout should be valid JSON
+
+  # Stdin input
+
+  Scenario: Batch create via stdin
+    Given I am logged in
+    When I run "geonic batch create" with stdin:
+      """
+      [{"id":"urn:ngsi-ld:Room:S10","type":"Room"},{"id":"urn:ngsi-ld:Room:S11","type":"Room"}]
+      """
+    Then the exit code should be 0

@@ -34,3 +34,14 @@ Feature: Config management
     And the output should contain "Deleted"
     And the config should not have key "service"
     And the config should have key "url"
+
+  # Config migration
+
+  Scenario: Migrate v1 config to v2 format
+    Given the CLI is configured with:
+      """
+      { "url": "http://localhost:3000", "token": "old-token" }
+      """
+    When I run "geonic config list"
+    Then the exit code should be 0
+    And stdout should contain "url"

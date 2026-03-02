@@ -120,3 +120,23 @@ Feature: Entity management
     When I run "geonic entities list --type Room --order-by id"
     Then the exit code should be 0
     And stdout should be valid JSON
+
+  # Stdin and JSON5 input
+
+  Scenario: Create entity via stdin (without -)
+    Given I am logged in
+    When I run "geonic entities create" with stdin:
+      """
+      {"id":"urn:ngsi-ld:Room:S01","type":"Room"}
+      """
+    Then the exit code should be 0
+    And the output should contain "Entity created."
+
+  Scenario: Create entity with JSON5 syntax
+    Given I am logged in
+    When I run "geonic entities create" with stdin:
+      """
+      {id: 'urn:ngsi-ld:Room:S02', type: 'Room'}
+      """
+    Then the exit code should be 0
+    And the output should contain "Entity created."
