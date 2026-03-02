@@ -100,6 +100,10 @@ export function getConfigValue(key: string, profileName?: string): unknown {
 }
 
 export function validateUrl(url: string): string {
+  url = url.trim();
+  if (!url) {
+    throw new Error("URL must not be empty.");
+  }
   if (!/^https?:\/\//i.test(url)) {
     throw new Error(`Invalid URL: "${url}". URL must start with http:// or https://.`);
   }
