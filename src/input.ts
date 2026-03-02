@@ -65,7 +65,7 @@ async function readInteractiveJson(): Promise<unknown> {
       inString = result.inString;
       stringChar = result.stringChar;
 
-      if (started && depth <= 0) {
+      if (started && depth <= 0 && !inBlockComment && !inString) {
         rl.close();
         try {
           resolve(parseData(lines.join("\n")));
@@ -79,7 +79,7 @@ async function readInteractiveJson(): Promise<unknown> {
     });
 
     rl.on("close", () => {
-      if (lines.length > 0 && (!started || depth > 0)) {
+      if (lines.length > 0 && (!started || depth > 0 || inBlockComment || inString)) {
         // EOF before balanced — attempt to parse what we have
         try {
           resolve(parseData(lines.join("\n")));
