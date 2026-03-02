@@ -134,10 +134,10 @@ Displays the current authenticated user, token expiry, and active profile.
 |---|---|
 | `entities list` | List entities |
 | `entities get <id>` | Get an entity by ID |
-| `entities create <json>` | Create a new entity |
-| `entities update <id> <json>` | Update attributes (PATCH) |
-| `entities replace <id> <json>` | Replace all attributes (PUT) |
-| `entities upsert <json>` | Create or update entities |
+| `entities create [json]` | Create a new entity |
+| `entities update <id> [json]` | Update attributes (PATCH) |
+| `entities replace <id> [json]` | Replace all attributes (PUT) |
+| `entities upsert [json]` | Create or update entities |
 | `entities delete <id>` | Delete an entity by ID |
 
 `entities list` supports filtering options: `--type`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`.
@@ -148,19 +148,19 @@ Displays the current authenticated user, token expiry, and active profile.
 |---|---|
 | `entities attrs list <entityId>` | List all attributes |
 | `entities attrs get <entityId> <attrName>` | Get a specific attribute |
-| `entities attrs add <entityId> <json>` | Add attributes |
-| `entities attrs update <entityId> <attrName> <json>` | Update an attribute |
+| `entities attrs add <entityId> [json]` | Add attributes |
+| `entities attrs update <entityId> <attrName> [json]` | Update an attribute |
 | `entities attrs delete <entityId> <attrName>` | Delete an attribute |
 ### entityOperations (batch) — Batch operations
 
 | Subcommand | Description |
 |---|---|
-| `entityOperations create <json>` | Batch create entities |
-| `entityOperations upsert <json>` | Batch upsert entities |
-| `entityOperations update <json>` | Batch update entities |
-| `entityOperations delete <json>` | Batch delete entities |
-| `entityOperations query <json>` | Batch query entities |
-| `entityOperations merge <json>` | Batch merge entities |
+| `entityOperations create [json]` | Batch create entities |
+| `entityOperations upsert [json]` | Batch upsert entities |
+| `entityOperations update [json]` | Batch update entities |
+| `entityOperations delete [json]` | Batch delete entities |
+| `entityOperations query [json]` | Batch query entities |
+| `entityOperations merge [json]` | Batch merge entities |
 
 `batch` is available as an alias for `entityOperations`.
 
@@ -170,8 +170,8 @@ Displays the current authenticated user, token expiry, and active profile.
 |---|---|
 | `sub list` | List subscriptions |
 | `sub get <id>` | Get a subscription by ID |
-| `sub create <json>` | Create a subscription |
-| `sub update <id> <json>` | Update a subscription |
+| `sub create [json]` | Create a subscription |
+| `sub update <id> [json]` | Update a subscription |
 | `sub delete <id>` | Delete a subscription |
 
 ### registrations (reg) — Manage context registrations
@@ -180,8 +180,8 @@ Displays the current authenticated user, token expiry, and active profile.
 |---|---|
 | `reg list` | List registrations |
 | `reg get <id>` | Get a registration by ID |
-| `reg create <json>` | Create a registration |
-| `reg update <id> <json>` | Update a registration |
+| `reg create [json]` | Create a registration |
+| `reg update <id> [json]` | Update a registration |
 | `reg delete <id>` | Delete a registration |
 
 ### types — Browse entity types
@@ -199,7 +199,7 @@ Displays the current authenticated user, token expiry, and active profile.
 |---|---|
 | `temporal entities list` | List temporal entities |
 | `temporal entities get <id>` | Get a temporal entity by ID |
-| `temporal entities create <json>` | Create a temporal entity |
+| `temporal entities create [json]` | Create a temporal entity |
 | `temporal entities delete <id>` | Delete a temporal entity |
 
 Temporal entities list/get support: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`.
@@ -208,7 +208,7 @@ Temporal entities list/get support: `--time-rel`, `--time-at`, `--end-time-at`, 
 
 | Subcommand | Description |
 |---|---|
-| `temporal entityOperations query <json>` | Query temporal entities (POST) |
+| `temporal entityOperations query [json]` | Query temporal entities (POST) |
 
 Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 
@@ -228,8 +228,8 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 |---|---|
 | `rules list` | List all rules |
 | `rules get <id>` | Get a rule by ID |
-| `rules create <json>` | Create a new rule |
-| `rules update <id> <json>` | Update a rule |
+| `rules create [json]` | Create a new rule |
+| `rules update <id> [json]` | Update a rule |
 | `rules delete <id>` | Delete a rule |
 | `rules activate <id>` | Activate a rule |
 | `rules deactivate <id>` | Deactivate a rule |
@@ -240,8 +240,8 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 |---|---|
 | `custom-data-models list` | List all models |
 | `custom-data-models get <id>` | Get a model by ID |
-| `custom-data-models create <json>` | Create a new model |
-| `custom-data-models update <id> <json>` | Update a model |
+| `custom-data-models create [json]` | Create a new model |
+| `custom-data-models update <id> [json]` | Update a model |
 | `custom-data-models delete <id>` | Delete a model |
 
 `models` is available as an alias for `custom-data-models`.
@@ -263,8 +263,8 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 |---|---|
 | `admin tenants list` | List all tenants |
 | `admin tenants get <id>` | Get a tenant by ID |
-| `admin tenants create <json>` | Create a new tenant |
-| `admin tenants update <id> <json>` | Update a tenant |
+| `admin tenants create [json]` | Create a new tenant |
+| `admin tenants update <id> [json]` | Update a tenant |
 | `admin tenants delete <id>` | Delete a tenant |
 | `admin tenants activate <id>` | Activate a tenant |
 | `admin tenants deactivate <id>` | Deactivate a tenant |
@@ -275,8 +275,8 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 |---|---|
 | `admin users list` | List all users |
 | `admin users get <id>` | Get a user by ID |
-| `admin users create <json>` | Create a new user |
-| `admin users update <id> <json>` | Update a user |
+| `admin users create [json]` | Create a new user |
+| `admin users update <id> [json]` | Update a user |
 | `admin users delete <id>` | Delete a user |
 | `admin users activate <id>` | Activate a user |
 | `admin users deactivate <id>` | Deactivate a user |
@@ -288,8 +288,8 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 |---|---|
 | `admin policies list` | List all policies |
 | `admin policies get <id>` | Get a policy by ID |
-| `admin policies create <json>` | Create a new policy |
-| `admin policies update <id> <json>` | Update a policy |
+| `admin policies create [json]` | Create a new policy |
+| `admin policies update <id> [json]` | Update a policy |
 | `admin policies delete <id>` | Delete a policy |
 | `admin policies activate <id>` | Activate a policy |
 | `admin policies deactivate <id>` | Deactivate a policy |
@@ -300,8 +300,8 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 |---|---|
 | `admin oauth-clients list` | List all OAuth clients |
 | `admin oauth-clients get <id>` | Get an OAuth client by ID |
-| `admin oauth-clients create <json>` | Create a new OAuth client |
-| `admin oauth-clients update <id> <json>` | Update an OAuth client |
+| `admin oauth-clients create [json]` | Create a new OAuth client |
+| `admin oauth-clients update <id> [json]` | Update an OAuth client |
 | `admin oauth-clients delete <id>` | Delete an OAuth client |
 
 #### admin cadde
@@ -309,7 +309,7 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 | Subcommand | Description |
 |---|---|
 | `admin cadde get` | Get CADDE configuration |
-| `admin cadde set <json>` | Set CADDE configuration |
+| `admin cadde set [json]` | Set CADDE configuration |
 | `admin cadde delete` | Delete CADDE configuration |
 
 ### health — Check server health
@@ -326,13 +326,19 @@ geonic version
 
 ## Input Formats
 
-Commands that accept JSON data support three input methods:
+Commands that accept JSON data support multiple input methods. The `[json]` argument is optional — when omitted, the CLI auto-detects piped stdin or launches interactive mode.
 
-**Inline JSON**
+**Inline JSON / JSON5**
 
 ```bash
+# Standard JSON
 geonic entities create '{"id":"Room1","type":"Room"}'
+
+# JSON5 — unquoted keys, single quotes, trailing commas, comments
+geonic entities create "{id: 'Room1', type: 'Room',}"
 ```
+
+[JSON5](https://json5.org/) syntax is supported everywhere JSON is accepted (inline, files, stdin, interactive).
 
 **File input** (prefix with `@`)
 
@@ -340,10 +346,33 @@ geonic entities create '{"id":"Room1","type":"Room"}'
 geonic entities create @payload.json
 ```
 
-**Stdin** (use `-`)
+**Stdin (auto-detect)**
+
+When no argument is given and stdin is piped, the CLI reads from stdin automatically — no `-` required:
+
+```bash
+cat payload.json | geonic entities create
+echo '{"id":"Room1","type":"Room"}' | geonic entities create
+```
+
+The explicit `-` marker is still supported for backward compatibility:
 
 ```bash
 cat payload.json | geonic entities create -
+```
+
+**Interactive mode**
+
+When no argument is given and the terminal is a TTY (no pipe), the CLI enters interactive mode with a `json>` prompt. Type or paste JSON and the input auto-submits when braces/brackets are balanced:
+
+```
+$ geonic entities create
+Enter JSON (auto-submits when braces close, Ctrl+C to cancel):
+json> {
+...    "id": "Room1",
+...    "type": "Room"
+...  }
+Entity created.
 ```
 
 ## Output Formats

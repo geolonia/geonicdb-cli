@@ -161,11 +161,11 @@ export function registerEntitiesCommand(program: Command): void {
   const create = entities
     .command("create")
     .description("Create a new entity")
-    .argument("<json>", "JSON payload (inline, @file, or - for stdin)")
+    .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
     .action(
-      withErrorHandler(async (json: string, _opts: unknown, cmd: Command) => {
+      withErrorHandler(async (json: string | undefined, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
-        const data = parseJsonInput(json);
+        const data = await parseJsonInput(json);
 
         await client.post("/entities", data);
         printSuccess("Entity created.");
@@ -182,8 +182,8 @@ export function registerEntitiesCommand(program: Command): void {
       command: "geonic entities create @entity.json",
     },
     {
-      description: "Create from stdin",
-      command: "cat entity.json | geonic entities create -",
+      description: "Create from stdin pipe",
+      command: "cat entity.json | geonic entities create",
     },
   ]);
 
@@ -192,12 +192,12 @@ export function registerEntitiesCommand(program: Command): void {
     .command("update")
     .description("Update attributes of an entity (PATCH)")
     .argument("<id>", "Entity ID")
-    .argument("<json>", "JSON payload (inline, @file, or - for stdin)")
+    .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
     .action(
       withErrorHandler(
-        async (id: string, json: string, _opts: unknown, cmd: Command) => {
+        async (id: string, json: string | undefined, _opts: unknown, cmd: Command) => {
           const client = createClient(cmd);
-          const data = parseJsonInput(json);
+          const data = await parseJsonInput(json);
 
           await client.patch(
             `/entities/${encodeURIComponent(id)}/attrs`,
@@ -225,12 +225,12 @@ export function registerEntitiesCommand(program: Command): void {
     .command("replace")
     .description("Replace all attributes of an entity (PUT)")
     .argument("<id>", "Entity ID")
-    .argument("<json>", "JSON payload (inline, @file, or - for stdin)")
+    .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
     .action(
       withErrorHandler(
-        async (id: string, json: string, _opts: unknown, cmd: Command) => {
+        async (id: string, json: string | undefined, _opts: unknown, cmd: Command) => {
           const client = createClient(cmd);
-          const data = parseJsonInput(json);
+          const data = await parseJsonInput(json);
 
           await client.put(
             `/entities/${encodeURIComponent(id)}/attrs`,
@@ -252,11 +252,11 @@ export function registerEntitiesCommand(program: Command): void {
   const upsert = entities
     .command("upsert")
     .description("Create or update entities")
-    .argument("<json>", "JSON payload (inline, @file, or - for stdin)")
+    .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
     .action(
-      withErrorHandler(async (json: string, _opts: unknown, cmd: Command) => {
+      withErrorHandler(async (json: string | undefined, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
-        const data = parseJsonInput(json);
+        const data = await parseJsonInput(json);
 
         await client.post("/entityOperations/upsert", data);
         printSuccess("Entity upserted.");
@@ -269,8 +269,8 @@ export function registerEntitiesCommand(program: Command): void {
       command: "geonic entities upsert @entities.json",
     },
     {
-      description: "Upsert from stdin",
-      command: "cat entities.json | geonic entities upsert -",
+      description: "Upsert from stdin pipe",
+      command: "cat entities.json | geonic entities upsert",
     },
   ]);
 

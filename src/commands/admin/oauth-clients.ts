@@ -54,11 +54,11 @@ export function registerOAuthClientsCommand(parent: Command): void {
 
   // oauth-clients create
   const create = oauthClients
-    .command("create <json>")
+    .command("create [json]")
     .description("Create a new OAuth client")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-        const body = parseJsonInput(String(json));
+        const body = await parseJsonInput(json as string | undefined);
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const response = await client.rawRequest("POST", "/admin/oauth-clients", {
@@ -78,12 +78,12 @@ export function registerOAuthClientsCommand(parent: Command): void {
 
   // oauth-clients update
   const update = oauthClients
-    .command("update <id> <json>")
+    .command("update <id> [json]")
     .description("Update an OAuth client")
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
-          const body = parseJsonInput(String(json));
+          const body = await parseJsonInput(json as string | undefined);
           const client = createClient(cmd);
           const format = getFormat(cmd);
           const response = await client.rawRequest(
@@ -154,11 +154,11 @@ export function registerCaddeCommand(parent: Command): void {
 
   // cadde set
   const caddeSet = cadde
-    .command("set <json>")
+    .command("set [json]")
     .description("Set CADDE configuration")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-        const body = parseJsonInput(String(json));
+        const body = await parseJsonInput(json as string | undefined);
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const response = await client.rawRequest("PUT", "/admin/cadde", {

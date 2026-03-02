@@ -78,13 +78,13 @@ export function registerSubscriptionsCommand(program: Command): void {
 
   // subscriptions create
   const create = subscriptions
-    .command("create <json>")
+    .command("create [json]")
     .description("Create a subscription")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const data = parseJsonInput(String(json));
+        const data = await parseJsonInput(json as string | undefined);
 
         const response = await client.post("/subscriptions", data);
         outputResponse(response, format);
@@ -99,20 +99,20 @@ export function registerSubscriptionsCommand(program: Command): void {
     },
     {
       description: "Create from stdin",
-      command: "cat subscription.json | geonic subscriptions create -",
+      command: "cat subscription.json | geonic subscriptions create",
     },
   ]);
 
   // subscriptions update
   const update = subscriptions
-    .command("update <id> <json>")
+    .command("update <id> [json]")
     .description("Update a subscription")
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
           const client = createClient(cmd);
           const format = getFormat(cmd);
-          const data = parseJsonInput(String(json));
+          const data = await parseJsonInput(json as string | undefined);
 
           const response = await client.patch(
             `/subscriptions/${encodeURIComponent(String(id))}`,

@@ -55,11 +55,11 @@ export function registerModelsCommand(program: Command): void {
 
   // models create
   const create = models
-    .command("create <json>")
+    .command("create [json]")
     .description("Create a new model")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-        const body = parseJsonInput(String(json));
+        const body = await parseJsonInput(json as string | undefined);
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const response = await client.rawRequest("POST", "/custom-data-models", { body });
@@ -77,12 +77,12 @@ export function registerModelsCommand(program: Command): void {
 
   // models update
   const update = models
-    .command("update <id> <json>")
+    .command("update <id> [json]")
     .description("Update a model")
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
-          const body = parseJsonInput(String(json));
+          const body = await parseJsonInput(json as string | undefined);
           const client = createClient(cmd);
           const format = getFormat(cmd);
           const response = await client.rawRequest(

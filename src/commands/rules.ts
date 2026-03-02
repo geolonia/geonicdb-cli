@@ -54,11 +54,11 @@ export function registerRulesCommand(program: Command): void {
 
   // rules create
   const create = rules
-    .command("create <json>")
+    .command("create [json]")
     .description("Create a new rule")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-        const body = parseJsonInput(String(json));
+        const body = await parseJsonInput(json as string | undefined);
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const response = await client.rawRequest("POST", "/rules", { body });
@@ -76,12 +76,12 @@ export function registerRulesCommand(program: Command): void {
 
   // rules update
   const update = rules
-    .command("update <id> <json>")
+    .command("update <id> [json]")
     .description("Update a rule")
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
-          const body = parseJsonInput(String(json));
+          const body = await parseJsonInput(json as string | undefined);
           const client = createClient(cmd);
           const format = getFormat(cmd);
           const response = await client.rawRequest(

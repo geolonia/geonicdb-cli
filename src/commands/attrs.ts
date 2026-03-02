@@ -73,17 +73,17 @@ export function addAttrsSubcommands(attrs: Command): void {
     .command("add")
     .description("Add attributes to an entity")
     .argument("<entityId>", "Entity ID")
-    .argument("<json>", "JSON payload (inline, @file, or - for stdin)")
+    .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
     .action(
       withErrorHandler(
         async (
           entityId: string,
-          json: string,
+          json: string | undefined,
           _opts: unknown,
           cmd: Command,
         ) => {
           const client = createClient(cmd);
-          const data = parseJsonInput(json);
+          const data = await parseJsonInput(json);
 
           await client.post(
             `/entities/${encodeURIComponent(entityId)}/attrs`,
@@ -107,18 +107,18 @@ export function addAttrsSubcommands(attrs: Command): void {
     .description("Update a specific attribute of an entity")
     .argument("<entityId>", "Entity ID")
     .argument("<attrName>", "Attribute name")
-    .argument("<json>", "JSON payload (inline, @file, or - for stdin)")
+    .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
     .action(
       withErrorHandler(
         async (
           entityId: string,
           attrName: string,
-          json: string,
+          json: string | undefined,
           _opts: unknown,
           cmd: Command,
         ) => {
           const client = createClient(cmd);
-          const data = parseJsonInput(json);
+          const data = await parseJsonInput(json);
 
           await client.put(
             `/entities/${encodeURIComponent(entityId)}/attrs/${encodeURIComponent(attrName)}`,

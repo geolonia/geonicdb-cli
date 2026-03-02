@@ -75,13 +75,13 @@ export function registerRegistrationsCommand(program: Command): void {
 
   // registrations create
   const create = registrations
-    .command("create <json>")
+    .command("create [json]")
     .description("Create a registration")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const data = parseJsonInput(String(json));
+        const data = await parseJsonInput(json as string | undefined);
 
         const response = await client.post("/registrations", data);
         outputResponse(response, format);
@@ -98,14 +98,14 @@ export function registerRegistrationsCommand(program: Command): void {
 
   // registrations update
   const regUpdate = registrations
-    .command("update <id> <json>")
+    .command("update <id> [json]")
     .description("Update a registration")
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
           const client = createClient(cmd);
           const format = getFormat(cmd);
-          const data = parseJsonInput(String(json));
+          const data = await parseJsonInput(json as string | undefined);
 
           const response = await client.patch(
             `/registrations/${encodeURIComponent(String(id))}`,

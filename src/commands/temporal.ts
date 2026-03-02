@@ -86,7 +86,7 @@ function createGetAction() {
 
 function createCreateAction() {
   return withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-    const body = parseJsonInput(String(json));
+    const body = await parseJsonInput(json as string | undefined);
     const client = createClient(cmd);
 
     await client.post("/temporal/entities", body);
@@ -107,7 +107,7 @@ function createDeleteAction() {
 
 function createQueryAction() {
   return withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-    const body = parseJsonInput(String(json));
+    const body = await parseJsonInput(json as string | undefined);
     const client = createClient(cmd);
     const format = getFormat(cmd);
     const cmdOpts = cmd.opts();
@@ -188,7 +188,7 @@ export function registerTemporalCommand(program: Command): void {
 
   // temporal entities create
   const create = entities
-    .command("create <json>")
+    .command("create [json]")
     .description("Create a temporal entity")
     .action(createCreateAction());
 
@@ -214,7 +214,7 @@ export function registerTemporalCommand(program: Command): void {
 
   // temporal entityOperations query
   const opsQuery = addQueryOptions(
-    entityOperations.command("query <json>").description("Query temporal entities (POST)"),
+    entityOperations.command("query [json]").description("Query temporal entities (POST)"),
   );
   opsQuery.action(createQueryAction());
 
@@ -244,7 +244,7 @@ export function registerTemporalCommand(program: Command): void {
   ).action(createGetAction());
 
   temporal
-    .command("create <json>", { hidden: true })
+    .command("create [json]", { hidden: true })
     .description("Create a temporal entity (deprecated: use temporal entities create)")
     .action(createCreateAction());
 
@@ -255,7 +255,7 @@ export function registerTemporalCommand(program: Command): void {
 
   addQueryOptions(
     temporal
-      .command("query <json>", { hidden: true })
+      .command("query [json]", { hidden: true })
       .description("Query temporal entities (deprecated: use temporal entityOperations query)"),
   ).action(createQueryAction());
 }

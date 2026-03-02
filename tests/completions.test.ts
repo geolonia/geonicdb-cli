@@ -147,7 +147,7 @@ describe("completions", () => {
     });
 
     it("does not return <file> for batch create (no @file in description)", () => {
-      // batch commands use .command("create <json>") without @file description
+      // batch commands use .command("create [json]") without @file description
       const result = complete("geonic entityOperations create ");
       expect(result).toEqual([]);
     });
