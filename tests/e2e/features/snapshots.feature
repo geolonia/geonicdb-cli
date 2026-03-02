@@ -18,30 +18,34 @@ Feature: Snapshot management
   Scenario: List snapshots after creation
     Given I am logged in
     And I run "geonic snapshots create"
-    When I get the snapshot ID from the list
+    And I run "geonic snapshots list --format json"
+    And I save the ID from the JSON output
     Then the exit code should be 0
 
   Scenario: Get a snapshot by ID
     Given I am logged in
     And I run "geonic snapshots create"
-    And I get the snapshot ID from the list
-    When I get the snapshot by ID
+    And I run "geonic snapshots list --format json"
+    And I save the ID from the JSON output
+    When I run "geonic snapshots get $ID" replacing ID
     Then the exit code should be 0
     And stdout should be valid JSON
 
   Scenario: Delete a snapshot
     Given I am logged in
     And I run "geonic snapshots create"
-    And I get the snapshot ID from the list
-    When I delete the snapshot
+    And I run "geonic snapshots list --format json"
+    And I save the ID from the JSON output
+    When I run "geonic snapshots delete $ID" replacing ID
     Then the exit code should be 0
     And the output should contain "Snapshot deleted."
 
   Scenario: Clone a snapshot
     Given I am logged in
     And I run "geonic snapshots create"
-    And I get the snapshot ID from the list
-    When I clone the snapshot
+    And I run "geonic snapshots list --format json"
+    And I save the ID from the JSON output
+    When I run "geonic snapshots clone $ID" replacing ID
     Then the exit code should be 0
     When I run "geonic snapshots list --format json"
     Then the exit code should be 0

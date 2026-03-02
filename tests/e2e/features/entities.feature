@@ -11,13 +11,13 @@ Feature: Entity management
 
   Scenario: Create an entity
     Given I am logged in
-    When I create entity "Room:001" of type "Room"
+    When I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:001\",\"type\":\"Room\"}'"
     Then the exit code should be 0
     And the output should contain "Entity created."
 
   Scenario: Get an entity by ID
     Given I am logged in
-    And I create entity "Room:002" of type "Room"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:002\",\"type\":\"Room\"}'"
     When I run "geonic entities get urn:ngsi-ld:Room:002"
     Then the exit code should be 0
     And stdout should be valid JSON
@@ -25,15 +25,15 @@ Feature: Entity management
 
   Scenario: List shows created entities
     Given I am logged in
-    And I create entity "Room:003" of type "Room"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:003\",\"type\":\"Room\"}'"
     When I run "geonic entities list"
     Then the exit code should be 0
     And the output should contain "Room:003"
 
   Scenario: Filter entities by type
     Given I am logged in
-    And I create entity "Room:010" of type "Room"
-    And I create entity "Car:010" of type "Car"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:010\",\"type\":\"Room\"}'"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Car:010\",\"type\":\"Car\"}'"
     When I run "geonic entities list --type Room"
     Then the exit code should be 0
     And the output should contain "Room:010"
@@ -41,20 +41,20 @@ Feature: Entity management
 
   Scenario: List entities with count
     Given I am logged in
-    And I create entity "Room:020" of type "Room"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:020\",\"type\":\"Room\"}'"
     When I run "geonic entities list --count"
     Then the exit code should be 0
 
   Scenario: Update an entity
     Given I am logged in
-    And I create entity "Room:030" of type "Room"
-    When I update entity "Room:030" with '{"temperature":{"value":25,"type":"Property"}}'
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:030\",\"type\":\"Room\"}'"
+    When I run "geonic entities update urn:ngsi-ld:Room:030 '{\"temperature\":{\"value\":25,\"type\":\"Property\"}}'"
     Then the exit code should be 0
     And the output should contain "Entity updated."
 
   Scenario: Delete an entity
     Given I am logged in
-    And I create entity "Room:040" of type "Room"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:040\",\"type\":\"Room\"}'"
     When I run "geonic entities delete urn:ngsi-ld:Room:040"
     Then the exit code should be 0
     And the output should contain "Entity deleted."
@@ -73,7 +73,7 @@ Feature: Entity management
   Scenario: Replace entity attributes
     # Server does not support PUT on /entities/{id}/attrs
     Given I am logged in
-    And I create entity "Room:050" of type "Room"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:050\",\"type\":\"Room\"}'"
     When I run "geonic entities replace urn:ngsi-ld:Room:050 '{\"temperature\":{\"value\":30,\"type\":\"Property\"}}'"
     Then the exit code should be 0
     And the output should contain "Entity replaced."
@@ -86,18 +86,18 @@ Feature: Entity management
 
   Scenario: List entities with limit
     Given I am logged in
-    And I create entity "Room:070" of type "Room"
-    And I create entity "Room:071" of type "Room"
-    And I create entity "Room:072" of type "Room"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:070\",\"type\":\"Room\"}'"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:071\",\"type\":\"Room\"}'"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:072\",\"type\":\"Room\"}'"
     When I run "geonic entities list --limit 2"
     Then the exit code should be 0
     And stdout should be valid JSON
 
   Scenario: List entities with id-pattern
     Given I am logged in
-    And I create entity "Sensor:080" of type "Sensor"
-    And I create entity "Sensor:081" of type "Sensor"
-    And I create entity "Room:080" of type "Room"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Sensor:080\",\"type\":\"Sensor\"}'"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Sensor:081\",\"type\":\"Sensor\"}'"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:080\",\"type\":\"Room\"}'"
     When I run "geonic entities list --id-pattern Sensor"
     Then the exit code should be 0
     And the output should contain "Sensor:080"
@@ -107,16 +107,16 @@ Feature: Entity management
   Scenario: List entities with query filter
     # Server query filter (NGSI-LD q parameter) not fully supported
     Given I am logged in
-    And I create entity "Room:090" of type "Room"
-    When I update entity "Room:090" with '{"temperature":{"value":35,"type":"Property"}}'
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:090\",\"type\":\"Room\"}'"
+    And I run "geonic entities update urn:ngsi-ld:Room:090 '{\"temperature\":{\"value\":35,\"type\":\"Property\"}}'"
     And I run "geonic entities list --query temperature>30"
     Then the exit code should be 0
     And the output should contain "Room:090"
 
   Scenario: List entities with order-by
     Given I am logged in
-    And I create entity "Room:100" of type "Room"
-    And I create entity "Room:101" of type "Room"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:100\",\"type\":\"Room\"}'"
+    And I run "geonic entities create '{\"id\":\"urn:ngsi-ld:Room:101\",\"type\":\"Room\"}'"
     When I run "geonic entities list --type Room --order-by id"
     Then the exit code should be 0
     And stdout should be valid JSON

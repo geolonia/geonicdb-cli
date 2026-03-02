@@ -12,32 +12,35 @@ Feature: Admin OAuth client management
 
   Scenario: Create an OAuth client
     Given I am logged in
-    When I create an admin oauth-client "test-client-01"
+    When I run "geonic admin oauth-clients create '{\"clientName\":\"test-client-01\",\"allowedScopes\":[]}'"
     Then the exit code should be 0
     And the output should contain "OAuth client created."
 
   Scenario: Get an OAuth client by ID
     Given I am logged in
-    And I create an admin oauth-client "test-client-02"
-    And I get the admin oauth-client ID
-    When I run admin oauth-clients get with the saved ID
+    And I run "geonic admin oauth-clients create '{\"clientName\":\"test-client-02\",\"allowedScopes\":[]}'"
+    And I run "geonic admin oauth-clients list --format json"
+    And I save the ID from the JSON output
+    When I run "geonic admin oauth-clients get $ID" replacing ID
     Then the exit code should be 0
     And stdout should be valid JSON
 
   Scenario: Update an OAuth client
     Given I am logged in
-    And I create an admin oauth-client "test-client-04"
-    And I get the admin oauth-client ID
-    When I update the admin oauth-client with '{"description":"Updated client"}'
+    And I run "geonic admin oauth-clients create '{\"clientName\":\"test-client-04\",\"allowedScopes\":[]}'"
+    And I run "geonic admin oauth-clients list --format json"
+    And I save the ID from the JSON output
+    When I run "geonic admin oauth-clients update $ID '{\"description\":\"Updated client\"}'" replacing ID
     Then the exit code should be 0
-    When I run admin oauth-clients get with the saved ID
+    When I run "geonic admin oauth-clients get $ID" replacing ID
     Then the exit code should be 0
     And the output should contain "Updated client"
 
   Scenario: Delete an OAuth client
     Given I am logged in
-    And I create an admin oauth-client "test-client-03"
-    And I get the admin oauth-client ID
-    When I delete the admin oauth-client
+    And I run "geonic admin oauth-clients create '{\"clientName\":\"test-client-03\",\"allowedScopes\":[]}'"
+    And I run "geonic admin oauth-clients list --format json"
+    And I save the ID from the JSON output
+    When I run "geonic admin oauth-clients delete $ID" replacing ID
     Then the exit code should be 0
     And the output should contain "OAuth client deleted."
