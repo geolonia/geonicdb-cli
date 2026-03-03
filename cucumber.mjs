@@ -5,4 +5,5 @@ export default {
   format: ["progress-bar"],
   tags: "not @wip",
   publishQuiet: true,
+  retry: process.env.CI ? 1 : 0,
 };
