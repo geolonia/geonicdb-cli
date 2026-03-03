@@ -143,6 +143,47 @@ describe("helpers", () => {
       const client = createClient(fakeCmd());
       expect(client).toBeInstanceOf(GdbClient);
     });
+
+    it("onTokenRefresh callback saves new tokens to config", async () => {
+      saveConfig({
+        url: "http://localhost:3000",
+        token: "old-token",
+        refreshToken: "old-refresh",
+      });
+
+      const client = createClient(fakeCmd());
+
+      // Simulate a 401 → refresh → retry flow
+      let callCount = 0;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/refresh")) {
+          return new Response(
+            JSON.stringify({ token: "saved-token", refreshToken: "saved-refresh" }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        callCount++;
+        if (callCount === 1) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+      await client.get("/entities");
+
+      // Verify the callback saved the new tokens to config
+      const { loadConfig: loadCfg } = await import("../src/config.js");
+      const config = loadCfg();
+      expect(config.token).toBe("saved-token");
+      expect(config.refreshToken).toBe("saved-refresh");
+    });
   });
 
   describe("getFormat", () => {

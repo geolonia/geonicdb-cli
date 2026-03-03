@@ -1,4 +1,25 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import { Command, Option } from "commander";
+
+// Mock createRequire so that "../package.json" resolves from the project root
+// even when called from src/commands/cli.ts (which is two levels deep).
+vi.mock("node:module", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("node:module")>();
+  const rootRequire = mod.createRequire(import.meta.url);
+  return {
+    ...mod,
+    createRequire: (...args: Parameters<typeof mod.createRequire>) => {
+      const req = mod.createRequire(...args);
+      return new Proxy(req, {
+        apply(_target, _thisArg, [id]: [string]) {
+          if (id === "../package.json") return rootRequire(id);
+          return req(id);
+        },
+      });
+    },
+  };
+});
+
 import { createProgram } from "../src/cli.js";
 import { generateCompletions } from "../src/commands/cli.js";
 
@@ -270,12 +291,154 @@ describe("completions", () => {
     });
   });
 
+  describe("help completion edge cases", () => {
+    it("stops at unknown subcommand and returns parent's subcommands", () => {
+      const result = complete("geonic help entities nonexistent ");
+      // nonexistent is not found, break leaves target at entities
+      expect(result).toContain("list");
+      expect(result).toContain("get");
+      expect(result).toContain("create");
+    });
+  });
+
+  describe("predecessor edge cases", () => {
+    it("returns empty when completing value after unknown value-taking option", () => {
+      const result = complete("geonic entities list --type ");
+      // --type takes a value, so no completions for its value
+      expect(result).toEqual([]);
+    });
+
+    it("handles single token (no predecessor)", () => {
+      const result = complete("geonic");
+      // No trailing space → partial="", walkTokens=[] → returns all top-level commands
+      expect(result).toContain("entities");
+      expect(result).toContain("health");
+    });
+
+    it("skips unknown flag in tree walk (optionTakesValue returns false for unknown)", () => {
+      const result = complete("geonic --zzz entities ");
+      // --zzz is not a known option, so findOption returns undefined → !opt → false
+      expect(result).toContain("list");
+      expect(result).toContain("get");
+    });
+  });
+
+  describe("hidden option filtering in completions", () => {
+    it("excludes hidden options from command and program", () => {
+      const prog = new Command();
+      prog.name("test");
+      prog.addOption(new Option("--global-visible <v>", "visible global"));
+      prog.addOption(new Option("--global-hidden <h>", "hidden global").hideHelp());
+      const sub = prog.command("sub").description("Sub command");
+      sub.addOption(new Option("--cmd-visible", "visible cmd opt"));
+      sub.addOption(new Option("--cmd-hidden", "hidden cmd opt").hideHelp());
+
+      const result = generateCompletions(prog, "test sub --", 11);
+      expect(result).toContain("--cmd-visible");
+      expect(result).not.toContain("--cmd-hidden");
+      expect(result).toContain("--global-visible");
+      expect(result).not.toContain("--global-hidden");
+    });
+  });
+
   describe("point parameter", () => {
     it("truncates line at point position", () => {
       const result = complete("geonic entities list --format json", 16);
       // point=16 → "geonic entities " → completing entities subcommands
       expect(result).toContain("list");
       expect(result).toContain("get");
+    });
+  });
+
+  describe("cli command actions", () => {
+    it("completions without --line/--point produces no output", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      try {
+        await prog.parseAsync(["node", "geonic", "cli", "completions"]);
+      } catch {
+        // exitOverride may throw
+      }
+      // Should not have called console.log since no --line/--point
+      expect(logSpy).not.toHaveBeenCalled();
+      logSpy.mockRestore();
+    });
+
+    it("completions with --line and --point outputs completions", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      try {
+        await prog.parseAsync([
+          "node", "geonic", "cli", "completions",
+          "--line", "geonic ",
+          "--point", "7",
+        ]);
+      } catch {
+        // exitOverride may throw
+      }
+      expect(logSpy).toHaveBeenCalled();
+      logSpy.mockRestore();
+    });
+
+    it("cli completions bash outputs bash script", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      try {
+        await prog.parseAsync(["node", "geonic", "cli", "completions", "bash"]);
+      } catch {
+        // exitOverride may throw
+      }
+      expect(logSpy).toHaveBeenCalled();
+      const output = logSpy.mock.calls[0][0];
+      expect(output).toContain("_geonic_completions");
+      expect(output).toContain("complete");
+      expect(output).toContain("COMP_WORDS");
+      logSpy.mockRestore();
+    });
+
+    it("cli completions zsh outputs zsh script", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      try {
+        await prog.parseAsync(["node", "geonic", "cli", "completions", "zsh"]);
+      } catch {
+        // exitOverride may throw
+      }
+      expect(logSpy).toHaveBeenCalled();
+      const output = logSpy.mock.calls[0][0];
+      expect(output).toContain("_geonic_completions");
+      expect(output).toContain("compdef");
+      logSpy.mockRestore();
+    });
+
+    it("completions with --line only (no --point) produces no output", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      try {
+        await prog.parseAsync(["node", "geonic", "cli", "completions", "--line", "geonic "]);
+      } catch {
+        // exitOverride may throw
+      }
+      expect(logSpy).not.toHaveBeenCalled();
+      logSpy.mockRestore();
+    });
+
+    it("cli version outputs the version string", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+      await prog.parseAsync(["node", "geonic", "cli", "version"]);
+
+      expect(logSpy).toHaveBeenCalledTimes(1);
+      const version = logSpy.mock.calls[0][0];
+      expect(version).toMatch(/^\d+\.\d+\.\d+/);
+      logSpy.mockRestore();
     });
   });
 });

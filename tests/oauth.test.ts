@@ -86,6 +86,57 @@ describe("OAuth", () => {
       ).rejects.toThrow("OAuth token request failed: Client authentication failed");
     });
 
+    it("throws on error response with only error field (no error_description)", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(
+          JSON.stringify({ error: "invalid_grant" }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+      await expect(
+        clientCredentialsGrant({
+          baseUrl: "http://localhost:3000",
+          clientId: "client",
+          clientSecret: "secret",
+        }),
+      ).rejects.toThrow("OAuth token request failed: invalid_grant");
+    });
+
+    it("throws with HTTP status when error response has empty text body", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response("", {
+          status: 503,
+          headers: { "Content-Type": "text/plain" },
+        }),
+      );
+
+      await expect(
+        clientCredentialsGrant({
+          baseUrl: "http://localhost:3000",
+          clientId: "client",
+          clientSecret: "secret",
+        }),
+      ).rejects.toThrow("OAuth token request failed: HTTP 503");
+    });
+
+    it("throws with text body when error JSON has neither error_description nor error", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(
+          JSON.stringify({ status: "fail", reason: "unknown" }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+      await expect(
+        clientCredentialsGrant({
+          baseUrl: "http://localhost:3000",
+          clientId: "client",
+          clientSecret: "secret",
+        }),
+      ).rejects.toThrow("OAuth token request failed:");
+    });
+
     it("throws on error response with plain text", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
         new Response("Internal Server Error", {

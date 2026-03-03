@@ -14,6 +14,7 @@ import {
   setCurrentProfile,
   createProfile,
   deleteProfile,
+  getConfigPath,
 } from "../src/config.js";
 
 describe("config", () => {
@@ -56,6 +57,12 @@ describe("config", () => {
     );
   });
 
+  it("throws when setting url that passes regex but fails URL constructor", () => {
+    expect(() => setConfigValue("url", "http://[invalid")).toThrow(
+      'Invalid URL: "http://[invalid".',
+    );
+  });
+
   it("preserves https:// when setting url with protocol", () => {
     setConfigValue("url", "https://example.com");
     expect(getConfigValue("url")).toBe("https://example.com/");
@@ -86,6 +93,19 @@ describe("config", () => {
     const parsed = JSON.parse(raw);
     expect(parsed.version).toBe(2);
     expect(parsed.profiles.default.service).toBe("myTenant");
+  });
+
+  it("returns default config when file has version key but invalid structure", () => {
+    const configDir = join(tempDir, "geonic");
+    mkdirSync(configDir, { recursive: true });
+    writeFileSync(
+      join(configDir, "config.json"),
+      JSON.stringify({ version: 2, badField: true }),
+      "utf-8",
+    );
+    const config = loadConfig();
+    // isGdbConfigFile returns false → defaultConfig()
+    expect(config).toEqual({});
   });
 
   describe("v1 to v2 migration", () => {
@@ -171,6 +191,12 @@ describe("config", () => {
       expect(() => deleteProfile("default")).toThrow('Cannot delete the "default" profile.');
     });
 
+    it("throws when deleting non-existent profile", () => {
+      expect(() => deleteProfile("nonexistent")).toThrow(
+        'Profile "nonexistent" does not exist.',
+      );
+    });
+
     it("resets to default when deleting active profile", () => {
       createProfile("staging");
       setCurrentProfile("staging");
@@ -193,5 +219,26 @@ describe("config", () => {
       expect(getConfigValue("url", "staging")).toBe("http://staging.example.com/");
       expect(getConfigValue("url")).toBeUndefined();
     });
+  });
+
+  describe("getConfigPath", () => {
+    it("returns the config file path", () => {
+      const configPath = getConfigPath();
+      expect(configPath).toContain("config.json");
+      expect(configPath).toContain("geonic");
+    });
+
+    it("uses default config dir when GEONIC_CONFIG_DIR is not set", () => {
+      delete process.env.GEONIC_CONFIG_DIR;
+      const configPath = getConfigPath();
+      expect(configPath).toContain(".config");
+      expect(configPath).toContain("geonic");
+      expect(configPath).toContain("config.json");
+    });
+  });
+
+  it("returns empty config when loading non-existent profile", () => {
+    const config = loadConfig("nonexistent-profile");
+    expect(config).toEqual({});
   });
 });
