@@ -34,7 +34,8 @@ export function createProgram(): Command {
     .option("--api-key <key>", "API key for authentication")
     .option("-f, --format <fmt>", "Output format: json, table, geojson")
     .option("--no-color", "Disable color output")
-    .option("-v, --verbose", "Verbose output");
+    .option("-v, --verbose", "Verbose output")
+    .option("--dry-run", "Print the equivalent curl command without executing");
 
   registerHelpCommand(program);
   registerConfigCommand(program);

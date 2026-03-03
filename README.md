@@ -77,6 +77,7 @@ geonic entities list --help
 | `-f, --format <fmt>` | Output format: `json`, `table`, `geojson` |
 | `--no-color` | Disable color output |
 | `-v, --verbose` | Verbose output |
+| `--dry-run` | Print the equivalent `curl` command without executing |
 
 Options are resolved in this order (first wins):
 
@@ -387,6 +388,31 @@ Specify the output format with `--format` or `geonic config set format <fmt>`.
 | `geojson` | GeoJSON FeatureCollection |
 
 Use `--key-values` on `entities list` and `entities get` to request simplified key-value format from the API.
+
+## Dry Run
+
+Use `--dry-run` on any command to print the equivalent `curl` command instead of executing the request. The output can be copied and run directly in a terminal.
+
+```bash
+$ geonic entities list --type Sensor --dry-run
+curl \
+  -H 'Content-Type: application/ld+json' \
+  -H 'Accept: application/ld+json' \
+  -H 'Authorization: Bearer <token>' \
+  'http://localhost:3000/ngsi-ld/v1/entities?type=Sensor'
+```
+
+Works with all operations including POST with body:
+
+```bash
+$ geonic entities create '{"id":"Room1","type":"Room"}' --dry-run
+curl \
+  -X POST \
+  -H 'Content-Type: application/ld+json' \
+  -H 'Accept: application/ld+json' \
+  -d '{"id":"Room1","type":"Room"}' \
+  'http://localhost:3000/ngsi-ld/v1/entities'
+```
 
 ## Configuration
 
