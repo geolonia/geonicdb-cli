@@ -31,9 +31,9 @@ export function registerRegistrationsCommand(program: Command): void {
         const params: Record<string, string> = {};
         if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
         if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
-        if (cmdOpts.count) params["options"] = "count";
+        if (cmdOpts.count) params["count"] = "true";
 
-        const response = await client.get("/registrations", params);
+        const response = await client.get("/csourceRegistrations", params);
         outputResponse(response, format, !!cmdOpts.count);
       }),
     );
@@ -59,7 +59,7 @@ export function registerRegistrationsCommand(program: Command): void {
         const format = getFormat(cmd);
 
         const response = await client.get(
-          `/registrations/${encodeURIComponent(String(id))}`,
+          `/csourceRegistrations/${encodeURIComponent(String(id))}`,
         );
         outputResponse(response, format);
       }),
@@ -83,7 +83,7 @@ export function registerRegistrationsCommand(program: Command): void {
         const format = getFormat(cmd);
         const data = await parseJsonInput(json as string | undefined);
 
-        const response = await client.post("/registrations", data);
+        const response = await client.post("/csourceRegistrations", data);
         outputResponse(response, format);
         printSuccess("Registration created.");
       }),
@@ -108,7 +108,7 @@ export function registerRegistrationsCommand(program: Command): void {
           const data = await parseJsonInput(json as string | undefined);
 
           const response = await client.patch(
-            `/registrations/${encodeURIComponent(String(id))}`,
+            `/csourceRegistrations/${encodeURIComponent(String(id))}`,
             data,
           );
           outputResponse(response, format);
@@ -134,7 +134,7 @@ export function registerRegistrationsCommand(program: Command): void {
         const client = createClient(cmd);
 
         await client.delete(
-          `/registrations/${encodeURIComponent(String(id))}`,
+          `/csourceRegistrations/${encodeURIComponent(String(id))}`,
         );
         printSuccess("Registration deleted.");
       }),

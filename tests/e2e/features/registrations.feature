@@ -1,6 +1,4 @@
-@wip
 Feature: Registration management
-  # Server does not implement /ngsi-ld/v1/registrations routes
   As a CLI user
   I want to manage context registrations
   So that I can register context sources

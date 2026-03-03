@@ -39,14 +39,14 @@ function createListAction() {
     if (cmdOpts.query) params["q"] = cmdOpts.query;
     if (cmdOpts.georel) params["georel"] = cmdOpts.georel;
     if (cmdOpts.geometry) params["geometry"] = cmdOpts.geometry;
-    if (cmdOpts.coords) params["coords"] = cmdOpts.coords;
+    if (cmdOpts.coords) params["coordinates"] = cmdOpts.coords;
     if (cmdOpts.timeRel) params["timerel"] = cmdOpts.timeRel;
     if (cmdOpts.timeAt) params["timeAt"] = cmdOpts.timeAt;
     if (cmdOpts.endTimeAt) params["endTimeAt"] = cmdOpts.endTimeAt;
     if (cmdOpts.lastN !== undefined) params["lastN"] = String(cmdOpts.lastN);
     if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
     if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
-    if (cmdOpts.count) params["options"] = "count";
+    if (cmdOpts.count) params["count"] = "true";
 
     const response = await client.get("/temporal/entities", params);
     outputResponse(response, format, cmdOpts.count);

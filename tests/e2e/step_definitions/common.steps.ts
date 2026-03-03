@@ -130,7 +130,7 @@ Then("the config should not have key {string}", function (this: GdbWorld, key: s
   assert.ok(!(key in config), `Expected config NOT to have key "${key}". Config: ${JSON.stringify(config)}`);
 });
 
-/** Extract the first JSON object or array from stdout (ignoring trailing non-JSON lines) */
+/** Extract the first JSON object or array from stdout (ignoring leading/trailing non-JSON lines) */
 function extractJson(text: string): Record<string, unknown> | null {
   // Try parsing the entire text first
   try {
@@ -138,13 +138,19 @@ function extractJson(text: string): Record<string, unknown> | null {
   } catch {
     // Fall through
   }
-  // Find the last closing brace/bracket and try parsing up to that point
+  // Find the JSON boundaries (first opening and last closing brace/bracket)
+  const firstBrace = text.indexOf("{");
+  const firstBracket = text.indexOf("[");
+  const startIdx =
+    firstBrace >= 0 && firstBracket >= 0
+      ? Math.min(firstBrace, firstBracket)
+      : Math.max(firstBrace, firstBracket);
   const lastBrace = text.lastIndexOf("}");
   const lastBracket = text.lastIndexOf("]");
   const endIdx = Math.max(lastBrace, lastBracket);
-  if (endIdx >= 0) {
+  if (startIdx >= 0 && endIdx >= startIdx) {
     try {
-      return JSON.parse(text.substring(0, endIdx + 1)) as Record<string, unknown>;
+      return JSON.parse(text.substring(startIdx, endIdx + 1)) as Record<string, unknown>;
     } catch {
       // Fall through
     }
