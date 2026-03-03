@@ -13,7 +13,7 @@ vi.mock("../src/output.js", () => ({
 
 import { printError, printOutput, printCount } from "../src/output.js";
 import { saveConfig } from "../src/config.js";
-import { GdbClientError, GdbClient } from "../src/client.js";
+import { DryRunSignal, GdbClientError, GdbClient } from "../src/client.js";
 import {
   resolveOptions,
   createClient,
@@ -93,6 +93,16 @@ describe("helpers", () => {
       expect(opts.token).toBeUndefined();
       expect(opts.apiKey).toBeUndefined();
     });
+
+    it("passes dryRun flag through", () => {
+      const opts = resolveOptions(fakeCmd({ dryRun: true }));
+      expect(opts.dryRun).toBe(true);
+    });
+
+    it("dryRun defaults to undefined when not set", () => {
+      const opts = resolveOptions(fakeCmd());
+      expect(opts.dryRun).toBeUndefined();
+    });
   });
 
   describe("createClient", () => {
@@ -131,6 +141,16 @@ describe("helpers", () => {
       expect(() => createClient(fakeCmd({ url: "localhost:3000" }))).toThrow(
         'Invalid URL: "localhost:3000". URL must start with http:// or https://.',
       );
+    });
+
+    it("passes dryRun option to GdbClient", async () => {
+      saveConfig({ url: "http://localhost:3000" });
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const client = createClient(fakeCmd({ dryRun: true }));
+      expect(client).toBeInstanceOf(GdbClient);
+      // Verify dryRun is set by triggering a request — it should throw DryRunSignal
+      await expect(client.get("/entities")).rejects.toThrow(DryRunSignal);
+      logSpy.mockRestore();
     });
 
     it("sets onTokenRefresh callback when token comes from config", () => {
@@ -298,6 +318,14 @@ describe("helpers", () => {
       await expect(wrapped()).rejects.toThrow("process.exit");
       expect(printError).toHaveBeenCalledWith("raw string error");
       expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it("returns normally on DryRunSignal without printing error or exiting", async () => {
+      const fn = vi.fn().mockRejectedValue(new DryRunSignal());
+      const wrapped = withErrorHandler(fn);
+      await wrapped();
+      expect(printError).not.toHaveBeenCalled();
+      expect(exitSpy).not.toHaveBeenCalled();
     });
   });
 });

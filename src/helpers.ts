@@ -1,6 +1,6 @@
 import { Command } from "commander";
 import { loadConfig, saveConfig, validateUrl } from "./config.js";
-import { GdbClient, GdbClientError } from "./client.js";
+import { DryRunSignal, GdbClient, GdbClientError } from "./client.js";
 import { printError, printOutput, printCount } from "./output.js";
 import type { ClientResponse, GlobalOptions, OutputFormat } from "./types.js";
 
@@ -19,6 +19,7 @@ export function resolveOptions(cmd: Command): GlobalOptions {
     verbose: opts.verbose,
     profile: opts.profile,
     apiKey: opts.apiKey ?? process.env.GDB_API_KEY ?? config.apiKey,
+    dryRun: opts.dryRun,
   };
 }
 
@@ -50,6 +51,7 @@ export function createClient(cmd: Command): GdbClient {
           saveConfig(cfg, opts.profile);
         },
     verbose: opts.verbose,
+    dryRun: opts.dryRun,
   });
 }
 
@@ -85,6 +87,9 @@ export function withErrorHandler<T extends unknown[]>(fn: (...args: T) => Promis
     try {
       await fn(...args);
     } catch (err: unknown) {
+      if (err instanceof DryRunSignal) {
+        return;
+      }
       if (err instanceof GdbClientError && err.status === 401) {
         printError("Authentication failed. Please run `geonic login` to re-authenticate.");
       } else if (err instanceof Error) {

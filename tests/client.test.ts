@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { GdbClient, GdbClientError } from "../src/client.js";
+import { DryRunSignal, GdbClient, GdbClientError } from "../src/client.js";
 
 describe("GdbClient", () => {
   beforeEach(() => {
@@ -795,6 +795,115 @@ describe("GdbClient", () => {
       });
 
       await expect(client.get("/entities")).rejects.toThrow("Unauthorized");
+    });
+  });
+
+  describe("dry-run mode", () => {
+    it("outputs curl command for GET request without calling fetch", async () => {
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        service: "myTenant",
+        token: "test-token",
+        dryRun: true,
+      });
+
+      await expect(client.get("/entities", { type: "Room" })).rejects.toThrow(DryRunSignal);
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      const output = logSpy.mock.calls[0][0] as string;
+      expect(output).toContain("curl");
+      expect(output).toContain("'http://localhost:3000/ngsi-ld/v1/entities?type=Room'");
+      expect(output).toContain("-H 'Authorization: Bearer test-token'");
+      expect(output).toContain("-H 'NGSILD-Tenant: myTenant'");
+      expect(output).not.toContain("-X");
+      logSpy.mockRestore();
+    });
+
+    it("outputs curl command for POST request with body", async () => {
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        dryRun: true,
+      });
+      const entity = { id: "urn:test", type: "Test" };
+
+      await expect(client.post("/entities", entity)).rejects.toThrow(DryRunSignal);
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      const output = logSpy.mock.calls[0][0] as string;
+      expect(output).toContain("-X POST");
+      expect(output).toContain(`-d '${JSON.stringify(entity)}'`);
+      logSpy.mockRestore();
+    });
+
+    it("outputs curl command for DELETE request", async () => {
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        dryRun: true,
+      });
+
+      await expect(client.delete("/entities/urn:test")).rejects.toThrow(DryRunSignal);
+
+      const output = logSpy.mock.calls[0][0] as string;
+      expect(output).toContain("-X DELETE");
+      expect(output).toContain("/ngsi-ld/v1/entities/urn:test");
+      logSpy.mockRestore();
+    });
+
+    it("outputs curl command for rawRequest in dry-run mode", async () => {
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        dryRun: true,
+      });
+
+      await expect(client.rawRequest("GET", "/me")).rejects.toThrow(DryRunSignal);
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      const output = logSpy.mock.calls[0][0] as string;
+      expect(output).toContain("curl");
+      expect(output).toContain("/me");
+      logSpy.mockRestore();
+    });
+  });
+
+  describe("buildCurlCommand", () => {
+    it("builds GET command without -X flag", () => {
+      const result = GdbClient.buildCurlCommand(
+        "GET",
+        "http://localhost:3000/ngsi-ld/v1/entities",
+        { "Content-Type": "application/ld+json", Accept: "application/ld+json" },
+      );
+      expect(result).toContain("curl");
+      expect(result).not.toContain("-X");
+      expect(result).toContain("-H 'Content-Type: application/ld+json'");
+      expect(result).toContain("'http://localhost:3000/ngsi-ld/v1/entities'");
+    });
+
+    it("builds POST command with -X flag and body", () => {
+      const body = JSON.stringify({ id: "urn:test", type: "Test" });
+      const result = GdbClient.buildCurlCommand(
+        "POST",
+        "http://localhost:3000/ngsi-ld/v1/entities",
+        { "Content-Type": "application/ld+json" },
+        body,
+      );
+      expect(result).toContain("-X POST");
+      expect(result).toContain(`-d '${body}'`);
+    });
+
+    it("formats with line continuation backslashes", () => {
+      const result = GdbClient.buildCurlCommand(
+        "GET",
+        "http://localhost:3000/ngsi-ld/v1/entities",
+        { Accept: "application/ld+json" },
+      );
+      expect(result).toContain(" \\\n  ");
     });
   });
 

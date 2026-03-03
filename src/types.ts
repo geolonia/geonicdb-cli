@@ -24,6 +24,7 @@ export interface GlobalOptions {
   verbose?: boolean;
   profile?: string;
   apiKey?: string;
+  dryRun?: boolean;
 }
 
 export interface ClientOptions {
@@ -34,6 +35,7 @@ export interface ClientOptions {
   apiKey?: string;
   onTokenRefresh?: (token: string, refreshToken?: string) => void;
   verbose?: boolean;
+  dryRun?: boolean;
 }
 
 export interface ClientResponse<T = unknown> {

@@ -1,5 +1,12 @@
 import type { ClientOptions, ClientResponse, NgsiError } from "./types.js";
 
+export class DryRunSignal extends Error {
+  constructor() {
+    super("dry-run");
+    this.name = "DryRunSignal";
+  }
+}
+
 export class GdbClient {
   private baseUrl: string;
   private service?: string;
@@ -8,6 +15,7 @@ export class GdbClient {
   private apiKey?: string;
   private onTokenRefresh?: (token: string, refreshToken?: string) => void;
   private verbose: boolean;
+  private dryRun: boolean;
   private refreshPromise?: Promise<boolean>;
 
   constructor(options: ClientOptions) {
@@ -18,6 +26,7 @@ export class GdbClient {
     this.apiKey = options.apiKey;
     this.onTokenRefresh = options.onTokenRefresh;
     this.verbose = options.verbose ?? false;
+    this.dryRun = options.dryRun ?? false;
   }
 
   private buildHeaders(extra?: Record<string, string>): Record<string, string> {
@@ -109,6 +118,37 @@ export class GdbClient {
     process.stderr.write("\n");
   }
 
+  static buildCurlCommand(
+    method: string,
+    url: string,
+    headers: Record<string, string>,
+    body?: string,
+  ): string {
+    const parts: string[] = ["curl"];
+    if (method !== "GET") {
+      parts.push(`-X ${method}`);
+    }
+    for (const [key, value] of Object.entries(headers)) {
+      parts.push(`-H '${key}: ${value}'`);
+    }
+    if (body) {
+      parts.push(`-d '${body}'`);
+    }
+    parts.push(`'${url}'`);
+    return parts.join(" \\\n  ");
+  }
+
+  private handleDryRun(
+    method: string,
+    url: string,
+    headers: Record<string, string>,
+    body?: string,
+  ): void {
+    if (!this.dryRun) return;
+    console.log(GdbClient.buildCurlCommand(method, url, headers, body));
+    throw new DryRunSignal();
+  }
+
   private canRefresh(): boolean {
     return !!this.refreshToken && !this.apiKey;
   }
@@ -167,6 +207,7 @@ export class GdbClient {
     const body = options?.body ? JSON.stringify(options.body) : undefined;
 
     this.logRequest(method, url, headers, body);
+    this.handleDryRun(method, url, headers, body);
     const response = await fetch(url, { method, headers, body });
     this.logResponse(response);
 
@@ -207,6 +248,7 @@ export class GdbClient {
     const body = options?.body ? JSON.stringify(options.body) : undefined;
 
     this.logRequest(method, url, headers, body);
+    this.handleDryRun(method, url, headers, body);
     const response = await fetch(url, { method, headers, body });
     this.logResponse(response);
 
