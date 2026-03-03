@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import type { GdbConfig, GdbConfigFile } from "./types.js";
 
-function getConfigDir(): string {
+export function getConfigDir(): string {
   return process.env.GEONIC_CONFIG_DIR ?? join(homedir(), ".config", "geonic");
 }
 
@@ -11,7 +11,7 @@ function getConfigFile(): string {
   return join(getConfigDir(), "config.json");
 }
 
-function ensureConfigDir(): void {
+export function ensureConfigDir(): void {
   const dir = getConfigDir();
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
