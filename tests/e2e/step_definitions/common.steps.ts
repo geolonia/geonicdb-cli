@@ -53,19 +53,15 @@ When(/^I run `([^`]+)` replacing ID$/, async function (this: GdbWorld, command: 
 });
 
 Given("I save the ID from the JSON output", function (this: GdbWorld) {
-  const parsed = extractJson(this.lastResult.stdout);
-  assert.ok(parsed !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);
-  const data: unknown = parsed;
-  let list: Record<string, unknown>[];
-  if (Array.isArray(data)) {
-    list = data;
-  } else {
-    const nested = Object.values(data as Record<string, unknown>).find((v) => Array.isArray(v));
-    list = (nested as Record<string, unknown>[]) ?? [];
-  }
-  assert.ok(list.length > 0, `No items found in JSON output.\nstdout: ${this.lastResult.stdout}`);
-  const item = list[list.length - 1];
-  const id = item.id ?? item._id ?? item.policyId ?? item.tenantId ?? item.userId ?? item.clientId ?? item.ruleId;
+  const item = findItemInJsonOutput(this.lastResult.stdout);
+  const id = extractId(item);
+  assert.ok(id, `Could not extract ID from: ${JSON.stringify(item)}`);
+  (this as Record<string, unknown>).savedId = String(id);
+});
+
+Given(/^I save the ID from the JSON output where "([^"]+)" is "([^"]+)"$/, function (this: GdbWorld, field: string, value: string) {
+  const item = findItemInJsonOutput(this.lastResult.stdout, field, value);
+  const id = extractId(item);
   assert.ok(id, `Could not extract ID from: ${JSON.stringify(item)}`);
   (this as Record<string, unknown>).savedId = String(id);
 });
@@ -156,6 +152,30 @@ function extractJson(text: string): Record<string, unknown> | null {
     }
   }
   return null;
+}
+
+function toList(data: unknown): Record<string, unknown>[] {
+  if (Array.isArray(data)) return data;
+  const nested = Object.values(data as Record<string, unknown>).find((v) => Array.isArray(v));
+  return (nested as Record<string, unknown>[]) ?? [];
+}
+
+function findItemInJsonOutput(stdout: string, field?: string, value?: string): Record<string, unknown> {
+  const parsed = extractJson(stdout);
+  assert.ok(parsed !== null, `Expected stdout to contain valid JSON.\nstdout: ${stdout}`);
+  const list = toList(parsed);
+  assert.ok(list.length > 0, `No items found in JSON output.\nstdout: ${stdout}`);
+  if (field && value) {
+    const item = list.find((i) => String(i[field]) === value);
+    assert.ok(item, `No item found where "${field}" is "${value}".\nstdout: ${stdout}`);
+    return item;
+  }
+  return list[list.length - 1];
+}
+
+function extractId(item: Record<string, unknown>): string | undefined {
+  const id = item.id ?? item._id ?? item.policyId ?? item.tenantId ?? item.userId ?? item.clientId ?? item.ruleId;
+  return id ? String(id) : undefined;
 }
 
 function stripCommandPrefix(args: string[]): string[] {

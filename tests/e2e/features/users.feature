@@ -20,7 +20,7 @@ Feature: Admin user management
     Given I am logged in
     And I run `geonic admin users create '{"email":"testuser02@example.com","password":"TestPassword123!","role":"super_admin"}'`
     And I run `geonic admin users list --format json`
-    And I save the ID from the JSON output
+    And I save the ID from the JSON output where "email" is "testuser02@example.com"
     When I run `geonic admin users get $ID` replacing ID
     Then the exit code should be 0
     And stdout should be valid JSON
@@ -30,7 +30,7 @@ Feature: Admin user management
     Given I am logged in
     And I run `geonic admin users create '{"email":"testuser03@example.com","password":"TestPassword123!","role":"super_admin"}'`
     And I run `geonic admin users list --format json`
-    And I save the ID from the JSON output
+    And I save the ID from the JSON output where "email" is "testuser03@example.com"
     When I run `geonic admin users delete $ID` replacing ID
     Then the exit code should be 0
     And the output should contain "User deleted."
@@ -39,7 +39,7 @@ Feature: Admin user management
     Given I am logged in
     And I run `geonic admin users create '{"email":"testuser04@example.com","password":"TestPassword123!","role":"super_admin"}'`
     And I run `geonic admin users list --format json`
-    And I save the ID from the JSON output
+    And I save the ID from the JSON output where "email" is "testuser04@example.com"
     When I run `geonic admin users deactivate $ID` replacing ID
     Then the exit code should be 0
     And the output should contain "User deactivated."
@@ -51,7 +51,7 @@ Feature: Admin user management
     Given I am logged in
     And I run `geonic admin users create '{"email":"testuser05@example.com","password":"TestPassword123!","role":"super_admin"}'`
     And I run `geonic admin users list --format json`
-    And I save the ID from the JSON output
+    And I save the ID from the JSON output where "email" is "testuser05@example.com"
     When I run `geonic admin users unlock $ID` replacing ID
     Then the exit code should be 0
     And the output should contain "User unlocked."
