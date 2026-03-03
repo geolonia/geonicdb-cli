@@ -1,6 +1,4 @@
-@wip
 Feature: Registration management
-  # Server does not implement /ngsi-ld/v1/registrations routes
   As a CLI user
   I want to manage context registrations
   So that I can register context sources
@@ -42,7 +40,9 @@ Feature: Registration management
     Then the exit code should be 0
     And the output should contain "Registration deleted."
 
+  @wip
   Scenario: List registrations with count
+    # Server does not return NGSILD-Results-Count header for csourceRegistrations
     Given I am logged in
     And I run `geonic registrations create '{"type":"ContextSourceRegistration","information":[{"entities":[{"type":"Room"}]}],"endpoint":"http://localhost:4000/source"}'`
     When I run `geonic registrations list --count`

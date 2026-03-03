@@ -147,6 +147,25 @@ Feature: Entity management
     Then the exit code should be 0
     And stdout should be valid JSON
 
+  # Geo-query
+
+  Scenario: Geo-query with --coords near a point
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Place:GEO1","type":"Place","location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[139.7671,35.6812]}}}'`
+    When I run `geonic entities list --type Place --georel 'near;maxDistance==5000' --geometry Point --coords '[139.7671,35.6812]'`
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the output should contain "Place:GEO1"
+
+  Scenario: Geo-query excludes distant entities
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Place:GEO2","type":"Place","location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[139.7671,35.6812]}}}'`
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Place:GEO3","type":"Place","location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[-73.9857,40.7484]}}}'`
+    When I run `geonic entities list --type Place --georel 'near;maxDistance==1000' --geometry Point --coords '[139.7671,35.6812]'`
+    Then the exit code should be 0
+    And the output should contain "Place:GEO2"
+    And the output should not contain "Place:GEO3"
+
   # Stdin and JSON5 input
 
   Scenario: Create entity via stdin (without -)
