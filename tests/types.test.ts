@@ -49,11 +49,12 @@ describe("types command", () => {
 
   describe("get", () => {
     it("calls client.get with encoded type name", async () => {
-      mockClient.get.mockResolvedValue(mockResponse({ id: "Sensor", attrs: {} }));
-      await runCommand(program, ["types", "get", "Sensor"]);
+      const typeName = "Sensor/Temperature#v2";
+      mockClient.get.mockResolvedValue(mockResponse({ id: typeName, attrs: {} }));
+      await runCommand(program, ["types", "get", typeName]);
 
       expect(mockClient.get).toHaveBeenCalledWith(
-        `/types/${encodeURIComponent("Sensor")}`,
+        `/types/${encodeURIComponent(typeName)}`,
       );
       expect(outputResponse).toHaveBeenCalledWith(expect.anything(), "json");
     });
