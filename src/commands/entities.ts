@@ -45,7 +45,7 @@ export function registerEntitiesCommand(program: Command): void {
         if (opts.attrs) params.attrs = String(opts.attrs);
         if (opts.georel) params.georel = String(opts.georel);
         if (opts.geometry) params.geometry = String(opts.geometry);
-        if (opts.coords) params.coords = String(opts.coords);
+        if (opts.coords) params.coordinates = String(opts.coords);
         if (opts.spatialId) params.spatialId = String(opts.spatialId);
         if (opts.limit !== undefined) params.limit = String(opts.limit);
         if (opts.offset !== undefined) params.offset = String(opts.offset);
