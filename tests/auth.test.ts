@@ -408,11 +408,9 @@ describe("auth commands", () => {
         remainingMs: 0,
       } as never);
       vi.mocked(getFormat).mockReturnValue("table");
-      const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
       const program = makeProgram();
       await runCommand(program, ["me"]);
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("expired"));
-      consoleSpy.mockRestore();
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("expired"));
     });
 
     it("shows expiring-soon token status", async () => {

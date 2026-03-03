@@ -1,26 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import "./setup-command-mocks.js";
 import { createMockClient, mockResponse, createTestProgram, runCommand } from "./test-helpers.js";
 import type { MockClient } from "./test-helpers.js";
-
-vi.mock("../src/helpers.js", () => ({
-  createClient: vi.fn(),
-  getFormat: vi.fn(),
-  outputResponse: vi.fn(),
-  withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
-}));
-
-vi.mock("../src/output.js", () => ({
-  printSuccess: vi.fn(),
-  printError: vi.fn(),
-  printInfo: vi.fn(),
-  printWarning: vi.fn(),
-  printOutput: vi.fn(),
-  printCount: vi.fn(),
-}));
-
-vi.mock("../src/commands/help.js", () => ({
-  addExamples: vi.fn(),
-}));
 
 import { createClient, getFormat, outputResponse } from "../src/helpers.js";
 import { registerCatalogCommand } from "../src/commands/catalog.js";

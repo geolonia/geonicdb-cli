@@ -53,8 +53,11 @@ import { parseJsonInput } from "../src/input.js";
 
 describe("parseJsonInput", () => {
   const originalIsTTY = process.stdin.isTTY;
+  let stderrWriteSpy: ReturnType<typeof vi.spyOn> | undefined;
 
   afterEach(() => {
+    stderrWriteSpy?.mockRestore();
+    stderrWriteSpy = undefined;
     Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, writable: true });
     mockReadFileSync.mockReset();
   });
@@ -139,7 +142,7 @@ describe("parseJsonInput", () => {
   describe("interactive mode (TTY, no input)", () => {
     beforeEach(() => {
       Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
-      vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+      stderrWriteSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     });
 
     it("reads JSON interactively and auto-submits when braces balance", async () => {

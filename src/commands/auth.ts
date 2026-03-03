@@ -11,7 +11,6 @@ import { printSuccess, printError, printInfo, printWarning } from "../output.js"
 import { isInteractive, promptEmail, promptPassword } from "../prompt.js";
 import { getTokenStatus, formatDuration } from "../token.js";
 import { clientCredentialsGrant } from "../oauth.js";
-import chalk from "chalk";
 import { addExamples } from "./help.js";
 
 function createLoginCommand(): Command {
@@ -166,7 +165,7 @@ function createMeAction() {
       const status = getTokenStatus(latestConfig.token);
       if (status.expiresAt) {
         if (status.isExpired) {
-          console.log(chalk.red(`Token expires: ${status.expiresAt.toISOString()} (expired)`));
+          printError(`Token expires: ${status.expiresAt.toISOString()} (expired)`);
         } else if (status.isExpiringSoon) {
           printWarning(
             `Token expires: ${status.expiresAt.toISOString()} (${formatDuration(status.remainingMs!)} remaining)`,
