@@ -85,6 +85,32 @@ describe("compareSemver", () => {
     expect(compareSemver("v1.0.0", "v2.0.0")).toBe(true);
     expect(compareSemver("v1.0.0", "1.0.0")).toBe(false);
   });
+
+  it("returns false for minor downgrade with same major", () => {
+    expect(compareSemver("1.5.0", "1.3.0")).toBe(false);
+  });
+
+  it("returns false for patch downgrade with same major.minor", () => {
+    expect(compareSemver("1.0.5", "1.0.3")).toBe(false);
+  });
+
+  it("handles zero versions", () => {
+    expect(compareSemver("0.0.0", "0.0.1")).toBe(true);
+    expect(compareSemver("0.0.0", "0.0.0")).toBe(false);
+  });
+
+  it("handles mixed v-prefix", () => {
+    expect(compareSemver("v1.0.0", "2.0.0")).toBe(true);
+    expect(compareSemver("1.0.0", "v2.0.0")).toBe(true);
+  });
+
+  it("major upgrade overrides minor/patch downgrade", () => {
+    expect(compareSemver("1.9.9", "2.0.0")).toBe(true);
+  });
+
+  it("minor upgrade overrides patch downgrade", () => {
+    expect(compareSemver("1.0.9", "1.1.0")).toBe(true);
+  });
 });
 
 describe("formatUpdateBox", () => {
@@ -102,6 +128,42 @@ describe("formatUpdateBox", () => {
     expect(box).toContain("npm i -g @geolonia/geonicdb-cli");
     expect(box).toContain("╭");
     expect(box).toContain("╰");
+  });
+
+  it("has correct box structure (6 lines: top, empty, message, install, empty, bottom)", () => {
+    const box = formatUpdateBox("0.1.0", "1.0.0");
+    // Strip ANSI to count structural lines
+    // eslint-disable-next-line no-control-regex
+    const stripped = box.replace(/\x1b\[[0-9;]*m/g, "");
+    const lines = stripped.split("\n");
+    expect(lines).toHaveLength(6);
+    expect(lines[0]).toMatch(/^╭─+╮$/);
+    expect(lines[5]).toMatch(/^╰─+╯$/);
+    // Top and bottom borders should be same length
+    expect(lines[0].length).toBe(lines[5].length);
+  });
+
+  it("pads shorter line to match longer line width", () => {
+    const box = formatUpdateBox("0.1.0", "1.0.0");
+    // eslint-disable-next-line no-control-regex
+    const stripped = box.replace(/\x1b\[[0-9;]*m/g, "");
+    const lines = stripped.split("\n");
+    // All middle lines (1-4) should have same length as borders
+    const borderLen = lines[0].length;
+    for (let i = 1; i <= 4; i++) {
+      expect(lines[i].length).toBe(borderLen);
+    }
+  });
+
+  it("each content line starts with │ and ends with │", () => {
+    const box = formatUpdateBox("1.0.0", "2.0.0");
+    // eslint-disable-next-line no-control-regex
+    const stripped = box.replace(/\x1b\[[0-9;]*m/g, "");
+    const lines = stripped.split("\n");
+    for (let i = 1; i <= 4; i++) {
+      expect(lines[i].startsWith("│")).toBe(true);
+      expect(lines[i].endsWith("│")).toBe(true);
+    }
   });
 });
 
@@ -146,6 +208,28 @@ describe("startUpdateCheck", () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
     expect(result).not.toBeNull();
     expect(result!.latestVersion).toBe("99.0.0");
+  });
+
+  it("passes correct registry URL and abort signal to fetch", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ version: "99.0.0" }),
+    });
+    await startUpdateCheck();
+    const [url, options] = mockFetch.mock.calls[0];
+    expect(url).toBe("https://registry.npmjs.org/@geolonia/geonicdb-cli/latest");
+    expect(options).toHaveProperty("signal");
+  });
+
+  it("includes currentVersion from package.json in result", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ version: "99.0.0" }),
+    });
+    const result = await startUpdateCheck();
+    expect(result).not.toBeNull();
+    // currentVersion should be a valid semver from package.json
+    expect(result!.currentVersion).toMatch(/^\d+\.\d+\.\d+/);
   });
 
   it("skips fetch when cache is fresh", async () => {
@@ -275,6 +359,62 @@ describe("startUpdateCheck", () => {
     const cache = JSON.parse(readFileSync(cacheFile, "utf-8"));
     expect(cache.latestVersion).toBe("50.0.0");
   });
+
+  it("handles cache as valid JSON but wrong shape (array)", async () => {
+    const cacheDir = join(tempDir, "geonic");
+    mkdirSync(cacheDir, { recursive: true });
+    writeFileSync(join(cacheDir, "update-check.json"), "[]", "utf-8");
+    const result = await startUpdateCheck();
+    // Array has no lastCheck → Date.now() - undefined = NaN → shouldCheck false
+    // Array has no latestVersion → returns null without fetching
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(result).toBeNull();
+  });
+
+  it("handles empty cache file", async () => {
+    const cacheDir = join(tempDir, "geonic");
+    mkdirSync(cacheDir, { recursive: true });
+    writeFileSync(join(cacheDir, "update-check.json"), "", "utf-8");
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ version: "99.0.0" }),
+    });
+    const result = await startUpdateCheck();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(result).not.toBeNull();
+  });
+
+  it("returns null when stale cache fetch returns same version as current", async () => {
+    const cacheDir = join(tempDir, "geonic");
+    mkdirSync(cacheDir, { recursive: true });
+    const staleTime = Date.now() - 25 * 60 * 60 * 1000;
+    writeFileSync(
+      join(cacheDir, "update-check.json"),
+      JSON.stringify({ lastCheck: staleTime }),
+      "utf-8",
+    );
+    // Return same version as current package.json
+    const pkgVersion = JSON.parse(readFileSync(join(process.cwd(), "package.json"), "utf-8")).version;
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ version: pkgVersion }),
+    });
+    const result = await startUpdateCheck();
+    expect(result).toBeNull();
+  });
+
+  it("fresh cache with lastCheck but no latestVersion returns null", async () => {
+    const cacheDir = join(tempDir, "geonic");
+    mkdirSync(cacheDir, { recursive: true });
+    writeFileSync(
+      join(cacheDir, "update-check.json"),
+      JSON.stringify({ lastCheck: Date.now() }),
+      "utf-8",
+    );
+    const result = await startUpdateCheck();
+    expect(mockFetch).not.toHaveBeenCalled();
+    expect(result).toBeNull();
+  });
 });
 
 describe("printUpdateNotification", () => {
@@ -291,6 +431,23 @@ describe("printUpdateNotification", () => {
     const output = writeSpy.mock.calls[0][0] as string;
     expect(output).toContain("0.1.0");
     expect(output).toContain("1.0.0");
+  });
+
+  it("output starts and ends with newline", () => {
+    const writeSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    printUpdateNotification({ currentVersion: "0.1.0", latestVersion: "1.0.0" });
+    const output = writeSpy.mock.calls[0][0] as string;
+    expect(output.startsWith("\n")).toBe(true);
+    expect(output.endsWith("\n")).toBe(true);
+  });
+
+  it("output contains box border characters", () => {
+    const writeSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    printUpdateNotification({ currentVersion: "0.1.0", latestVersion: "2.0.0" });
+    const output = writeSpy.mock.calls[0][0] as string;
+    expect(output).toContain("╭");
+    expect(output).toContain("╰");
+    expect(output).toContain("│");
   });
 
   it("does nothing when result is null", () => {
