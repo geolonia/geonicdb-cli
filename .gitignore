@@ -3,3 +3,5 @@ dist/
 *.tsbuildinfo
 .worktrees/
 reports/
+coverage/
+.mongo-uri
