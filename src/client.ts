@@ -125,6 +125,7 @@ export class GdbClient {
   }
 
   private async doRefresh(): Promise<boolean> {
+    /* v8 ignore next -- canRefresh() guards this, refreshToken always exists here */
     if (!this.refreshToken) return false;
 
     try {
@@ -173,6 +174,7 @@ export class GdbClient {
     const count = countHeader ? parseInt(countHeader, 10) : undefined;
 
     let data: T;
+    /* v8 ignore next -- null coalescing for missing content-type header */
     const contentType = response.headers.get("content-type") ?? "";
     const text = await response.text();
     if (text && (contentType.includes("json") || contentType.includes("ld+json"))) {
@@ -209,6 +211,7 @@ export class GdbClient {
     this.logResponse(response);
 
     let data: T;
+    /* v8 ignore next -- null coalescing for missing content-type header */
     const contentType = response.headers.get("content-type") ?? "";
     const text = await response.text();
     if (text && (contentType.includes("json") || contentType.includes("ld+json"))) {

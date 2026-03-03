@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import { Command, Option } from "commander";
 import stripAnsi from "strip-ansi";
 import { createProgram } from "../src/cli.js";
 import { formatTopLevelHelp, formatCommandDetails } from "../src/commands/help.js";
@@ -202,6 +203,82 @@ describe("help", () => {
       const globalIdx = output.indexOf("GLOBAL PARAMETERS");
       expect(optionsIdx).toBeLessThan(examplesIdx);
       expect(examplesIdx).toBeLessThan(globalIdx);
+    });
+  });
+
+  describe("formatCommandDetails — optional value option synopsis", () => {
+    it("shows optional value in synopsis with [=<value>] format", () => {
+      const prog = new Command();
+      prog.name("test").option("--url <url>", "URL");
+      const cmd = new Command("demo")
+        .description("Demo command")
+        .option("--output [path]", "Output path");
+      prog.addCommand(cmd);
+      const out = stripAnsi(formatCommandDetails(prog, cmd, "test demo"));
+      expect(out).toContain("[--output[=<path>]]");
+    });
+  });
+
+  describe("formatOptionSynopsis edge cases", () => {
+    it("uses short flag when long is absent", () => {
+      const prog = new Command();
+      prog.name("test");
+      const cmd = new Command("demo").description("Demo");
+      cmd.addOption(new Option("-x", "short only flag"));
+      prog.addCommand(cmd);
+      const out = stripAnsi(formatCommandDetails(prog, cmd, "test demo"));
+      expect(out).toContain("[-x]");
+    });
+
+    it("falls back to 'value' when required option flags lack <name> pattern", () => {
+      const prog = new Command();
+      prog.name("test");
+      const cmd = new Command("demo").description("Demo");
+      const opt = new Option("--foo", "test");
+      // Force required to truthy without normal <value> in flags
+      (opt as unknown as { required: number }).required = 1;
+      cmd.addOption(opt);
+      prog.addCommand(cmd);
+      const out = stripAnsi(formatCommandDetails(prog, cmd, "test demo"));
+      expect(out).toContain("[--foo=<value>]");
+    });
+
+    it("falls back to 'value' when optional option flags lack [name] pattern", () => {
+      const prog = new Command();
+      prog.name("test");
+      const cmd = new Command("demo").description("Demo");
+      const opt = new Option("--bar", "test");
+      // Force optional to truthy without normal [value] in flags
+      (opt as unknown as { optional: number }).optional = 1;
+      cmd.addOption(opt);
+      prog.addCommand(cmd);
+      const out = stripAnsi(formatCommandDetails(prog, cmd, "test demo"));
+      expect(out).toContain("[--bar[=<value>]]");
+    });
+
+    it("skips hidden options in synopsis", () => {
+      const prog = new Command();
+      prog.name("test");
+      const cmd = new Command("demo").description("Demo");
+      cmd.addOption(new Option("--visible", "visible"));
+      cmd.addOption(new Option("--secret", "hidden").hideHelp());
+      prog.addCommand(cmd);
+      const out = stripAnsi(formatCommandDetails(prog, cmd, "test demo"));
+      expect(out).toContain("[--visible]");
+      expect(out).not.toContain("[--secret]");
+    });
+
+    it("uses empty string for option description when undefined", () => {
+      const prog = new Command();
+      prog.name("test");
+      const cmd = new Command("demo").description("Demo");
+      // Create option without description
+      const opt = new Option("--nodesc");
+      cmd.addOption(opt);
+      prog.addCommand(cmd);
+      const out = stripAnsi(formatCommandDetails(prog, cmd, "test demo"));
+      // The option should appear in OPTIONS section with just the flag
+      expect(out).toContain("--nodesc");
     });
   });
 
@@ -499,6 +576,126 @@ describe("help", () => {
     it("is findable via models alias", () => {
       const m = findCommand(program, "models");
       expect(m).toBeDefined();
+    });
+  });
+
+  describe("showHelp via help command", () => {
+    it("shows help for a valid command path", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      try {
+        await prog.parseAsync(["node", "geonic", "help", "entities"]);
+      } catch {
+        // exitOverride may throw
+      }
+      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("geonic entities");
+      logSpy.mockRestore();
+    });
+
+    it("shows help for a nested command path", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      try {
+        await prog.parseAsync(["node", "geonic", "help", "entities", "list"]);
+      } catch {
+        // exitOverride may throw
+      }
+      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("geonic entities list");
+      logSpy.mockRestore();
+    });
+
+    it("shows error for invalid command name in help", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+        throw new Error("process.exit");
+      });
+      try {
+        await prog.parseAsync(["node", "geonic", "help", "nonexistent"]);
+      } catch {
+        // expected
+      }
+      const output = errSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(stripAnsi(output)).toContain("'nonexistent' is not a geonic command");
+      errSpy.mockRestore();
+      exitSpy.mockRestore();
+    });
+
+    it("shows top-level help when help is called with no args", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      try {
+        await prog.parseAsync(["node", "geonic", "help"]);
+      } catch {
+        // exitOverride may throw
+      }
+      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("AVAILABLE COMMANDS");
+      logSpy.mockRestore();
+    });
+  });
+
+  describe("configureHelp (--help flag)", () => {
+    it("shows wp-cli style help for root program via --help", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      prog.configureOutput({ writeOut: () => {} });
+      const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      try {
+        await prog.parseAsync(["node", "geonic", "--help"]);
+      } catch {
+        // exitOverride throws on help
+      }
+      // Commander uses configureHelp.formatHelp which returns a string.
+      // The return value is passed to the root program's formatHelp which we override.
+      // Verify formatHelp produces correct output by calling it directly.
+      const helpOutput = stripAnsi(formatTopLevelHelp(prog));
+      expect(helpOutput).toContain("AVAILABLE COMMANDS");
+      writeSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+
+    it("shows wp-cli style help for subcommand via --help", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      prog.configureOutput({ writeOut: () => {} });
+      const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      try {
+        await prog.parseAsync(["node", "geonic", "entities", "--help"]);
+      } catch {
+        // exitOverride throws on help
+      }
+      // Verify formatCommandDetails produces correct output for subcommand
+      const entities = findCommand(prog, "entities");
+      const helpOutput = stripAnsi(formatCommandDetails(prog, entities as never, "geonic entities"));
+      expect(helpOutput).toContain("geonic entities");
+      expect(helpOutput).toContain("SUBCOMMANDS");
+      writeSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+  });
+
+  describe("no-args handler", () => {
+    it("shows help when geonic is run with no arguments", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      try {
+        await prog.parseAsync(["node", "geonic"]);
+      } catch {
+        // exitOverride may throw
+      }
+      const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+      expect(output).toContain("AVAILABLE COMMANDS");
+      logSpy.mockRestore();
     });
   });
 

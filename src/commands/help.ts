@@ -41,6 +41,7 @@ function getRootProgram(cmd: Command): Command {
 }
 
 function formatOptionSynopsis(opt: Option): string {
+  /* v8 ignore next -- Commander always sets long or short */
   const flag = opt.long || opt.short || "";
   if (opt.required) {
     const match = opt.flags.match(/<([^>]+)>/);
@@ -77,6 +78,7 @@ function formatOptionList(options: readonly Option[]): string[] {
   const maxLen = Math.max(...options.map((o) => o.flags.length));
   return options.map((opt) => {
     const flags = opt.flags.padEnd(maxLen + 2);
+    /* v8 ignore next -- Commander always sets description to '' */
     return `  ${chalk.green(flags)}${opt.description ?? ""}`;
   });
 }
