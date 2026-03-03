@@ -102,10 +102,11 @@ describe("output", () => {
     });
 
     it("returns empty string for null/undefined values", () => {
-      const data = [{ id: "e1", missing: null }];
+      const data = [{ id: "e1", n: null, u: undefined }];
       const result = stripAnsi(formatOutput(data, "table"));
-      // null should produce empty string in cell
       expect(result).toContain("e1");
+      expect(result).not.toContain("null");
+      expect(result).not.toContain("undefined");
     });
   });
 

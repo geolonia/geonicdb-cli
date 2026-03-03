@@ -34,11 +34,15 @@ vi.mock("node:readline", () => ({
       close: vi.fn(() => {
         // Trigger 'close' event like the real readline does
         Promise.resolve().then(() => {
-          listeners["close"]?.forEach((cb) => cb());
+          listeners["close"]?.forEach((cb) => {
+            cb();
+          });
         });
       }),
       _emit: (event: string, ...args: unknown[]) => {
-        listeners[event]?.forEach((cb) => cb(...args));
+        listeners[event]?.forEach((cb) => {
+          cb(...args);
+        });
       },
     };
     return mockRl;

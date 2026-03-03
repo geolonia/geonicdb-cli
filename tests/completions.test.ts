@@ -1,5 +1,25 @@
 import { describe, it, expect, vi } from "vitest";
 import { Command, Option } from "commander";
+
+// Mock createRequire so that "../package.json" resolves from the project root
+// even when called from src/commands/cli.ts (which is two levels deep).
+vi.mock("node:module", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("node:module")>();
+  const rootRequire = mod.createRequire(import.meta.url);
+  return {
+    ...mod,
+    createRequire: (...args: Parameters<typeof mod.createRequire>) => {
+      const req = mod.createRequire(...args);
+      return new Proxy(req, {
+        apply(_target, _thisArg, [id]: [string]) {
+          if (id === "../package.json") return rootRequire(id);
+          return req(id);
+        },
+      });
+    },
+  };
+});
+
 import { createProgram } from "../src/cli.js";
 import { generateCompletions } from "../src/commands/cli.js";
 
@@ -409,27 +429,15 @@ describe("completions", () => {
     });
 
     it("cli version outputs the version string", async () => {
-      // In the test environment, createRequire(import.meta.url) inside
-      // src/commands/cli.ts resolves "../package.json" relative to
-      // src/commands/, which resolves to src/package.json. Node's require
-      // traverses up parent directories, so it finds the root package.json.
       const prog = createProgram();
       prog.exitOverride();
       const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-      let threw = false;
-      try {
-        await prog.parseAsync(["node", "geonic", "cli", "version"]);
-      } catch {
-        threw = true;
-      }
-      if (logSpy.mock.calls.length > 0) {
-        const version = logSpy.mock.calls[0][0];
-        expect(version).toMatch(/^\d+\.\d+\.\d+/);
-      } else {
-        // If require("../package.json") throws in the test environment,
-        // verify the command at least exists and was invoked.
-        expect(threw).toBe(true);
-      }
+
+      await prog.parseAsync(["node", "geonic", "cli", "version"]);
+
+      expect(logSpy).toHaveBeenCalledTimes(1);
+      const version = logSpy.mock.calls[0][0];
+      expect(version).toMatch(/^\d+\.\d+\.\d+/);
       logSpy.mockRestore();
     });
   });
