@@ -64,6 +64,7 @@ jobs:
       - run: npm run build
 
   e2e:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/create-github-app-token@v1
