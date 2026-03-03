@@ -31,7 +31,7 @@ export function registerRegistrationsCommand(program: Command): void {
         const params: Record<string, string> = {};
         if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
         if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
-        if (cmdOpts.count) params["options"] = "count";
+        if (cmdOpts.count) params["count"] = "true";
 
         const response = await client.get("/csourceRegistrations", params);
         outputResponse(response, format, !!cmdOpts.count);

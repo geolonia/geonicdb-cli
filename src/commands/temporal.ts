@@ -46,7 +46,7 @@ function createListAction() {
     if (cmdOpts.lastN !== undefined) params["lastN"] = String(cmdOpts.lastN);
     if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
     if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
-    if (cmdOpts.count) params["options"] = "count";
+    if (cmdOpts.count) params["count"] = "true";
 
     const response = await client.get("/temporal/entities", params);
     outputResponse(response, format, cmdOpts.count);

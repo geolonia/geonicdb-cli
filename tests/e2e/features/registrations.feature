@@ -40,9 +40,7 @@ Feature: Registration management
     Then the exit code should be 0
     And the output should contain "Registration deleted."
 
-  @wip
   Scenario: List registrations with count
-    # Server does not return NGSILD-Results-Count header for csourceRegistrations
     Given I am logged in
     And I run `geonic registrations create '{"type":"ContextSourceRegistration","information":[{"entities":[{"type":"Room"}]}],"endpoint":"http://localhost:4000/source"}'`
     When I run `geonic registrations list --count`

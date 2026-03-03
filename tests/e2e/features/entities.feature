@@ -44,6 +44,7 @@ Feature: Entity management
     And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:020","type":"Room"}'`
     When I run `geonic entities list --count`
     Then the exit code should be 0
+    And the output should contain "Count:"
 
   Scenario: Update an entity
     Given I am logged in

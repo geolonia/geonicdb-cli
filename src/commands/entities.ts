@@ -50,13 +50,8 @@ export function registerEntitiesCommand(program: Command): void {
         if (opts.limit !== undefined) params.limit = String(opts.limit);
         if (opts.offset !== undefined) params.offset = String(opts.offset);
         if (opts.orderBy) params.orderBy = String(opts.orderBy);
-        if (opts.count) params.options = "count";
-
-        if (opts.keyValues) {
-          params.options = params.options
-            ? `${params.options},keyValues`
-            : "keyValues";
-        }
+        if (opts.count) params.count = "true";
+        if (opts.keyValues) params.options = "keyValues";
 
         const response = await client.get("/entities", params);
         outputResponse(response, format, !!opts.count);
