@@ -905,6 +905,19 @@ describe("GdbClient", () => {
       );
       expect(result).toContain(" \\\n  ");
     });
+
+    it("escapes single quotes in header values and body", () => {
+      const body = JSON.stringify({ name: "O'Reilly" });
+      const result = GdbClient.buildCurlCommand(
+        "POST",
+        "http://localhost:3000/ngsi-ld/v1/entities",
+        { "X-Custom": "it's a test" },
+        body,
+      );
+      // Single quotes escaped via '"'"' POSIX pattern
+      expect(result).toContain(`-H 'X-Custom: it'"'"'s a test'`);
+      expect(result).toContain(`-d '{"name":"O'"'"'Reilly"}'`);
+    });
   });
 
   describe("concurrent refresh deduplication", () => {

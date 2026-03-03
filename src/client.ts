@@ -118,6 +118,10 @@ export class GdbClient {
     process.stderr.write("\n");
   }
 
+  private static shellQuote(value: string): string {
+    return `'${value.split("'").join("'\"'\"'")}'`;
+  }
+
   static buildCurlCommand(
     method: string,
     url: string,
@@ -129,12 +133,12 @@ export class GdbClient {
       parts.push(`-X ${method}`);
     }
     for (const [key, value] of Object.entries(headers)) {
-      parts.push(`-H '${key}: ${value}'`);
+      parts.push(`-H ${GdbClient.shellQuote(`${key}: ${value}`)}`);
     }
     if (body) {
-      parts.push(`-d '${body}'`);
+      parts.push(`-d ${GdbClient.shellQuote(body)}`);
     }
-    parts.push(`'${url}'`);
+    parts.push(GdbClient.shellQuote(url));
     return parts.join(" \\\n  ");
   }
 
