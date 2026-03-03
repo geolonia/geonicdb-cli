@@ -72,6 +72,7 @@ jobs:
           app-id: ${{ secrets.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           owner: geolonia
+          repositories: geonicdb
 
       - uses: actions/checkout@v4
 
@@ -85,6 +86,9 @@ jobs:
           git config --global url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "https://github.com/"
           git config --global --add url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "ssh://git@github.com/"
           git config --global --add url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "git@github.com:"
+
+      - name: Verify private repo access
+        run: git ls-remote https://github.com/geolonia/geonicdb.git HEAD
 
       - run: npm install
       - run: npm run test:e2e
