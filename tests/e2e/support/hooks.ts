@@ -6,12 +6,36 @@ import { GdbWorld, TEST_EMAIL, TEST_PASSWORD, JWT_SECRET } from "./world.js";
 let server: GeonicDBServer;
 let mongoClient: MongoClient;
 
+// Suppress all server console output during E2E tests
+const originalConsole = {
+  log: console.log,
+  error: console.error,
+  warn: console.warn,
+  info: console.info,
+};
+const noop = () => {};
+
+function suppressConsole() {
+  console.log = noop;
+  console.error = noop;
+  console.warn = noop;
+  console.info = noop;
+}
+
+function restoreConsole() {
+  console.log = originalConsole.log;
+  console.error = originalConsole.error;
+  console.warn = originalConsole.warn;
+  console.info = originalConsole.info;
+}
+
 BeforeAll(async function () {
   process.env.AUTH_ENABLED = "true";
   process.env.JWT_SECRET = JWT_SECRET;
   process.env.SUPER_ADMIN_EMAIL = TEST_EMAIL;
   process.env.SUPER_ADMIN_PASSWORD = TEST_PASSWORD;
 
+  suppressConsole();
   server = await createServer({ silent: true });
   mongoClient = new MongoClient(server.mongoUri);
   await mongoClient.connect();
@@ -42,4 +66,5 @@ After(function (this: GdbWorld) {
 AfterAll(async function () {
   await mongoClient.close();
   await server.close();
+  restoreConsole();
 });
