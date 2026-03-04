@@ -20,7 +20,7 @@ jobs:
         run: |
           echo "Checking CI status for commit ${{ github.sha }}..."
 
-          CONCLUSION=$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${{ github.sha }}" \
+          CONCLUSION=$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${{ github.sha }}&status=completed&event=push&branch=main" \
             --jq '.workflow_runs[0].conclusion')
 
           if [ -z "$CONCLUSION" ] || [ "$CONCLUSION" = "null" ]; then
