@@ -108,6 +108,15 @@ tests/
 - Worktree path convention: `.worktrees/geonicdb-cli-<branch-name>`
 - **Do NOT open PRs unless explicitly instructed**
 
+## Changelog
+
+CHANGELOG.md を Keep a Changelog 形式（日本語）で運用する。
+
+- `[Unreleased]` セクション配下に日付グループ `### YYYY-MM-DD` を追加
+- 各エントリに `(#PR)` サフィックスを付与
+- カテゴリ: **Feat**, **Fix**, **Docs**, **Refactor**, **Test**, **CI**, **Breaking**, **Perf**
+- PR を出す際は CHANGELOG.md も同時に更新すること
+
 ## Agent Naming Convention
 
 Use Ghost in the Shell Section 9 (公安9課) member names when spawning teams:
