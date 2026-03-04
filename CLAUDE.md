@@ -124,3 +124,13 @@ Use Ghost in the Shell Section 9 (公安9課) member names when spawning teams:
 | タチコマ (Tachikoma) | Automation, parallel tasks |
 
 Use `section9` for team_name, `公安9課` in Japanese communication.
+
+## CLI Documentation
+
+- CLI リファレンスドキュメントは `docs/CLI.md` に管理する
+- コマンドの追加・変更・削除時は docs/CLI.md も同じ PR で更新すること
+- フォーマット: geonicdb/docs/ と同じ Markdown 形式
+
+## Changelog
+
+CHANGELOG.md を Keep a Changelog 形式（日本語）で運用する。

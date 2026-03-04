@@ -73,3 +73,29 @@ jobs:
             echo "::error::CI failed"
             exit 1
           fi
+
+  notify-docs:
+    runs-on: ubuntu-latest
+    needs: [ci-success]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Check for docs changes
+        id: docs-check
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'docs/' || true)
+          if [ -n "$CHANGED" ]; then
+            echo "has_docs_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_docs_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Trigger docs sync
+        if: steps.docs-check.outputs.has_docs_changes == 'true'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.GEONICDB_DOCS_PAT }}
+          repository: geolonia/geonicdb-docs
+          event-type: geonicdb-cli-docs-updated
+          client-payload: '{"sha": "${{ github.sha }}"}'
