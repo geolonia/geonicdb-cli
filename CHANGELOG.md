@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-04
+
 ### 2026-03-03
 - **Feat**: `--dry-run` グローバルオプションを追加 (#42)
 - **CI**: E2E テストジョブを CI ワークフローに追加 (#43)
@@ -60,6 +62,7 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/geolonia/geonicdb-cli/releases/tag/v0.1.0
