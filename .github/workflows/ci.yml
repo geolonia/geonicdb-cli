@@ -114,11 +114,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
       - name: Check for docs changes
         id: docs-check
         run: |
-          CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'docs/' || true)
+          CHANGED=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- 'docs/' || true)
           if [ -n "$CHANGED" ]; then
             echo "has_docs_changes=true" >> "$GITHUB_OUTPUT"
           else

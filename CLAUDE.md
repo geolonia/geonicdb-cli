@@ -138,7 +138,7 @@ Use `section9` for team_name, `公安9課` in Japanese communication.
 
 - CLI リファレンスドキュメントは `docs/CLI.md` に管理する
 - コマンドの追加・変更・削除時は docs/CLI.md も同じ PR で更新すること
-- フォーマット: geonicdb/docs/ と同じ Markdown 形式
+- フォーマット: このリポジトリの `docs/CLI.md` を正本として同じ Markdown 形式で維持する
 
 ## Changelog
 

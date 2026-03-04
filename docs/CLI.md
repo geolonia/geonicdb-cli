@@ -75,6 +75,7 @@ geonic entities list --help
 | `-p, --profile <name>` | Use a named profile |
 | `--api-key <key>` | API key for authentication |
 | `-f, --format <fmt>` | Output format: `json`, `table`, `geojson` |
+| `--dry-run` | Execute without sending write requests (preview only) |
 | `--no-color` | Disable color output |
 | `-v, --verbose` | Verbose output |
 
