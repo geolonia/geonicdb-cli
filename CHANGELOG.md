@@ -9,13 +9,20 @@
 
 ### 2026-03-03
 - **Feat**: `--dry-run` グローバルオプションを追加 (#42)
-- **CI**: npm OIDC Trusted Publishing でパッケージ公開 (#39, #40, #41)
+- **CI**: E2E テストジョブを CI ワークフローに追加 (#43)
+
+## [0.2.0] - 2026-03-03
+
+### 2026-03-03
 - **Feat**: npm スタイルの更新通知を追加 (#38)
 - **Test**: ユニットテストカバレッジ 100% を達成 (#36, #37)
 - **Fix**: NGSI-LD API パラメータおよびパス不具合を修正 (#35)
-- **CI**: バージョンタグによる npm publish ワークフローを追加 (#32)
+- **CI**: npm OIDC Trusted Publishing でパッケージ公開 (#39, #40, #41)
+
+## [0.1.0] - 2026-03-03
 
 ### 2026-03-02
+- **CI**: バージョンタグによる npm publish ワークフローを追加 (#32)
 - **Breaking**: `--format keyValues` を `--key-values` フラグに分離 (#31)
 - **Test**: E2E feature ファイルをサブコマンド単位に統合 (26 → 21 ファイル) (#29, #30)
 - **Fix**: 設定 URL にプロトコルがない場合の Invalid URL エラーを修正 (#28)
@@ -52,3 +59,7 @@
 
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
+
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/geolonia/geonicdb-cli/releases/tag/v0.1.0

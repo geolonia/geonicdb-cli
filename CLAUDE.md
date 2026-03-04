@@ -112,10 +112,14 @@ tests/
 
 CHANGELOG.md を Keep a Changelog 形式（日本語）で運用する。
 
+- リリースごとに `## [X.Y.Z] - YYYY-MM-DD` セクションで区切る
 - `[Unreleased]` セクション配下に日付グループ `### YYYY-MM-DD` を追加
 - 各エントリに `(#PR)` サフィックスを付与
 - カテゴリ: **Feat**, **Fix**, **Docs**, **Refactor**, **Test**, **CI**, **Breaking**, **Perf**
 - PR を出す際は CHANGELOG.md も同時に更新すること
+- ファイル末尾にバージョン比較リンクを記載する:
+  - `[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/vX.Y.Z...HEAD`
+  - `[X.Y.Z]: https://github.com/geolonia/geonicdb-cli/compare/vA.B.C...vX.Y.Z`
 
 ## Agent Naming Convention
 
