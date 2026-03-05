@@ -8,6 +8,11 @@
 ## [Unreleased]
 
 ### 2026-03-05
+- **Fix**: publish ワークフローで CI 完了をポーリング待機するよう修正（レースコンディション対策）(#52)
+
+## [0.4.0] - 2026-03-05
+
+### 2026-03-05
 - **Feat**: `geonic me oauth-clients` コマンドを追加 — ユーザー自身が OAuth Client Credentials をセルフサービスで発行・管理 (#51)
 - **Feat**: `--save` オプションで credentials を config に保存し、自動再認証を有効化 (#51)
 - **Feat**: client_credentials grant による自動トークン再取得フォールバックを追加 (#51)
@@ -70,7 +75,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/geolonia/geonicdb-cli/releases/tag/v0.1.0
