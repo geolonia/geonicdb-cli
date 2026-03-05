@@ -44,42 +44,50 @@ npm run lint && npm run typecheck && npm test
 ### Project Structure
 ```
 src/
-├── index.ts           # Entry point — parses CLI args
-├── cli.ts             # Commander program setup, registers all commands
-├── client.ts          # HTTP client for GeonicDB API
-├── config.ts          # Configuration management (~/.config/geonic/config.json)
-├── helpers.ts         # Shared utility functions
-├── input.ts           # Input parsing (JSON5, stdin auto-detect, interactive mode)
-├── output.ts          # Output formatting (json, table, geojson)
-├── types.ts           # Shared TypeScript types
-└── commands/          # One file per command group
-    ├── entities.ts    # Entity CRUD + attrs subcommand (list, get, create, update, delete, attrs)
-    ├── attrs.ts       # Attribute operations (registered as entities attrs subcommand)
-    ├── batch.ts       # entityOperations (alias: batch) — batch entity operations
-    ├── subscriptions.ts
-    ├── registrations.ts
-    ├── types.ts       # Entity type queries
-    ├── temporal.ts    # Temporal operations (temporal entities, temporal entityOperations)
-    ├── snapshots.ts   # Snapshot operations
-    ├── rules.ts       # XACML policy rules
-    ├── models.ts      # custom-data-models (alias: models) — data model management
-    ├── catalog.ts     # Data catalog (CKAN/DCAT)
-    ├── health.ts      # Health check & version
-    ├── help.ts        # wp-cli style help system
-    ├── config.ts      # Config management (set, get, list)
-    ├── profile.ts     # Profile management
-    ├── auth.ts        # Authentication (auth login, auth logout, me)
-    └── admin/         # Admin commands (tenants, users, policies, oauth-clients, cadde)
+├── index.ts              # Entry point — parses CLI args
+├── cli.ts                # Commander program setup, registers all commands
+├── client.ts             # HTTP client for GeonicDB API
+├── config.ts             # Configuration management (~/.config/geonic/config.json)
+├── helpers.ts            # Shared utility functions
+├── input.ts              # Input parsing (JSON5, stdin auto-detect, interactive mode)
+├── output.ts             # Output formatting (json, table, geojson)
+├── types.ts              # Shared TypeScript types
+├── oauth.ts              # OAuth token requests
+├── token.ts              # Token management & refresh
+├── prompt.ts             # Interactive prompts
+├── update-notifier.ts    # CLI update notification
+└── commands/             # One file per command group
+    ├── entities.ts       # Entity CRUD + attrs subcommand
+    ├── attrs.ts          # Attribute operations (entities attrs subcommand)
+    ├── batch.ts          # entityOperations (alias: batch) — batch entity operations
+    ├── subscriptions.ts  # Subscription management
+    ├── registrations.ts  # Registration management
+    ├── types.ts          # Entity type queries
+    ├── temporal.ts       # Temporal operations (temporal entities, temporal entityOperations)
+    ├── snapshots.ts      # Snapshot operations
+    ├── rules.ts          # Rule engine (ReactiveCore rules)
+    ├── models.ts         # custom-data-models (alias: models) — data model management
+    ├── catalog.ts        # Data catalog (CKAN/DCAT)
+    ├── health.ts         # Health check & version
+    ├── help.ts           # wp-cli style help system
+    ├── config.ts         # Config management (set, get, list)
+    ├── profile.ts        # Profile management
+    ├── auth.ts           # Authentication (auth login, auth logout, me)
+    ├── me-oauth-clients.ts # User's own OAuth client management (me oauth-clients)
+    ├── cli.ts            # Shell completions (cli completions)
+    └── admin/            # Admin commands
+        ├── index.ts      # Registers admin subcommands
+        ├── tenants.ts    # Tenant management
+        ├── users.ts      # User management
+        ├── policies.ts   # XACML policy management
+        └── oauth-clients.ts # OAuth client management & CADDE config
 tests/
-├── client.test.ts
-├── config.test.ts
-├── help.test.ts
-├── helpers.test.ts
-├── input.test.ts
-├── oauth.test.ts
-├── output.test.ts
-├── prompt.test.ts
-└── token.test.ts
+├── *.test.ts             # Unit tests (mirror src/ file names)
+├── setup-command-mocks.ts # Shared command test mocking
+├── test-helpers.ts       # Shared test utilities
+└── e2e/                  # E2E tests (Cucumber/step definitions)
+    ├── step_definitions/
+    └── support/
 ```
 
 ### Key Design Patterns
@@ -89,7 +97,7 @@ tests/
 - **Config**: Persistent config stored in `~/.config/geonic/config.json` (URL, service, token, etc.)
 - **Output Formatting**: Supports `json`, `table`, `geojson` via `--format` flag
 - **Help System**: wp-cli style help via `geonic help [command] [subcommand]` and `--help`
-- **Global Options**: `--url`, `--service`, `--token`, `--profile`, `--api-key`, `--format`, `--verbose`
+- **Global Options**: `--url`, `--service`, `--token`, `--profile`, `--api-key`, `--format`, `--verbose`, `--no-color`, `--dry-run`
 
 ### Build
 - **tsup**: Bundles to single ESM file (`dist/index.js`) with `#!/usr/bin/env node` banner
