@@ -1,4 +1,5 @@
 import type { ClientOptions, ClientResponse, NgsiError } from "./types.js";
+import { clientCredentialsGrant } from "./oauth.js";
 
 export class DryRunSignal extends Error {
   constructor() {
@@ -13,6 +14,8 @@ export class GdbClient {
   private token?: string;
   private refreshToken?: string;
   private apiKey?: string;
+  private clientId?: string;
+  private clientSecret?: string;
   private onTokenRefresh?: (token: string, refreshToken?: string) => void;
   private verbose: boolean;
   private dryRun: boolean;
@@ -24,6 +27,8 @@ export class GdbClient {
     this.token = options.token;
     this.refreshToken = options.refreshToken;
     this.apiKey = options.apiKey;
+    this.clientId = options.clientId;
+    this.clientSecret = options.clientSecret;
     this.onTokenRefresh = options.onTokenRefresh;
     this.verbose = options.verbose ?? false;
     this.dryRun = options.dryRun ?? false;
@@ -154,7 +159,7 @@ export class GdbClient {
   }
 
   private canRefresh(): boolean {
-    return !!this.refreshToken && !this.apiKey;
+    return (!!this.refreshToken || (!!this.clientId && !!this.clientSecret)) && !this.apiKey;
   }
 
   private async performTokenRefresh(): Promise<boolean> {
@@ -169,32 +174,50 @@ export class GdbClient {
   }
 
   private async doRefresh(): Promise<boolean> {
-    /* v8 ignore next -- canRefresh() guards this, refreshToken always exists here */
-    if (!this.refreshToken) return false;
+    // Try refreshToken first
+    if (this.refreshToken) {
+      try {
+        const url = this.buildUrl("/auth/refresh");
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refreshToken: this.refreshToken }),
+        });
 
-    try {
-      const url = this.buildUrl("/auth/refresh");
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
-      });
+        if (response.ok) {
+          const data = (await response.json()) as Record<string, unknown>;
+          const newToken = (data.accessToken ?? data.token) as string | undefined;
+          const newRefreshToken = data.refreshToken as string | undefined;
 
-      if (!response.ok) return false;
-
-      const data = (await response.json()) as Record<string, unknown>;
-      const newToken = (data.accessToken ?? data.token) as string | undefined;
-      const newRefreshToken = data.refreshToken as string | undefined;
-
-      if (!newToken) return false;
-
-      this.token = newToken;
-      if (newRefreshToken) this.refreshToken = newRefreshToken;
-      this.onTokenRefresh?.(newToken, newRefreshToken);
-      return true;
-    } catch {
-      return false;
+          if (newToken) {
+            this.token = newToken;
+            if (newRefreshToken) this.refreshToken = newRefreshToken;
+            this.onTokenRefresh?.(newToken, newRefreshToken);
+            return true;
+          }
+        }
+      } catch {
+        // Fall through to client credentials
+      }
     }
+
+    // Fallback: client_credentials grant
+    if (this.clientId && this.clientSecret) {
+      try {
+        const result = await clientCredentialsGrant({
+          baseUrl: this.baseUrl,
+          clientId: this.clientId,
+          clientSecret: this.clientSecret,
+        });
+        this.token = result.access_token;
+        this.onTokenRefresh?.(result.access_token);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    return false;
   }
 
   private async executeRequest<T>(

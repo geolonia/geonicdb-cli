@@ -12,6 +12,7 @@ import { isInteractive, promptEmail, promptPassword } from "../prompt.js";
 import { getTokenStatus, formatDuration } from "../token.js";
 import { clientCredentialsGrant } from "../oauth.js";
 import { addExamples } from "./help.js";
+import { addMeOAuthClientsSubcommand } from "./me-oauth-clients.js";
 
 function createLoginCommand(): Command {
   return new Command("login")
@@ -224,6 +225,11 @@ export function registerAuthCommands(program: Command): void {
   // me command (top-level, maps to /me API endpoint)
   const me = program
     .command("me")
+    .description("Display current authenticated user and manage user resources");
+
+  // Default action: show user info when no subcommand is given
+  const meInfo = me
+    .command("info", { isDefault: true, hidden: true })
     .description("Display current authenticated user")
     .action(createMeAction());
 
@@ -232,7 +238,21 @@ export function registerAuthCommands(program: Command): void {
       description: "Show current user info",
       command: "geonic me",
     },
+    {
+      description: "List your OAuth clients",
+      command: "geonic me oauth-clients list",
+    },
   ]);
+
+  addExamples(meInfo, [
+    {
+      description: "Show current user info",
+      command: "geonic me",
+    },
+  ]);
+
+  // Add me oauth-clients subcommands
+  addMeOAuthClientsSubcommand(me);
 
   // Backward-compatible hidden aliases
   program.addCommand(createLoginCommand(), { hidden: true });

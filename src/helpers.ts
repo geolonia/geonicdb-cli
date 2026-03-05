@@ -41,6 +41,8 @@ export function createClient(cmd: Command): GdbClient {
     service: opts.service,
     token: opts.token,
     refreshToken: usingCliToken ? undefined : config.refreshToken,
+    clientId: usingCliToken ? undefined : config.clientId,
+    clientSecret: usingCliToken ? undefined : config.clientSecret,
     apiKey: opts.apiKey,
     onTokenRefresh: usingCliToken
       ? undefined
