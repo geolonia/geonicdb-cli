@@ -9,6 +9,7 @@ Feature: User self-service OAuth client management
     When I run `geonic me oauth-clients list`
     Then the exit code should be 0
     And stdout should be valid JSON
+    And the JSON array length should be 0
 
   Scenario: Create an OAuth client
     Given I am logged in

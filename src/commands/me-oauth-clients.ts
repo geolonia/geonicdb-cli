@@ -1,8 +1,8 @@
 import type { Command } from "commander";
 import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse } from "../helpers.js";
-import { loadConfig, saveConfig } from "../config.js";
+import { loadConfig, saveConfig, validateUrl } from "../config.js";
 import { parseJsonInput } from "../input.js";
-import { printSuccess, printInfo, printWarning } from "../output.js";
+import { printSuccess, printError, printInfo, printWarning } from "../output.js";
 import { clientCredentialsGrant } from "../oauth.js";
 import { addExamples } from "./help.js";
 
@@ -68,12 +68,20 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
 
         if (opts.save) {
           const globalOpts = resolveOptions(cmd);
-          const clientId = data.clientId as string;
-          const clientSecret = data.clientSecret as string;
+          const clientId = data.clientId as string | undefined;
+          const clientSecret = data.clientSecret as string | undefined;
+
+          if (!clientId || !clientSecret) {
+            printError("Response missing clientId or clientSecret. Cannot save credentials.");
+            outputResponse(response, format);
+            printSuccess("OAuth client created.");
+            return;
+          }
 
           // Perform client_credentials grant to get a fresh token
+          const baseUrl = validateUrl(globalOpts.url!);
           const tokenResult = await clientCredentialsGrant({
-            baseUrl: globalOpts.url!,
+            baseUrl,
             clientId,
             clientSecret,
             scope: (data.allowedScopes as string[] | undefined)?.join(" "),

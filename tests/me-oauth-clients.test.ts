@@ -28,8 +28,9 @@ vi.mock("../src/commands/help.js", () => ({
 }));
 
 vi.mock("../src/config.js", () => ({
-  loadConfig: vi.fn().mockReturnValue({}),
+  loadConfig: vi.fn().mockImplementation(() => ({})),
   saveConfig: vi.fn(),
+  validateUrl: vi.fn().mockImplementation((url: string) => url),
   getCurrentProfile: vi.fn().mockReturnValue("default"),
 }));
 
