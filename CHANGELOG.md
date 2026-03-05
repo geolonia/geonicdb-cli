@@ -11,6 +11,7 @@
 - **Feat**: `geonic me oauth-clients` コマンドを追加 — ユーザー自身が OAuth Client Credentials をセルフサービスで発行・管理 (#51)
 - **Feat**: `--save` オプションで credentials を config に保存し、自動再認証を有効化 (#51)
 - **Feat**: client_credentials grant による自動トークン再取得フォールバックを追加 (#51)
+- **Fix**: publish ワークフローで CI 完了をポーリング待機するよう修正（レースコンディション対策）(#52)
 
 ### 2026-03-04
 - **CI**: npm publish 前に CI ワークフロー（E2E 含む）の成功を必須化 (#50)

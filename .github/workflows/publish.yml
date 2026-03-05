@@ -14,17 +14,29 @@ jobs:
   verify-ci:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify CI workflow passed for this commit
+      - name: Wait for CI workflow and verify it passed
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          echo "Checking CI status for commit ${{ github.sha }}..."
+          echo "Waiting for CI workflow to complete for commit ${{ github.sha }}..."
 
-          CONCLUSION=$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${{ github.sha }}&status=completed&event=push&branch=main" \
-            --jq '.workflow_runs[0].conclusion')
+          MAX_ATTEMPTS=30
+          INTERVAL=10
+
+          for i in $(seq 1 $MAX_ATTEMPTS); do
+            CONCLUSION=$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=${{ github.sha }}&event=push&branch=main" \
+              --jq '.workflow_runs[0].conclusion')
+
+            if [ -n "$CONCLUSION" ] && [ "$CONCLUSION" != "null" ]; then
+              break
+            fi
+
+            echo "Attempt $i/$MAX_ATTEMPTS: CI not yet completed, waiting ${INTERVAL}s..."
+            sleep $INTERVAL
+          done
 
           if [ -z "$CONCLUSION" ] || [ "$CONCLUSION" = "null" ]; then
-            echo "::error::No completed CI workflow run found for commit ${{ github.sha }}. Push to main and wait for CI to pass before tagging."
+            echo "::error::CI workflow did not complete within $((MAX_ATTEMPTS * INTERVAL))s for commit ${{ github.sha }}."
             exit 1
           fi
 
