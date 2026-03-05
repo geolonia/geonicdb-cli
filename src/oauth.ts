@@ -14,19 +14,18 @@ export async function clientCredentialsGrant(options: {
   const url = new URL("/oauth/token", options.baseUrl).toString();
   const credentials = Buffer.from(`${options.clientId}:${options.clientSecret}`).toString("base64");
 
-  const params = new URLSearchParams();
-  params.set("grant_type", "client_credentials");
+  const body: Record<string, string> = { grant_type: "client_credentials" };
   if (options.scope) {
-    params.set("scope", options.scope);
+    body.scope = options.scope;
   }
 
   const response = await fetch(url, {
     method: "POST",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Type": "application/json",
       Authorization: `Basic ${credentials}`,
     },
-    body: params.toString(),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {

@@ -7,6 +7,8 @@ export interface GdbConfig {
   refreshToken?: string;
   format?: OutputFormat;
   apiKey?: string;
+  clientId?: string;
+  clientSecret?: string;
 }
 
 export interface GdbConfigFile {
@@ -33,6 +35,8 @@ export interface ClientOptions {
   token?: string;
   refreshToken?: string;
   apiKey?: string;
+  clientId?: string;
+  clientSecret?: string;
   onTokenRefresh?: (token: string, refreshToken?: string) => void;
   verbose?: boolean;
   dryRun?: boolean;

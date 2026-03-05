@@ -36,16 +36,16 @@ describe("OAuth", () => {
       const [calledUrl, calledOpts] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
       expect(calledUrl).toBe("http://localhost:3000/oauth/token");
       expect(calledOpts.method).toBe("POST");
-      expect(calledOpts.headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
+      expect(calledOpts.headers["Content-Type"]).toBe("application/json");
 
       // Check Basic Auth header
       const expectedAuth = Buffer.from("my-client:my-secret").toString("base64");
       expect(calledOpts.headers.Authorization).toBe(`Basic ${expectedAuth}`);
 
       // Check body
-      const body = calledOpts.body as string;
-      expect(body).toContain("grant_type=client_credentials");
-      expect(body).toContain("scope=read%3Aentities");
+      const body = JSON.parse(calledOpts.body as string);
+      expect(body.grant_type).toBe("client_credentials");
+      expect(body.scope).toBe("read:entities");
     });
 
     it("sends request without scope when not provided", async () => {
@@ -62,8 +62,8 @@ describe("OAuth", () => {
         clientSecret: "my-secret",
       });
 
-      const body = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string;
-      expect(body).toBe("grant_type=client_credentials");
+      const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string);
+      expect(body).toEqual({ grant_type: "client_credentials" });
     });
 
     it("throws on error response with error_description", async () => {
