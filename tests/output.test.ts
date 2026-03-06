@@ -101,6 +101,125 @@ describe("output", () => {
       expect(result).toContain('{"nested":true,"count":5}');
     });
 
+    it("formats GeoProperty Point as readable coordinates (NGSIv2)", () => {
+      const data = [
+        {
+          id: "e1",
+          location: {
+            type: "geo:json",
+            value: { type: "Point", coordinates: [139.7, 35.6] },
+          },
+        },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      expect(result).toContain("Point(139.70, 35.60)");
+    });
+
+    it("formats GeoProperty Point as readable coordinates (NGSI-LD)", () => {
+      const data = [
+        {
+          id: "e1",
+          location: {
+            type: "GeoProperty",
+            value: { type: "Point", coordinates: [139.7, 35.6] },
+          },
+        },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      expect(result).toContain("Point(139.70, 35.60)");
+    });
+
+    it("formats GeoJSON directly in keyValues mode", () => {
+      const data = [
+        {
+          id: "e1",
+          location: { type: "Point", coordinates: [139.7, 35.6] },
+        },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      expect(result).toContain("Point(139.70, 35.60)");
+    });
+
+    it("formats LineString with coordinate count", () => {
+      const data = [
+        {
+          id: "e1",
+          route: {
+            type: "GeoProperty",
+            value: {
+              type: "LineString",
+              coordinates: [
+                [139.7, 35.6],
+                [139.8, 35.7],
+                [139.9, 35.8],
+              ],
+            },
+          },
+        },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      expect(result).toContain("LineString(3 coords)");
+    });
+
+    it("formats Polygon with coordinate count", () => {
+      const data = [
+        {
+          id: "e1",
+          area: {
+            type: "GeoProperty",
+            value: {
+              type: "Polygon",
+              coordinates: [
+                [
+                  [139.7, 35.6],
+                  [139.8, 35.6],
+                  [139.8, 35.7],
+                  [139.7, 35.6],
+                ],
+              ],
+            },
+          },
+        },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      expect(result).toContain("Polygon(4 coords)");
+    });
+
+    it("formats MultiPoint with coordinate count", () => {
+      const data = [
+        {
+          id: "e1",
+          stops: {
+            type: "GeoProperty",
+            value: {
+              type: "MultiPoint",
+              coordinates: [
+                [139.7, 35.6],
+                [139.8, 35.7],
+                [139.9, 35.8],
+              ],
+            },
+          },
+        },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      expect(result).toContain("MultiPoint(3 coords)");
+    });
+
+    it("handles Polygon with empty coordinates", () => {
+      const data = [
+        {
+          id: "e1",
+          area: {
+            type: "GeoProperty",
+            value: { type: "Polygon", coordinates: [] },
+          },
+        },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      expect(result).toContain("Polygon(0 coords)");
+    });
+
     it("returns empty string for null/undefined values", () => {
       const data = [{ id: "e1", n: null, u: undefined }];
       const result = stripAnsi(formatOutput(data, "table"));

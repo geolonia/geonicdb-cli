@@ -98,14 +98,38 @@ function collectKeys(items: Record<string, unknown>[]): string[] {
   return sorted;
 }
 
+function formatGeoJSON(geo: Record<string, unknown>): string {
+  const geoType = String(geo.type);
+  const coords = geo.coordinates;
+  if (geoType === "Point" && Array.isArray(coords) && coords.length >= 2) {
+    return `Point(${Number(coords[0]).toFixed(2)}, ${Number(coords[1]).toFixed(2)})`;
+  }
+  if (Array.isArray(coords)) {
+    const count = geoType === "Polygon"
+      ? (Array.isArray(coords[0]) ? (coords[0] as unknown[]).length : 0)
+      : coords.length;
+    return `${geoType}(${count} coords)`;
+  }
+  return `${geoType}(...)`;
+}
+
+function isGeoJSON(v: unknown): boolean {
+  if (typeof v !== "object" || v === null) return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.type === "string" && "coordinates" in o;
+}
+
 function cellValue(val: unknown): string {
   if (val === undefined || val === null) return "";
-  if (typeof val === "object") {
-    const obj = val as Record<string, unknown>;
-    if ("value" in obj) return String(obj.value);
-    return JSON.stringify(val);
+  if (typeof val !== "object") return String(val);
+  const obj = val as Record<string, unknown>;
+  if (isGeoJSON(obj)) return formatGeoJSON(obj);
+  if ("value" in obj) {
+    const v = obj.value;
+    if (isGeoJSON(v)) return formatGeoJSON(v as Record<string, unknown>);
+    return String(v);
   }
-  return String(val);
+  return JSON.stringify(val);
 }
 
 function toGeoJSON(data: unknown): unknown {
