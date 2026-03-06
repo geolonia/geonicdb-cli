@@ -185,6 +185,41 @@ describe("output", () => {
       expect(result).toContain("Polygon(4 coords)");
     });
 
+    it("formats MultiPoint with coordinate count", () => {
+      const data = [
+        {
+          id: "e1",
+          stops: {
+            type: "GeoProperty",
+            value: {
+              type: "MultiPoint",
+              coordinates: [
+                [139.7, 35.6],
+                [139.8, 35.7],
+                [139.9, 35.8],
+              ],
+            },
+          },
+        },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      expect(result).toContain("MultiPoint(3 coords)");
+    });
+
+    it("handles Polygon with empty coordinates", () => {
+      const data = [
+        {
+          id: "e1",
+          area: {
+            type: "GeoProperty",
+            value: { type: "Polygon", coordinates: [] },
+          },
+        },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      expect(result).toContain("Polygon(0 coords)");
+    });
+
     it("returns empty string for null/undefined values", () => {
       const data = [{ id: "e1", n: null, u: undefined }];
       const result = stripAnsi(formatOutput(data, "table"));

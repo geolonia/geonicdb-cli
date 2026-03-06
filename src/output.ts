@@ -105,7 +105,9 @@ function formatGeoJSON(geo: Record<string, unknown>): string {
     return `Point(${Number(coords[0]).toFixed(2)}, ${Number(coords[1]).toFixed(2)})`;
   }
   if (Array.isArray(coords)) {
-    const count = geoType === "Polygon" ? (coords[0] as unknown[]).length : coords.length;
+    const count = geoType === "Polygon"
+      ? (Array.isArray(coords[0]) ? (coords[0] as unknown[]).length : 0)
+      : coords.length;
     return `${geoType}(${count} coords)`;
   }
   return `${geoType}(...)`;
