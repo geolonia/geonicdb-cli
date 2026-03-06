@@ -32,7 +32,7 @@ vi.mock("../src/commands/attrs.js", () => ({
 
 import { createClient, getFormat, outputResponse } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
-import { printSuccess } from "../src/output.js";
+import { printCount, printSuccess } from "../src/output.js";
 import { registerEntitiesCommand } from "../src/commands/entities.js";
 
 describe("entities command", () => {
@@ -131,6 +131,26 @@ describe("entities command", () => {
 
       expect(mockClient.get).toHaveBeenCalledWith("/entities", expect.objectContaining({ count: "true" }));
       expect(outputResponse).toHaveBeenCalledWith(expect.anything(), "json", true);
+    });
+
+    it("passes count-only option with limit=0 and only shows count", async () => {
+      mockClient.get.mockResolvedValue(mockResponse([], 200, 42));
+      await runCommand(program, ["entities", "list", "--count-only"]);
+
+      expect(mockClient.get).toHaveBeenCalledWith("/entities", expect.objectContaining({
+        count: "true",
+        limit: "0",
+      }));
+      expect(printCount).toHaveBeenCalledWith(42);
+      expect(outputResponse).not.toHaveBeenCalled();
+    });
+
+    it("count-only defaults to 0 when response has no count", async () => {
+      mockClient.get.mockResolvedValue(mockResponse([]));
+      await runCommand(program, ["entities", "list", "--count-only"]);
+
+      expect(printCount).toHaveBeenCalledWith(0);
+      expect(outputResponse).not.toHaveBeenCalled();
     });
 
     it("passes keyValues option as options=keyValues", async () => {

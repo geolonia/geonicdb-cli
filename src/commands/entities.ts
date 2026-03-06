@@ -6,7 +6,7 @@ import {
   outputResponse,
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
-import { printSuccess } from "../output.js";
+import { printCount, printSuccess } from "../output.js";
 import { registerAttrsSubcommand } from "./attrs.js";
 import { addExamples } from "./help.js";
 
@@ -31,6 +31,7 @@ export function registerEntitiesCommand(program: Command): void {
     .option("--offset <n>", "Skip first N entities", parseInt)
     .option("--order-by <field>", "Order results by field")
     .option("--count", "Include total count in response")
+    .option("--count-only", "Only show the total count without listing entities")
     .option("--key-values", "Request simplified key-value format")
     .action(
       withErrorHandler(async (opts: Record<string, unknown>, cmd: Command) => {
@@ -50,11 +51,16 @@ export function registerEntitiesCommand(program: Command): void {
         if (opts.limit !== undefined) params.limit = String(opts.limit);
         if (opts.offset !== undefined) params.offset = String(opts.offset);
         if (opts.orderBy) params.orderBy = String(opts.orderBy);
-        if (opts.count) params.count = "true";
+        if (opts.count || opts.countOnly) params.count = "true";
+        if (opts.countOnly) params.limit = "0";
         if (opts.keyValues) params.options = "keyValues";
 
         const response = await client.get("/entities", params);
-        outputResponse(response, format, !!opts.count);
+        if (opts.countOnly) {
+          printCount(response.count ?? 0);
+        } else {
+          outputResponse(response, format, !!opts.count);
+        }
       }),
     );
 
@@ -116,6 +122,10 @@ export function registerEntitiesCommand(program: Command): void {
     {
       description: "Get total count with results",
       command: "geonic entities list --type Sensor --count",
+    },
+    {
+      description: "Get only the total count (no entity data)",
+      command: "geonic entities list --type Sensor --count-only",
     },
   ]);
 
