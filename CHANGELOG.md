@@ -7,8 +7,15 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-03-06
+
+### 2026-03-06
+- **Feat**: `entities list` に `--count-only` オプションを追加 (#55)
+- **Fix**: GeoProperty をテーブル表示で読みやすい座標形式にフォーマット (#54)
+
 ### 2026-03-05
 - **Fix**: publish ワークフローで CI 完了をポーリング待機するよう修正（レースコンディション対策）(#52)
+- **Docs**: CLAUDE.md を現状の実装に合わせて更新 (#53)
 
 ## [0.4.0] - 2026-03-05
 
@@ -75,7 +82,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.1.0...v0.2.0
