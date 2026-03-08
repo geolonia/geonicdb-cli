@@ -31,8 +31,13 @@ function buildBodyFromFlags(opts: Record<string, unknown>): Record<string, unkno
   if (opts.origins) payload.allowedOrigins = (opts.origins as string).split(",").map((s: string) => s.trim()).filter(Boolean);
   if (opts.entityTypes) payload.allowedEntityTypes = (opts.entityTypes as string).split(",").map((s: string) => s.trim()).filter(Boolean);
   if (opts.rateLimit) {
-    const perMinute = parseInt(opts.rateLimit as string, 10);
-    if (isNaN(perMinute) || perMinute <= 0) {
+    const raw = String(opts.rateLimit).trim();
+    if (!/^\d+$/.test(raw)) {
+      printError("--rate-limit must be a positive integer.");
+      process.exit(1);
+    }
+    const perMinute = Number(raw);
+    if (perMinute <= 0) {
       printError("--rate-limit must be a positive integer.");
       process.exit(1);
     }
@@ -147,9 +152,9 @@ export function registerApiKeysCommand(parent: Command): void {
           const globalOpts = resolveOptions(cmd);
           const key = data.key as string | undefined;
           if (!key) {
-            printError("Response missing key. Cannot save API key.");
+            printError("Response missing key. API key was created, but it could not be saved.");
             outputResponse(response, format);
-            console.error("API key created.");
+            process.exitCode = 1;
             return;
           }
           const config = loadConfig(globalOpts.profile);

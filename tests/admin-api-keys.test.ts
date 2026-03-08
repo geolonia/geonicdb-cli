@@ -49,6 +49,7 @@ describe("admin api-keys commands", () => {
     vi.mocked(createClient).mockReturnValue(client as never);
     vi.mocked(getFormat).mockReturnValue("json");
     consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    process.exitCode = undefined;
   });
 
   function makeProgram() {
@@ -230,9 +231,9 @@ describe("admin api-keys commands", () => {
           "--save",
         ]);
 
-        expect(printError).toHaveBeenCalledWith("Response missing key. Cannot save API key.");
+        expect(printError).toHaveBeenCalledWith("Response missing key. API key was created, but it could not be saved.");
         expect(saveConfig).not.toHaveBeenCalled();
-        expect(consoleSpy).toHaveBeenCalledWith("API key created.");
+        expect(process.exitCode).toBe(1);
       } finally {
         process.stdin.isTTY = isTTY;
       }

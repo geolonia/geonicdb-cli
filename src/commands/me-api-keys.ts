@@ -51,6 +51,15 @@ export function addMeApiKeysSubcommand(me: Command): void {
           save?: boolean;
         };
 
+        // Validate --origins flag early
+        if (opts.origins !== undefined) {
+          const parsed = opts.origins.split(",").map((s: string) => s.trim()).filter(Boolean);
+          if (parsed.length === 0) {
+            printError("allowedOrigins must contain at least 1 item. Use '*' to allow all origins.");
+            process.exit(1);
+          }
+        }
+
         let body: unknown;
         if (json) {
           body = await parseJsonInput(json as string | undefined);
@@ -61,8 +70,13 @@ export function addMeApiKeysSubcommand(me: Command): void {
           if (opts.origins) payload.allowedOrigins = opts.origins.split(",").map((s: string) => s.trim()).filter(Boolean);
           if (opts.entityTypes) payload.allowedEntityTypes = opts.entityTypes.split(",").map((s: string) => s.trim()).filter(Boolean);
           if (opts.rateLimit) {
-            const perMinute = parseInt(opts.rateLimit, 10);
-            if (isNaN(perMinute) || perMinute <= 0) {
+            const raw = opts.rateLimit.trim();
+            if (!/^\d+$/.test(raw)) {
+              printError("--rate-limit must be a positive integer.");
+              process.exit(1);
+            }
+            const perMinute = Number(raw);
+            if (perMinute <= 0) {
               printError("--rate-limit must be a positive integer.");
               process.exit(1);
             }
@@ -73,14 +87,7 @@ export function addMeApiKeysSubcommand(me: Command): void {
           body = await parseJsonInput();
         }
 
-        // Validate allowedOrigins is not empty (Issue #58)
-        if (opts.origins !== undefined) {
-          const origins = opts.origins.split(",").map((s: string) => s.trim()).filter(Boolean);
-          if (origins.length === 0) {
-            printError("allowedOrigins must contain at least 1 item. Use '*' to allow all origins.");
-            process.exit(1);
-          }
-        }
+        // Validate allowedOrigins from JSON input
         if (body && typeof body === "object" && "allowedOrigins" in (body as Record<string, unknown>)) {
           const origins = (body as Record<string, unknown>).allowedOrigins;
           if (Array.isArray(origins) && origins.filter((o: unknown) => typeof o === "string" && o.trim() !== "").length === 0) {
@@ -99,9 +106,9 @@ export function addMeApiKeysSubcommand(me: Command): void {
           const globalOpts = resolveOptions(cmd);
           const key = data.key as string | undefined;
           if (!key) {
-            printError("Response missing key. Cannot save API key.");
+            printError("Response missing key. API key was created, but it could not be saved.");
             outputResponse(response, format);
-            console.error("API key created.");
+            process.exitCode = 1;
             return;
           }
           const config = loadConfig(globalOpts.profile);
