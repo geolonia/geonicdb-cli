@@ -45,18 +45,20 @@ vi.mock("../src/oauth.js", () => ({
 
 import { createClient, getFormat, outputResponse, resolveOptions } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
-import { printSuccess, printError, printWarning } from "../src/output.js";
+import { printError, printWarning } from "../src/output.js";
 import { saveConfig } from "../src/config.js";
 import { registerAuthCommands } from "../src/commands/auth.js";
 
 describe("me api-keys commands", () => {
   let client: MockClient;
+  let consoleSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     client = createMockClient();
     vi.mocked(createClient).mockReturnValue(client as never);
     vi.mocked(getFormat).mockReturnValue("json");
+    consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   function makeProgram() {
@@ -92,7 +94,7 @@ describe("me api-keys commands", () => {
       expect(printWarning).toHaveBeenCalledWith(
         "Save the API key now — it will not be shown again. Use --save to store it automatically.",
       );
-      expect(printSuccess).toHaveBeenCalledWith("API key created.");
+      expect(consoleSpy).toHaveBeenCalledWith("API key created.");
     });
 
     it("builds body from flags", async () => {
@@ -142,7 +144,7 @@ describe("me api-keys commands", () => {
           expect.objectContaining({ apiKey: "gdb_saved123" }),
           "default",
         );
-        expect(printSuccess).toHaveBeenCalledWith(
+        expect(consoleSpy).toHaveBeenCalledWith(
           "API key saved to config. X-Api-Key header will be sent automatically.",
         );
         expect(printWarning).not.toHaveBeenCalled();
@@ -207,7 +209,7 @@ describe("me api-keys commands", () => {
 
         expect(printError).toHaveBeenCalledWith("Response missing key. Cannot save API key.");
         expect(saveConfig).not.toHaveBeenCalled();
-        expect(printSuccess).toHaveBeenCalledWith("API key created.");
+        expect(consoleSpy).toHaveBeenCalledWith("API key created.");
       } finally {
         process.stdin.isTTY = isTTY;
       }
@@ -271,7 +273,7 @@ describe("me api-keys commands", () => {
       const program = makeProgram();
       await runCommand(program, ["me", "api-keys", "delete", "k1"]);
       expect(client.rawRequest).toHaveBeenCalledWith("DELETE", "/me/api-keys/k1");
-      expect(printSuccess).toHaveBeenCalledWith("API key deleted.");
+      expect(consoleSpy).toHaveBeenCalledWith("API key deleted.");
     });
 
     it("encodes special characters in keyId", async () => {

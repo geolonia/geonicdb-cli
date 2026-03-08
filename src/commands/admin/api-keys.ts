@@ -2,7 +2,7 @@ import type { Command } from "commander";
 import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse } from "../../helpers.js";
 import { loadConfig, saveConfig } from "../../config.js";
 import { parseJsonInput } from "../../input.js";
-import { printSuccess, printError, printWarning } from "../../output.js";
+import { printError, printWarning } from "../../output.js";
 import { addExamples } from "../help.js";
 
 function validateOrigins(body: unknown, opts: Record<string, unknown>): void {
@@ -27,7 +27,7 @@ function validateOrigins(body: unknown, opts: Record<string, unknown>): void {
 function buildBodyFromFlags(opts: Record<string, unknown>): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   if (opts.name) payload.name = opts.name;
-  if (opts.scopes) payload.allowedScopes = (opts.scopes as string).split(",").map((s: string) => s.trim());
+  if (opts.scopes) payload.allowedScopes = (opts.scopes as string).split(",").map((s: string) => s.trim()).filter(Boolean);
   if (opts.origins) payload.allowedOrigins = (opts.origins as string).split(",").map((s: string) => s.trim()).filter(Boolean);
   if (opts.entityTypes) payload.allowedEntityTypes = (opts.entityTypes as string).split(",").map((s: string) => s.trim()).filter(Boolean);
   if (opts.rateLimit) {
@@ -149,19 +149,19 @@ export function registerApiKeysCommand(parent: Command): void {
           if (!key) {
             printError("Response missing key. Cannot save API key.");
             outputResponse(response, format);
-            printSuccess("API key created.");
+            console.error("API key created.");
             return;
           }
           const config = loadConfig(globalOpts.profile);
           config.apiKey = key;
           saveConfig(config, globalOpts.profile);
-          printSuccess("API key saved to config. X-Api-Key header will be sent automatically.");
+          console.error("API key saved to config. X-Api-Key header will be sent automatically.");
         } else {
           printWarning("Save the API key now — it will not be shown again. Use --save to store it automatically.");
         }
 
         outputResponse(response, format);
-        printSuccess("API key created.");
+        console.error("API key created.");
       }),
     );
 
@@ -217,7 +217,7 @@ export function registerApiKeysCommand(parent: Command): void {
             { body },
           );
           outputResponse(response, format);
-          printSuccess("API key updated.");
+          console.error("API key updated.");
         },
       ),
     );
@@ -244,7 +244,7 @@ export function registerApiKeysCommand(parent: Command): void {
           "DELETE",
           `/admin/api-keys/${encodeURIComponent(String(keyId))}`,
         );
-        printSuccess("API key deleted.");
+        console.error("API key deleted.");
       }),
     );
 
