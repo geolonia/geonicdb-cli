@@ -43,8 +43,7 @@ export class GdbClient {
 
     if (this.token) {
       headers["Authorization"] = `Bearer ${this.token}`;
-    }
-    if (this.apiKey) {
+    } else if (this.apiKey) {
       headers["X-Api-Key"] = this.apiKey;
     }
 
