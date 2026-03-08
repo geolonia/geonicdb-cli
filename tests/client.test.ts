@@ -171,6 +171,9 @@ describe("GdbClient", () => {
           }),
         }),
       );
+
+      const callHeaders = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].headers;
+      expect(callHeaders).not.toHaveProperty("X-Api-Key");
     });
   });
 

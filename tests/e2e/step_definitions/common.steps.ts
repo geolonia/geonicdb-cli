@@ -84,6 +84,10 @@ Then("stdout should contain {string}", function (this: GdbWorld, text: string) {
   assert.ok(this.lastResult.stdout.includes(text), `Expected stdout to contain "${text}".\nstdout: ${this.lastResult.stdout}`);
 });
 
+Then("stdout should not contain {string}", function (this: GdbWorld, text: string) {
+  assert.ok(!this.lastResult.stdout.includes(text), `Expected stdout NOT to contain "${text}".\nstdout: ${this.lastResult.stdout}`);
+});
+
 Then("stderr should contain {string}", function (this: GdbWorld, text: string) {
   assert.ok(this.lastResult.stderr.includes(text), `Expected stderr to contain "${text}".\nstderr: ${this.lastResult.stderr}`);
 });
