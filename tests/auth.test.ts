@@ -31,6 +31,7 @@ vi.mock("../src/config.js", () => ({
   loadConfig: vi.fn(() => ({})),
   saveConfig: vi.fn(),
   getCurrentProfile: vi.fn(() => "default"),
+  validateUrl: vi.fn((url: string) => url.replace(/\/+$/, "") + "/"),
 }));
 
 vi.mock("../src/prompt.js", () => ({
@@ -486,6 +487,223 @@ describe("auth commands", () => {
       const program = makeProgram();
       await runCommand(program, ["me"]);
       expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me");
+    });
+  });
+
+  describe("auth nonce", () => {
+    let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ nonce: "abc123", challenge: "deadbeef", difficulty: 4 }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "http://localhost:3000",
+        profile: "default",
+        apiKey: "gdb_testkey",
+      } as never);
+    });
+
+    afterEach(() => {
+      fetchSpy.mockRestore();
+    });
+
+    it("requests nonce with API key in body and outputs response", async () => {
+      const program = makeProgram();
+      await runCommand(program, ["auth", "nonce"]);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.stringContaining("/auth/nonce"),
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ api_key: "gdb_testkey" }),
+          headers: expect.objectContaining({ "Origin": expect.any(String) }),
+        }),
+      );
+      expect(outputResponse).toHaveBeenCalled();
+    });
+
+    it("uses apiKey from resolvedOptions when --api-key flag is not provided", async () => {
+      const program = makeProgram();
+      await runCommand(program, ["auth", "nonce"]);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          body: JSON.stringify({ api_key: "gdb_testkey" }),
+        }),
+      );
+    });
+
+    it("errors when no API key is available", async () => {
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "http://localhost:3000",
+        profile: "default",
+      } as never);
+      const program = makeProgram();
+      await expect(runCommand(program, ["auth", "nonce"])).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("API key is required"));
+    });
+
+    it("errors when no URL is configured", async () => {
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: undefined,
+        profile: "default",
+        apiKey: "gdb_key",
+      } as never);
+      const program = makeProgram();
+      await expect(runCommand(program, ["auth", "nonce"])).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("No URL configured"));
+    });
+
+    it("throws on non-ok response with body", async () => {
+      fetchSpy.mockResolvedValue(
+        new Response("Bad Request", { status: 400 }),
+      );
+      const program = makeProgram();
+      await expect(runCommand(program, ["auth", "nonce"])).rejects.toThrow("Nonce request failed: Bad Request");
+    });
+
+    it("throws with HTTP status fallback when response body is empty", async () => {
+      fetchSpy.mockResolvedValue(
+        new Response("", { status: 403 }),
+      );
+      const program = makeProgram();
+      await expect(runCommand(program, ["auth", "nonce"])).rejects.toThrow("Nonce request failed: HTTP 403");
+    });
+  });
+
+  describe("auth token-exchange", () => {
+    let fetchSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "http://localhost:3000",
+        profile: "default",
+        apiKey: "gdb_testkey",
+      } as never);
+    });
+
+    afterEach(() => {
+      if (fetchSpy) fetchSpy.mockRestore();
+    });
+
+    it("performs full nonce → PoW → token exchange flow", async () => {
+      fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        const urlStr = String(url);
+        if (urlStr.includes("/auth/nonce")) {
+          return new Response(
+            JSON.stringify({ nonce: "test-nonce", challenge: "abcd1234", difficulty: 1 }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (urlStr.includes("/oauth/token")) {
+          return new Response(
+            JSON.stringify({ access_token: "jwt-from-exchange", token_type: "Bearer", expires_in: 3600 }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response("Not Found", { status: 404 });
+      });
+
+      const program = makeProgram();
+      await runCommand(program, ["auth", "token-exchange", "--api-key", "gdb_mykey"]);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(printInfo).toHaveBeenCalledWith(expect.stringContaining("Solving PoW"));
+      expect(outputResponse).toHaveBeenCalled();
+      expect(printSuccess).toHaveBeenCalledWith("Token exchange successful.");
+    });
+
+    it("saves token to config with --save", async () => {
+      fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        const urlStr = String(url);
+        if (urlStr.includes("/auth/nonce")) {
+          return new Response(
+            JSON.stringify({ nonce: "test-nonce", challenge: "abcd1234", difficulty: 1 }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(
+          JSON.stringify({ access_token: "saved-jwt", token_type: "Bearer" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      });
+
+      const program = makeProgram();
+      await runCommand(program, ["auth", "token-exchange", "--save"]);
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "saved-jwt" }),
+        "default",
+      );
+      expect(printSuccess).toHaveBeenCalledWith("Token exchange successful. Token saved to config.");
+    });
+
+    it("errors when no API key is available", async () => {
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "http://localhost:3000",
+        profile: "default",
+      } as never);
+      const program = makeProgram();
+      await expect(runCommand(program, ["auth", "token-exchange"])).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("API key is required"));
+    });
+
+    it("errors when no URL is configured", async () => {
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: undefined,
+        profile: "default",
+        apiKey: "gdb_key",
+      } as never);
+      const program = makeProgram();
+      await expect(runCommand(program, ["auth", "token-exchange"])).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("No URL configured"));
+    });
+
+    it("throws when nonce request fails with body", async () => {
+      fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response("Server Error", { status: 500 }),
+      );
+      const program = makeProgram();
+      await expect(runCommand(program, ["auth", "token-exchange"])).rejects.toThrow("Nonce request failed: Server Error");
+    });
+
+    it("throws when nonce request fails with empty body", async () => {
+      fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response("", { status: 500 }),
+      );
+      const program = makeProgram();
+      await expect(runCommand(program, ["auth", "token-exchange"])).rejects.toThrow("Nonce request failed: HTTP 500");
+    });
+
+    it("throws when token exchange request fails with body", async () => {
+      fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        const urlStr = String(url);
+        if (urlStr.includes("/auth/nonce")) {
+          return new Response(
+            JSON.stringify({ nonce: "test-nonce", challenge: "abcd1234", difficulty: 1 }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response("Invalid PoW", { status: 400 });
+      });
+      const program = makeProgram();
+      await expect(runCommand(program, ["auth", "token-exchange"])).rejects.toThrow("Token exchange failed: Invalid PoW");
+    });
+
+    it("throws when token exchange request fails with empty body", async () => {
+      fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        const urlStr = String(url);
+        if (urlStr.includes("/auth/nonce")) {
+          return new Response(
+            JSON.stringify({ nonce: "test-nonce", challenge: "abcd1234", difficulty: 1 }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response("", { status: 401 });
+      });
+      const program = makeProgram();
+      await expect(runCommand(program, ["auth", "token-exchange"])).rejects.toThrow("Token exchange failed: HTTP 401");
     });
   });
 

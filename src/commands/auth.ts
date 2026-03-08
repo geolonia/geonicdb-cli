@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Command } from "commander";
 import {
   withErrorHandler,
@@ -6,13 +7,14 @@ import {
   getFormat,
   outputResponse,
 } from "../helpers.js";
-import { loadConfig, saveConfig, getCurrentProfile } from "../config.js";
+import { loadConfig, saveConfig, getCurrentProfile, validateUrl } from "../config.js";
 import { printSuccess, printError, printInfo, printWarning } from "../output.js";
 import { isInteractive, promptEmail, promptPassword } from "../prompt.js";
 import { getTokenStatus, formatDuration } from "../token.js";
 import { clientCredentialsGrant } from "../oauth.js";
 import { addExamples } from "./help.js";
 import { addMeOAuthClientsSubcommand } from "./me-oauth-clients.js";
+import { addMeApiKeysSubcommand } from "./me-api-keys.js";
 
 function createLoginCommand(): Command {
   return new Command("login")
@@ -185,6 +187,155 @@ function createMeAction() {
   });
 }
 
+async function fetchNonce(
+  baseUrl: string,
+  apiKey: string,
+): Promise<{ nonce: string; challenge: string; difficulty: number }> {
+  const origin = new URL(baseUrl).origin;
+  const url = new URL("/auth/nonce", baseUrl).toString();
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Origin": origin,
+    },
+    body: JSON.stringify({ api_key: apiKey }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Nonce request failed: ${text || `HTTP ${response.status}`}`);
+  }
+
+  return (await response.json()) as { nonce: string; challenge: string; difficulty: number };
+}
+
+function createNonceCommand(): Command {
+  return new Command("nonce")
+    .description("Get a nonce and PoW challenge for API key authentication")
+    .option("--api-key <key>", "API key to get nonce for")
+    .action(
+      withErrorHandler(async (...args: unknown[]) => {
+        const cmd = args[args.length - 1] as Command;
+        const nonceOpts = cmd.opts() as { apiKey?: string };
+        const globalOpts = resolveOptions(cmd);
+        const apiKey = nonceOpts.apiKey ?? globalOpts.apiKey;
+
+        if (!apiKey) {
+          printError("API key is required. Use --api-key or configure it with `geonic config set api-key <key>`.");
+          process.exit(1);
+        }
+        if (!globalOpts.url) {
+          printError("No URL configured. Use `geonic config set url <url>` or pass --url.");
+          process.exit(1);
+        }
+
+        const baseUrl = validateUrl(globalOpts.url);
+        const data = await fetchNonce(baseUrl, apiKey);
+        const format = getFormat(cmd);
+        outputResponse({ status: 200, headers: new Headers(), data }, format);
+      }),
+    );
+}
+
+function hasLeadingZeroBits(hash: Buffer, bits: number): boolean {
+  const fullBytes = Math.floor(bits / 8);
+  const remainingBits = bits % 8;
+  for (let i = 0; i < fullBytes; i++) {
+    if (hash[i] !== 0) return false;
+  }
+  if (remainingBits > 0) {
+    const mask = 0xff << (8 - remainingBits);
+    if ((hash[fullBytes] & mask) !== 0) return false;
+  }
+  return true;
+}
+
+const MAX_POW_ITERATIONS = 10_000_000;
+
+function solvePoW(challenge: string, difficulty: number): number {
+  for (let nonce = 0; nonce < MAX_POW_ITERATIONS; nonce++) {
+    const hash = createHash("sha256")
+      .update(`${challenge}${nonce}`)
+      .digest();
+    if (hasLeadingZeroBits(hash, difficulty)) return nonce;
+  }
+  throw new Error(`PoW could not be solved within ${MAX_POW_ITERATIONS} iterations`);
+}
+
+function createTokenExchangeCommand(): Command {
+  return new Command("token-exchange")
+    .description("Exchange API key for a session JWT via nonce + PoW")
+    .option("--api-key <key>", "API key to exchange")
+    .option("--save", "Save the obtained token to profile config")
+    .action(
+      withErrorHandler(async (...args: unknown[]) => {
+        const cmd = args[args.length - 1] as Command;
+        const exchangeOpts = cmd.opts() as { apiKey?: string; save?: boolean };
+        const globalOpts = resolveOptions(cmd);
+        const apiKey = exchangeOpts.apiKey ?? globalOpts.apiKey;
+
+        if (!apiKey) {
+          printError("API key is required. Use --api-key or configure it with `geonic config set api-key <key>`.");
+          process.exit(1);
+        }
+        if (!globalOpts.url) {
+          printError("No URL configured. Use `geonic config set url <url>` or pass --url.");
+          process.exit(1);
+        }
+
+        const baseUrl = validateUrl(globalOpts.url);
+        const origin = new URL(baseUrl).origin;
+
+        // Step 1: Get nonce
+        const nonceData = await fetchNonce(baseUrl, apiKey);
+
+        printInfo(`Nonce received. Solving PoW (difficulty=${nonceData.difficulty})...`);
+
+        // Step 2: Solve PoW
+        const powNonce = solvePoW(nonceData.challenge, nonceData.difficulty);
+
+        // Step 3: Exchange for JWT
+        const tokenUrl = new URL("/oauth/token", baseUrl).toString();
+        const tokenResponse = await fetch(tokenUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Origin": origin,
+          },
+          body: JSON.stringify({
+            grant_type: "api_key",
+            api_key: apiKey,
+            nonce: nonceData.nonce,
+            proof: String(powNonce),
+          }),
+        });
+
+        if (!tokenResponse.ok) {
+          const text = await tokenResponse.text();
+          throw new Error(`Token exchange failed: ${text || `HTTP ${tokenResponse.status}`}`);
+        }
+
+        const tokenData = (await tokenResponse.json()) as {
+          access_token: string;
+          token_type: string;
+          expires_in?: number;
+        };
+
+        if (exchangeOpts.save) {
+          const config = loadConfig(globalOpts.profile);
+          config.token = tokenData.access_token;
+          saveConfig(config, globalOpts.profile);
+          printSuccess("Token exchange successful. Token saved to config.");
+        } else {
+          const format = getFormat(cmd);
+          outputResponse({ status: tokenResponse.status, headers: tokenResponse.headers, data: tokenData }, format);
+          printSuccess("Token exchange successful.");
+        }
+      }),
+    );
+}
+
 export function registerAuthCommands(program: Command): void {
   // auth command group with login/logout subcommands
   const auth = program
@@ -222,6 +373,24 @@ export function registerAuthCommands(program: Command): void {
   ]);
   auth.addCommand(logout);
 
+  const nonce = createNonceCommand();
+  addExamples(nonce, [
+    {
+      description: "Get a nonce for API key authentication",
+      command: "geonic auth nonce --api-key gdb_abcdef...",
+    },
+  ]);
+  auth.addCommand(nonce);
+
+  const tokenExchange = createTokenExchangeCommand();
+  addExamples(tokenExchange, [
+    {
+      description: "Exchange API key for a JWT and save it",
+      command: "geonic auth token-exchange --api-key gdb_abcdef... --save",
+    },
+  ]);
+  auth.addCommand(tokenExchange);
+
   // me command (top-level, maps to /me API endpoint)
   const me = program
     .command("me")
@@ -242,6 +411,10 @@ export function registerAuthCommands(program: Command): void {
       description: "List your OAuth clients",
       command: "geonic me oauth-clients list",
     },
+    {
+      description: "List your API keys",
+      command: "geonic me api-keys list",
+    },
   ]);
 
   addExamples(meInfo, [
@@ -253,6 +426,9 @@ export function registerAuthCommands(program: Command): void {
 
   // Add me oauth-clients subcommands
   addMeOAuthClientsSubcommand(me);
+
+  // Add me api-keys subcommands
+  addMeApiKeysSubcommand(me);
 
   // Backward-compatible hidden aliases
   program.addCommand(createLoginCommand(), { hidden: true });

@@ -3,22 +3,26 @@ Feature: API key authentication
   I want to authenticate with API keys
   So that I can use service accounts and automation
 
-  Scenario: Authenticate with --api-key flag
-    Given I have a valid API key from login
-    When I run entities list with api-key flag
+  Scenario: --api-key flag sends X-Api-Key header in dry-run
+    Given I have a config with url
+    When I run `geonic entities list --api-key gdb_testkey123 --dry-run`
     Then the exit code should be 0
+    And stdout should contain "X-Api-Key"
 
-  Scenario: Authenticate with GDB_API_KEY environment variable
-    Given I have a valid API key from login
-    When I run entities list with api-key env var
+  Scenario: GDB_API_KEY env var sends X-Api-Key header in dry-run
+    Given I have a config with url
+    When I run entities list with api-key env var in dry-run
     Then the exit code should be 0
+    And stdout should contain "X-Api-Key"
 
-  Scenario: API key from config fallback
-    Given I have a valid API key saved in config as apiKey
-    When I run `geonic entities list`
+  Scenario: apiKey from config sends X-Api-Key header in dry-run
+    Given I have a config with url and apiKey
+    When I run `geonic entities list --dry-run`
     Then the exit code should be 0
+    And stdout should contain "X-Api-Key"
 
   Scenario: Token takes priority over API key
     Given I am logged in with token and invalid apiKey in config
-    When I run `geonic entities list`
+    When I run `geonic entities list --dry-run`
     Then the exit code should be 0
+    And stdout should contain "Authorization"

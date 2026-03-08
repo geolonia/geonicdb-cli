@@ -141,7 +141,7 @@ describe("GdbClient", () => {
         expect.any(String),
         expect.objectContaining({
           headers: expect.objectContaining({
-            Authorization: "Bearer sk-test-key",
+            "X-Api-Key": "sk-test-key",
           }),
         }),
       );
