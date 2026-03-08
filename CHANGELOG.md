@@ -15,6 +15,7 @@
 - **Fix**: `allowedOrigins` の空配列バリデーションを CLI 側に追加 (#58)
 - **Feat**: `allowedEntityTypes` ランタイムエンフォースメントの 403 エラーメッセージを改善 (#59)
 - **Feat**: `geonic auth nonce` / `geonic auth token-exchange` コマンドを追加 — APIキー→JWT 交換（PoW対応） (#60)
+- **Test**: API key E2E テストにヘッダ排他アサーションを追加 (#62)
 
 ## [0.4.1] - 2026-03-06
 
