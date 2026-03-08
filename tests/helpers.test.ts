@@ -327,5 +327,48 @@ describe("helpers", () => {
       expect(printError).not.toHaveBeenCalled();
       expect(exitSpy).not.toHaveBeenCalled();
     });
+
+    it("prints entity type restriction message on 403 with entity type detail", async () => {
+      const err = new GdbClientError("Forbidden", 403, {
+        detail: "entity type 'Sensor' is not allowed by allowedEntityTypes",
+      });
+      const fn = vi.fn().mockRejectedValue(err);
+      const wrapped = withErrorHandler(fn);
+      await expect(wrapped()).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("Entity type restriction"),
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it("prints entity type restriction message on 403 with allowedEntityTypes description", async () => {
+      const err = new GdbClientError("Not allowed", 403, {
+        description: "allowedEntityTypes restriction violated",
+      });
+      const fn = vi.fn().mockRejectedValue(err);
+      const wrapped = withErrorHandler(fn);
+      await expect(wrapped()).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("Entity type restriction"),
+      );
+    });
+
+    it("prints generic message on 403 without entity type detail", async () => {
+      const err = new GdbClientError("Access denied", 403, {
+        detail: "insufficient permissions",
+      });
+      const fn = vi.fn().mockRejectedValue(err);
+      const wrapped = withErrorHandler(fn);
+      await expect(wrapped()).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith("Access denied");
+    });
+
+    it("prints generic message on 403 with no ngsiError detail", async () => {
+      const err = new GdbClientError("Forbidden", 403);
+      const fn = vi.fn().mockRejectedValue(err);
+      const wrapped = withErrorHandler(fn);
+      await expect(wrapped()).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith("Forbidden");
+    });
   });
 });

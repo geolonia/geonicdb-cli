@@ -43,8 +43,9 @@ export class GdbClient {
 
     if (this.token) {
       headers["Authorization"] = `Bearer ${this.token}`;
-    } else if (this.apiKey) {
-      headers["Authorization"] = `Bearer ${this.apiKey}`;
+    }
+    if (this.apiKey) {
+      headers["X-Api-Key"] = this.apiKey;
     }
 
     if (extra) {
@@ -70,13 +71,15 @@ export class GdbClient {
     return "/ngsi-ld/v1";
   }
 
-  private static readonly SENSITIVE_HEADERS = new Set(["authorization"]);
+  private static readonly SENSITIVE_HEADERS = new Set(["authorization", "x-api-key"]);
   private static readonly SENSITIVE_BODY_KEYS = new Set([
     "password",
     "refreshToken",
     "token",
     "client_secret",
     "clientSecret",
+    "key",
+    "apiKey",
   ]);
 
   private logRequest(

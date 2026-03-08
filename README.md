@@ -118,16 +118,69 @@ geonic help [<command>] [<subcommand>]
 |---|---|
 | `auth login` | Authenticate and save token |
 | `auth logout` | Clear saved authentication token |
+| `auth nonce` | Get a nonce and PoW challenge for API key authentication |
+| `auth token-exchange` | Exchange API key for a session JWT via nonce + PoW |
 
 The `auth login` command reads `GDB_EMAIL` and `GDB_PASSWORD` environment variables. It also supports OAuth Client Credentials flow with `--client-id` and `--client-secret`.
 
-### me — Display current user
+#### API Key Token Exchange
+
+`auth token-exchange` performs a complete API key to JWT exchange:
+
+1. Requests a nonce from the server (`POST /auth/nonce`)
+2. Solves the Proof-of-Work challenge (SHA-256)
+3. Exchanges the API key + solved PoW for a session JWT (`POST /oauth/token`)
+
+```bash
+# Exchange API key for JWT and save to config
+geonic auth token-exchange --api-key gdb_abcdef... --save
+
+# Just display the token without saving
+geonic auth token-exchange --api-key gdb_abcdef...
+```
+
+### me — Current user and self-service resources
 
 ```bash
 geonic me
 ```
 
 Displays the current authenticated user, token expiry, and active profile.
+
+#### me oauth-clients
+
+| Subcommand | Description |
+|---|---|
+| `me oauth-clients list` | List your OAuth clients |
+| `me oauth-clients create [json]` | Create a new OAuth client |
+| `me oauth-clients delete <id>` | Delete an OAuth client |
+
+#### me api-keys
+
+| Subcommand | Description |
+|---|---|
+| `me api-keys list` | List your API keys |
+| `me api-keys create [json]` | Create a new API key |
+| `me api-keys delete <keyId>` | Delete an API key |
+
+`me api-keys create` supports flag options:
+
+| Flag | Description |
+|---|---|
+| `--name <name>` | Key name |
+| `--scopes <scopes>` | Allowed scopes (comma-separated) |
+| `--origins <origins>` | Allowed origins (comma-separated, at least 1 required) |
+| `--entity-types <types>` | Allowed entity types (comma-separated) |
+| `--rate-limit <n>` | Rate limit (requests per minute) |
+| `--save` | Save the API key to profile config |
+
+```bash
+# Create an API key and save to config
+geonic me api-keys create --name my-app --scopes read:entities --save
+
+# Create from JSON
+geonic me api-keys create '{"name":"my-app","allowedScopes":["read:entities"]}'
+```
 
 ### entities — Manage context entities
 
@@ -306,6 +359,20 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 | `admin oauth-clients update <id> [json]` | Update an OAuth client |
 | `admin oauth-clients delete <id>` | Delete an OAuth client |
 
+#### admin api-keys
+
+| Subcommand | Description |
+|---|---|
+| `admin api-keys list` | List all API keys |
+| `admin api-keys get <keyId>` | Get an API key by ID |
+| `admin api-keys create [json]` | Create a new API key |
+| `admin api-keys update <keyId> [json]` | Update an API key |
+| `admin api-keys delete <keyId>` | Delete an API key |
+
+`admin api-keys list` supports `--tenant-id` to filter by tenant. `admin api-keys create` supports flag options: `--name`, `--scopes`, `--origins`, `--entity-types`, `--rate-limit`, `--tenant-id`, `--save`.
+
+**Note**: `allowedOrigins` must contain at least 1 item when specified. Use `*` to allow all origins. `allowedEntityTypes` is enforced at runtime — API key holders can only access entities of the specified types.
+
 #### admin cadde
 
 | Subcommand | Description |
@@ -434,6 +501,31 @@ Override the config directory with the `GEONIC_CONFIG_DIR` environment variable:
 ```bash
 GEONIC_CONFIG_DIR=/path/to/config geonic entities list
 ```
+
+## API Key Authentication
+
+API keys provide an alternative to JWT tokens for authentication. When configured, requests include the `X-Api-Key` header.
+
+```bash
+# Set API key in config
+geonic config set api-key gdb_your_api_key_here
+
+# Or pass via CLI flag
+geonic entities list --api-key gdb_your_api_key_here
+
+# Or use environment variable
+GDB_API_KEY=gdb_your_api_key_here geonic entities list
+```
+
+When both a Bearer token and an API key are configured, both headers are sent (the server determines precedence).
+
+### Valid Scopes
+
+`read:entities`, `write:entities`, `read:subscriptions`, `write:subscriptions`, `read:registrations`, `write:registrations`
+
+### Entity Type Restrictions
+
+API keys with `allowedEntityTypes` are restricted to the specified entity types at runtime. Attempting to access entities of other types results in a 403 error with a descriptive message.
 
 ## Development
 
