@@ -213,8 +213,9 @@ function createNonceCommand(): Command {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Api-Key": apiKey,
+            "Origin": baseUrl,
           },
+          body: JSON.stringify({ api_key: apiKey }),
         });
 
         if (!response.ok) {
@@ -229,14 +230,26 @@ function createNonceCommand(): Command {
     );
 }
 
+function hasLeadingZeroBits(hash: Buffer, bits: number): boolean {
+  const fullBytes = Math.floor(bits / 8);
+  const remainingBits = bits % 8;
+  for (let i = 0; i < fullBytes; i++) {
+    if (hash[i] !== 0) return false;
+  }
+  if (remainingBits > 0) {
+    const mask = 0xff << (8 - remainingBits);
+    if ((hash[fullBytes] & mask) !== 0) return false;
+  }
+  return true;
+}
+
 function solvePoW(challenge: string, difficulty: number): number {
   let nonce = 0;
-  const prefix = "0".repeat(difficulty);
   while (true) {
     const hash = createHash("sha256")
-      .update(`${challenge}:${nonce}`)
-      .digest("hex");
-    if (hash.startsWith(prefix)) return nonce;
+      .update(`${challenge}${nonce}`)
+      .digest();
+    if (hasLeadingZeroBits(hash, difficulty)) return nonce;
     nonce++;
   }
 }
@@ -270,8 +283,9 @@ function createTokenExchangeCommand(): Command {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-Api-Key": apiKey,
+            "Origin": baseUrl,
           },
+          body: JSON.stringify({ api_key: apiKey }),
         });
 
         if (!nonceResponse.ok) {
@@ -281,25 +295,28 @@ function createTokenExchangeCommand(): Command {
 
         const nonceData = (await nonceResponse.json()) as {
           nonce: string;
+          challenge: string;
           difficulty: number;
-          algorithm: string;
         };
 
         printInfo(`Nonce received. Solving PoW (difficulty=${nonceData.difficulty})...`);
 
         // Step 2: Solve PoW
-        const powNonce = solvePoW(nonceData.nonce, nonceData.difficulty);
+        const powNonce = solvePoW(nonceData.challenge, nonceData.difficulty);
 
         // Step 3: Exchange for JWT
         const tokenUrl = new URL("/oauth/token", baseUrl).toString();
         const tokenResponse = await fetch(tokenUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Origin": baseUrl,
+          },
           body: JSON.stringify({
             grant_type: "api_key",
             api_key: apiKey,
             nonce: nonceData.nonce,
-            pow_nonce: powNonce,
+            proof: String(powNonce),
           }),
         });
 

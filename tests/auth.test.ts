@@ -495,7 +495,7 @@ describe("auth commands", () => {
 
     beforeEach(() => {
       fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        new Response(JSON.stringify({ nonce: "abc123", difficulty: 4, algorithm: "sha256" }), {
+        new Response(JSON.stringify({ nonce: "abc123", challenge: "deadbeef", difficulty: 4 }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         }),
@@ -511,14 +511,15 @@ describe("auth commands", () => {
       fetchSpy.mockRestore();
     });
 
-    it("requests nonce with API key and outputs response", async () => {
+    it("requests nonce with API key in body and outputs response", async () => {
       const program = makeProgram();
       await runCommand(program, ["auth", "nonce"]);
       expect(fetchSpy).toHaveBeenCalledWith(
         expect.stringContaining("/auth/nonce"),
         expect.objectContaining({
           method: "POST",
-          headers: expect.objectContaining({ "X-Api-Key": "gdb_testkey" }),
+          body: JSON.stringify({ api_key: "gdb_testkey" }),
+          headers: expect.objectContaining({ "Origin": expect.any(String) }),
         }),
       );
       expect(outputResponse).toHaveBeenCalled();
@@ -530,7 +531,7 @@ describe("auth commands", () => {
       expect(fetchSpy).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          headers: expect.objectContaining({ "X-Api-Key": "gdb_testkey" }),
+          body: JSON.stringify({ api_key: "gdb_testkey" }),
         }),
       );
     });
@@ -593,7 +594,7 @@ describe("auth commands", () => {
         const urlStr = String(url);
         if (urlStr.includes("/auth/nonce")) {
           return new Response(
-            JSON.stringify({ nonce: "test-nonce", difficulty: 1, algorithm: "sha256" }),
+            JSON.stringify({ nonce: "test-nonce", challenge: "abcd1234", difficulty: 1 }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
@@ -619,7 +620,7 @@ describe("auth commands", () => {
         const urlStr = String(url);
         if (urlStr.includes("/auth/nonce")) {
           return new Response(
-            JSON.stringify({ nonce: "test-nonce", difficulty: 1, algorithm: "sha256" }),
+            JSON.stringify({ nonce: "test-nonce", challenge: "abcd1234", difficulty: 1 }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
@@ -680,7 +681,7 @@ describe("auth commands", () => {
         const urlStr = String(url);
         if (urlStr.includes("/auth/nonce")) {
           return new Response(
-            JSON.stringify({ nonce: "test-nonce", difficulty: 1, algorithm: "sha256" }),
+            JSON.stringify({ nonce: "test-nonce", challenge: "abcd1234", difficulty: 1 }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }
@@ -695,7 +696,7 @@ describe("auth commands", () => {
         const urlStr = String(url);
         if (urlStr.includes("/auth/nonce")) {
           return new Response(
-            JSON.stringify({ nonce: "test-nonce", difficulty: 1, algorithm: "sha256" }),
+            JSON.stringify({ nonce: "test-nonce", challenge: "abcd1234", difficulty: 1 }),
             { status: 200, headers: { "Content-Type": "application/json" } },
           );
         }

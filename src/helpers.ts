@@ -95,8 +95,8 @@ export function withErrorHandler<T extends unknown[]>(fn: (...args: T) => Promis
       if (err instanceof GdbClientError && err.status === 401) {
         printError("Authentication failed. Please run `geonic login` to re-authenticate.");
       } else if (err instanceof GdbClientError && err.status === 403) {
-        const detail = err.ngsiError?.detail ?? err.ngsiError?.description ?? "";
-        if (detail.includes("entity type") || detail.includes("allowedEntityTypes")) {
+        const detail = (err.ngsiError?.detail ?? err.ngsiError?.description ?? "").toLowerCase();
+        if (detail.includes("entity type") || detail.includes("allowedentitytypes")) {
           printError(`Entity type restriction: ${err.message}`);
         } else {
           printError(err.message);
