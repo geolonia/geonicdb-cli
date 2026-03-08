@@ -57,23 +57,33 @@ export function addMeApiKeysSubcommand(me: Command): void {
         } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit) {
           const payload: Record<string, unknown> = {};
           if (opts.name) payload.name = opts.name;
-          if (opts.scopes) payload.allowedScopes = opts.scopes.split(",").map((s: string) => s.trim());
-          if (opts.origins) payload.allowedOrigins = opts.origins.split(",").map((s: string) => s.trim());
-          if (opts.entityTypes) payload.allowedEntityTypes = opts.entityTypes.split(",").map((s: string) => s.trim());
-          if (opts.rateLimit) payload.rateLimit = { perMinute: parseInt(opts.rateLimit, 10) };
+          if (opts.scopes) payload.allowedScopes = opts.scopes.split(",").map((s: string) => s.trim()).filter(Boolean);
+          if (opts.origins) payload.allowedOrigins = opts.origins.split(",").map((s: string) => s.trim()).filter(Boolean);
+          if (opts.entityTypes) payload.allowedEntityTypes = opts.entityTypes.split(",").map((s: string) => s.trim()).filter(Boolean);
+          if (opts.rateLimit) {
+            const perMinute = parseInt(opts.rateLimit, 10);
+            if (isNaN(perMinute) || perMinute <= 0) {
+              printError("--rate-limit must be a positive integer.");
+              process.exit(1);
+            }
+            payload.rateLimit = { perMinute };
+          }
           body = payload;
         } else {
           body = await parseJsonInput();
         }
 
         // Validate allowedOrigins is not empty (Issue #58)
-        if (opts.origins !== undefined && opts.origins.trim() === "") {
-          printError("allowedOrigins must contain at least 1 item. Use '*' to allow all origins.");
-          process.exit(1);
+        if (opts.origins !== undefined) {
+          const origins = opts.origins.split(",").map((s: string) => s.trim()).filter(Boolean);
+          if (origins.length === 0) {
+            printError("allowedOrigins must contain at least 1 item. Use '*' to allow all origins.");
+            process.exit(1);
+          }
         }
         if (body && typeof body === "object" && "allowedOrigins" in (body as Record<string, unknown>)) {
           const origins = (body as Record<string, unknown>).allowedOrigins;
-          if (Array.isArray(origins) && origins.length === 0) {
+          if (Array.isArray(origins) && origins.filter((o: unknown) => typeof o === "string" && o.trim() !== "").length === 0) {
             printError("allowedOrigins must contain at least 1 item. Use '*' to allow all origins.");
             process.exit(1);
           }
@@ -87,7 +97,7 @@ export function addMeApiKeysSubcommand(me: Command): void {
 
         if (opts.save) {
           const globalOpts = resolveOptions(cmd);
-          const key = (data as Record<string, unknown>).key as string | undefined;
+          const key = data.key as string | undefined;
           if (!key) {
             printError("Response missing key. Cannot save API key.");
             outputResponse(response, format);

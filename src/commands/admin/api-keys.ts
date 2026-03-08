@@ -7,14 +7,17 @@ import { addExamples } from "../help.js";
 
 function validateOrigins(body: unknown, opts: Record<string, unknown>): void {
   // Validate origins if provided via flags
-  if (opts.origins !== undefined && String(opts.origins).trim() === "") {
-    printError("allowedOrigins must contain at least 1 item. Use '*' to allow all origins.");
-    process.exit(1);
+  if (opts.origins !== undefined) {
+    const origins = String(opts.origins).split(",").map((s: string) => s.trim()).filter(Boolean);
+    if (origins.length === 0) {
+      printError("allowedOrigins must contain at least 1 item. Use '*' to allow all origins.");
+      process.exit(1);
+    }
   }
   // Also validate if provided via JSON input
   if (body && typeof body === "object" && "allowedOrigins" in (body as Record<string, unknown>)) {
     const origins = (body as Record<string, unknown>).allowedOrigins;
-    if (Array.isArray(origins) && origins.length === 0) {
+    if (Array.isArray(origins) && origins.filter((o: unknown) => typeof o === "string" && o.trim() !== "").length === 0) {
       printError("allowedOrigins must contain at least 1 item. Use '*' to allow all origins.");
       process.exit(1);
     }
@@ -25,9 +28,16 @@ function buildBodyFromFlags(opts: Record<string, unknown>): Record<string, unkno
   const payload: Record<string, unknown> = {};
   if (opts.name) payload.name = opts.name;
   if (opts.scopes) payload.allowedScopes = (opts.scopes as string).split(",").map((s: string) => s.trim());
-  if (opts.origins) payload.allowedOrigins = (opts.origins as string).split(",").map((s: string) => s.trim());
-  if (opts.entityTypes) payload.allowedEntityTypes = (opts.entityTypes as string).split(",").map((s: string) => s.trim());
-  if (opts.rateLimit) payload.rateLimit = { perMinute: parseInt(opts.rateLimit as string, 10) };
+  if (opts.origins) payload.allowedOrigins = (opts.origins as string).split(",").map((s: string) => s.trim()).filter(Boolean);
+  if (opts.entityTypes) payload.allowedEntityTypes = (opts.entityTypes as string).split(",").map((s: string) => s.trim()).filter(Boolean);
+  if (opts.rateLimit) {
+    const perMinute = parseInt(opts.rateLimit as string, 10);
+    if (isNaN(perMinute) || perMinute <= 0) {
+      printError("--rate-limit must be a positive integer.");
+      process.exit(1);
+    }
+    payload.rateLimit = { perMinute };
+  }
   if (opts.tenantId) payload.tenantId = opts.tenantId;
   return payload;
 }

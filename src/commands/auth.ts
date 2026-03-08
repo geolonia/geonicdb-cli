@@ -187,6 +187,29 @@ function createMeAction() {
   });
 }
 
+async function fetchNonce(
+  baseUrl: string,
+  apiKey: string,
+): Promise<{ nonce: string; challenge: string; difficulty: number }> {
+  const origin = new URL(baseUrl).origin;
+  const url = new URL("/auth/nonce", baseUrl).toString();
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Origin": origin,
+    },
+    body: JSON.stringify({ api_key: apiKey }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Nonce request failed: ${text || `HTTP ${response.status}`}`);
+  }
+
+  return (await response.json()) as { nonce: string; challenge: string; difficulty: number };
+}
+
 function createNonceCommand(): Command {
   return new Command("nonce")
     .description("Get a nonce and PoW challenge for API key authentication")
@@ -208,24 +231,9 @@ function createNonceCommand(): Command {
         }
 
         const baseUrl = validateUrl(globalOpts.url);
-        const url = new URL("/auth/nonce", baseUrl).toString();
-        const response = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Origin": baseUrl,
-          },
-          body: JSON.stringify({ api_key: apiKey }),
-        });
-
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`Nonce request failed: ${text || `HTTP ${response.status}`}`);
-        }
-
-        const data = await response.json();
+        const data = await fetchNonce(baseUrl, apiKey);
         const format = getFormat(cmd);
-        outputResponse({ status: response.status, headers: response.headers, data }, format);
+        outputResponse({ status: 200, headers: new Headers(), data }, format);
       }),
     );
 }
@@ -243,15 +251,16 @@ function hasLeadingZeroBits(hash: Buffer, bits: number): boolean {
   return true;
 }
 
+const MAX_POW_ITERATIONS = 10_000_000;
+
 function solvePoW(challenge: string, difficulty: number): number {
-  let nonce = 0;
-  while (true) {
+  for (let nonce = 0; nonce < MAX_POW_ITERATIONS; nonce++) {
     const hash = createHash("sha256")
       .update(`${challenge}${nonce}`)
       .digest();
     if (hasLeadingZeroBits(hash, difficulty)) return nonce;
-    nonce++;
   }
+  throw new Error(`PoW could not be solved within ${MAX_POW_ITERATIONS} iterations`);
 }
 
 function createTokenExchangeCommand(): Command {
@@ -276,28 +285,10 @@ function createTokenExchangeCommand(): Command {
         }
 
         const baseUrl = validateUrl(globalOpts.url);
+        const origin = new URL(baseUrl).origin;
 
         // Step 1: Get nonce
-        const nonceUrl = new URL("/auth/nonce", baseUrl).toString();
-        const nonceResponse = await fetch(nonceUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Origin": baseUrl,
-          },
-          body: JSON.stringify({ api_key: apiKey }),
-        });
-
-        if (!nonceResponse.ok) {
-          const text = await nonceResponse.text();
-          throw new Error(`Nonce request failed: ${text || `HTTP ${nonceResponse.status}`}`);
-        }
-
-        const nonceData = (await nonceResponse.json()) as {
-          nonce: string;
-          challenge: string;
-          difficulty: number;
-        };
+        const nonceData = await fetchNonce(baseUrl, apiKey);
 
         printInfo(`Nonce received. Solving PoW (difficulty=${nonceData.difficulty})...`);
 
@@ -310,7 +301,7 @@ function createTokenExchangeCommand(): Command {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Origin": baseUrl,
+            "Origin": origin,
           },
           body: JSON.stringify({
             grant_type: "api_key",
