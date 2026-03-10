@@ -76,6 +76,20 @@ describe("me api-keys commands", () => {
       expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/api-keys");
       expect(outputResponse).toHaveBeenCalled();
     });
+
+    it("outputs dpopRequired field in list response", async () => {
+      const response = mockResponse([
+        { keyId: "k1", name: "key1", dpopRequired: true },
+        { keyId: "k2", name: "key2", dpopRequired: false },
+      ]);
+      client.rawRequest.mockResolvedValue(response);
+      const program = makeProgram();
+      await runCommand(program, ["me", "api-keys", "list"]);
+      expect(outputResponse).toHaveBeenCalledWith(response, "json");
+      const outputData = (outputResponse as ReturnType<typeof vi.fn>).mock.calls[0][0].data;
+      expect(outputData[0].dpopRequired).toBe(true);
+      expect(outputData[1].dpopRequired).toBe(false);
+    });
   });
 
   describe("api-keys create", () => {

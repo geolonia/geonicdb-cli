@@ -183,6 +183,8 @@ geonic me api-keys create --name my-app --scopes read:entities --save
 geonic me api-keys create '{"name":"my-app","allowedScopes":["read:entities"]}'
 ```
 
+`me api-keys list` の出力には `dpopRequired` フィールドが含まれます（boolean）。
+
 ### entities — Manage context entities
 
 | Subcommand | Description |
@@ -372,7 +374,7 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 
 `admin api-keys list` supports `--tenant-id` to filter by tenant. `admin api-keys create` supports flag options: `--name`, `--scopes`, `--origins`, `--entity-types`, `--rate-limit`, `--dpop-required`, `--tenant-id`, `--save`. `admin api-keys update` supports `--name`, `--scopes`, `--origins`, `--entity-types`, `--rate-limit`, `--dpop-required` / `--no-dpop-required`.
 
-**Note**: `allowedOrigins` must contain at least 1 item when specified. Use `*` to allow all origins. `allowedEntityTypes` is enforced at runtime — API key holders can only access entities of the specified types.
+**Note**: `allowedOrigins` must contain at least 1 item when specified. Use `*` to allow all origins. `allowedEntityTypes` is enforced at runtime — API key holders can only access entities of the specified types. `admin api-keys list` / `admin api-keys get` の出力には `dpopRequired` フィールドが含まれます（boolean）。
 
 #### admin cadde
 

@@ -243,6 +243,14 @@ export function registerApiKeysCommand(parent: Command): void {
       command: "geonic admin api-keys update <key-id> --name new-name",
     },
     {
+      description: "Enable DPoP requirement",
+      command: "geonic admin api-keys update <key-id> --dpop-required",
+    },
+    {
+      description: "Disable DPoP requirement",
+      command: "geonic admin api-keys update <key-id> --no-dpop-required",
+    },
+    {
       description: "Update an API key from a JSON file",
       command: "geonic admin api-keys update <key-id> @key.json",
     },

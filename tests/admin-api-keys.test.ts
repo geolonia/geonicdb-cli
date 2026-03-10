@@ -70,6 +70,20 @@ describe("admin api-keys commands", () => {
       expect(outputResponse).toHaveBeenCalled();
     });
 
+    it("outputs dpopRequired field in list response", async () => {
+      const response = mockResponse([
+        { keyId: "k1", name: "key1", dpopRequired: true },
+        { keyId: "k2", name: "key2", dpopRequired: false },
+      ]);
+      client.rawRequest.mockResolvedValue(response);
+      const program = makeProgram();
+      await runCommand(program, ["admin", "api-keys", "list"]);
+      expect(outputResponse).toHaveBeenCalledWith(response, "json");
+      const outputData = (outputResponse as ReturnType<typeof vi.fn>).mock.calls[0][0].data;
+      expect(outputData[0].dpopRequired).toBe(true);
+      expect(outputData[1].dpopRequired).toBe(false);
+    });
+
     it("passes tenant-id as query param", async () => {
       client.rawRequest.mockResolvedValue(mockResponse([]));
       const program = makeProgram();
@@ -87,6 +101,16 @@ describe("admin api-keys commands", () => {
       await runCommand(program, ["admin", "api-keys", "get", "k1"]);
       expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/api-keys/k1");
       expect(outputResponse).toHaveBeenCalled();
+    });
+
+    it("outputs dpopRequired field in get response", async () => {
+      const response = mockResponse({ keyId: "k1", name: "key1", dpopRequired: true });
+      client.rawRequest.mockResolvedValue(response);
+      const program = makeProgram();
+      await runCommand(program, ["admin", "api-keys", "get", "k1"]);
+      expect(outputResponse).toHaveBeenCalledWith(response, "json");
+      const outputData = (outputResponse as ReturnType<typeof vi.fn>).mock.calls[0][0].data;
+      expect(outputData.dpopRequired).toBe(true);
     });
 
     it("encodes special characters in keyId", async () => {
