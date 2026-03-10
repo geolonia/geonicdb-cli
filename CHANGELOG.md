@@ -7,6 +7,13 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-03-11
+
+### 2026-03-11
+- **Feat**: API キー管理コマンドに `--dpop-required` フラグを追加 — DPoP トークンバインド (RFC 9449) の有効化に対応 (#66)
+- **Feat**: `admin api-keys update` に `--no-dpop-required` フラグを追加 — DPoP の無効化に対応 (#66)
+- **Test**: `dpopRequired` フラグのユニットテストを追加（create / update / 単独フラグ分岐） (#66)
+
 ## [0.5.0] - 2026-03-10
 
 ### 2026-03-08
@@ -95,7 +102,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.3.0...v0.4.0

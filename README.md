@@ -172,6 +172,7 @@ Displays the current authenticated user, token expiry, and active profile.
 | `--origins <origins>` | Allowed origins (comma-separated, at least 1 required) |
 | `--entity-types <types>` | Allowed entity types (comma-separated) |
 | `--rate-limit <n>` | Rate limit (requests per minute) |
+| `--dpop-required` | Require DPoP token binding (RFC 9449) |
 | `--save` | Save the API key to profile config |
 
 ```bash
@@ -181,6 +182,8 @@ geonic me api-keys create --name my-app --scopes read:entities --save
 # Create from JSON
 geonic me api-keys create '{"name":"my-app","allowedScopes":["read:entities"]}'
 ```
+
+`me api-keys list` output includes a `dpopRequired` field (boolean).
 
 ### entities — Manage context entities
 
@@ -369,9 +372,9 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 | `admin api-keys update <keyId> [json]` | Update an API key |
 | `admin api-keys delete <keyId>` | Delete an API key |
 
-`admin api-keys list` supports `--tenant-id` to filter by tenant. `admin api-keys create` supports flag options: `--name`, `--scopes`, `--origins`, `--entity-types`, `--rate-limit`, `--tenant-id`, `--save`.
+`admin api-keys list` supports `--tenant-id` to filter by tenant. `admin api-keys create` supports flag options: `--name`, `--scopes`, `--origins`, `--entity-types`, `--rate-limit`, `--dpop-required`, `--tenant-id`, `--save`. `admin api-keys update` supports `--name`, `--scopes`, `--origins`, `--entity-types`, `--rate-limit`, `--dpop-required` / `--no-dpop-required`.
 
-**Note**: `allowedOrigins` must contain at least 1 item when specified. Use `*` to allow all origins. `allowedEntityTypes` is enforced at runtime — API key holders can only access entities of the specified types.
+**Note**: `allowedOrigins` must contain at least 1 item when specified. Use `*` to allow all origins. `allowedEntityTypes` is enforced at runtime — API key holders can only access entities of the specified types. `admin api-keys list` / `admin api-keys get` output includes a `dpopRequired` field (boolean).
 
 #### admin cadde
 

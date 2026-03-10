@@ -39,6 +39,7 @@ export function addMeApiKeysSubcommand(me: Command): void {
     .option("--origins <origins>", "Allowed origins (comma-separated)")
     .option("--entity-types <types>", "Allowed entity types (comma-separated)")
     .option("--rate-limit <n>", "Rate limit per minute")
+    .option("--dpop-required", "Require DPoP token binding")
     .option("--save", "Save the API key to config for automatic use")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
@@ -48,6 +49,7 @@ export function addMeApiKeysSubcommand(me: Command): void {
           origins?: string;
           entityTypes?: string;
           rateLimit?: string;
+          dpopRequired?: boolean;
           save?: boolean;
         };
 
@@ -63,12 +65,13 @@ export function addMeApiKeysSubcommand(me: Command): void {
         let body: unknown;
         if (json) {
           body = await parseJsonInput(json as string | undefined);
-        } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit) {
+        } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit || opts.dpopRequired !== undefined) {
           const payload: Record<string, unknown> = {};
           if (opts.name) payload.name = opts.name;
           if (opts.scopes) payload.allowedScopes = opts.scopes.split(",").map((s: string) => s.trim()).filter(Boolean);
           if (opts.origins) payload.allowedOrigins = opts.origins.split(",").map((s: string) => s.trim()).filter(Boolean);
           if (opts.entityTypes) payload.allowedEntityTypes = opts.entityTypes.split(",").map((s: string) => s.trim()).filter(Boolean);
+          if (opts.dpopRequired !== undefined) payload.dpopRequired = opts.dpopRequired;
           if (opts.rateLimit) {
             const raw = opts.rateLimit.trim();
             if (!/^\d+$/.test(raw)) {
@@ -140,6 +143,10 @@ export function addMeApiKeysSubcommand(me: Command): void {
     {
       description: "Create an API key with rate limiting",
       command: "geonic me api-keys create --name my-app --rate-limit 100",
+    },
+    {
+      description: "Create an API key with DPoP required",
+      command: "geonic me api-keys create --name my-app --dpop-required",
     },
   ]);
 

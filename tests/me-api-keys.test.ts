@@ -76,6 +76,20 @@ describe("me api-keys commands", () => {
       expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/api-keys");
       expect(outputResponse).toHaveBeenCalled();
     });
+
+    it("outputs dpopRequired field in list response", async () => {
+      const response = mockResponse([
+        { keyId: "k1", name: "key1", dpopRequired: true },
+        { keyId: "k2", name: "key2", dpopRequired: false },
+      ]);
+      client.rawRequest.mockResolvedValue(response);
+      const program = makeProgram();
+      await runCommand(program, ["me", "api-keys", "list"]);
+      expect(outputResponse).toHaveBeenCalledWith(response, "json");
+      const outputData = (outputResponse as ReturnType<typeof vi.fn>).mock.calls[0][0].data;
+      expect(outputData[0].dpopRequired).toBe(true);
+      expect(outputData[1].dpopRequired).toBe(false);
+    });
   });
 
   describe("api-keys create", () => {
@@ -115,6 +129,52 @@ describe("me api-keys commands", () => {
           body: {
             name: "my-key",
             allowedScopes: ["read:entities", "write:entities"],
+          },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("includes dpopRequired when --dpop-required flag is set", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(
+          mockResponse({ keyId: "k-dpop", key: "gdb_dpop" }, 201),
+        );
+        const program = makeProgram();
+        await runCommand(program, [
+          "me", "api-keys", "create",
+          "--name", "dpop-key",
+          "--dpop-required",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/api-keys", {
+          body: {
+            name: "dpop-key",
+            dpopRequired: true,
+          },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("uses flag path with --dpop-required as the only flag", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(
+          mockResponse({ keyId: "k-dpop2", key: "gdb_dpop2" }, 201),
+        );
+        const program = makeProgram();
+        await runCommand(program, [
+          "me", "api-keys", "create",
+          "--dpop-required",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/api-keys", {
+          body: {
+            dpopRequired: true,
           },
         });
       } finally {
