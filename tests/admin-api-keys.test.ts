@@ -146,6 +146,52 @@ describe("admin api-keys commands", () => {
       }
     });
 
+    it("includes dpopRequired when --dpop-required flag is set", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(
+          mockResponse({ keyId: "k-dpop", key: "gdb_dpop" }, 201),
+        );
+        const program = makeProgram();
+        await runCommand(program, [
+          "admin", "api-keys", "create",
+          "--name", "dpop-key",
+          "--dpop-required",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/api-keys", {
+          body: {
+            name: "dpop-key",
+            dpopRequired: true,
+          },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("uses flag path with --dpop-required as the only flag", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(
+          mockResponse({ keyId: "k-dpop2", key: "gdb_dpop2" }, 201),
+        );
+        const program = makeProgram();
+        await runCommand(program, [
+          "admin", "api-keys", "create",
+          "--dpop-required",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/api-keys", {
+          body: {
+            dpopRequired: true,
+          },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
     it("saves API key to config with --save", async () => {
       const isTTY = process.stdin.isTTY;
       process.stdin.isTTY = true;
@@ -297,6 +343,42 @@ describe("admin api-keys commands", () => {
             allowedEntityTypes: ["Sensor"],
             rateLimit: { perMinute: 60 },
           },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("enables dpopRequired with --dpop-required flag", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ keyId: "k1" }));
+        const program = makeProgram();
+        await runCommand(program, [
+          "admin", "api-keys", "update", "k1",
+          "--dpop-required",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/api-keys/k1", {
+          body: { dpopRequired: true },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("disables dpopRequired with --no-dpop-required flag", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ keyId: "k1" }));
+        const program = makeProgram();
+        await runCommand(program, [
+          "admin", "api-keys", "update", "k1",
+          "--no-dpop-required",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/api-keys/k1", {
+          body: { dpopRequired: false },
         });
       } finally {
         process.stdin.isTTY = isTTY;

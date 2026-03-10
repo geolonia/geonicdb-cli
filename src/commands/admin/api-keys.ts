@@ -43,6 +43,7 @@ function buildBodyFromFlags(opts: Record<string, unknown>): Record<string, unkno
     }
     payload.rateLimit = { perMinute };
   }
+  if (opts.dpopRequired !== undefined) payload.dpopRequired = opts.dpopRequired;
   if (opts.tenantId) payload.tenantId = opts.tenantId;
   return payload;
 }
@@ -114,6 +115,7 @@ export function registerApiKeysCommand(parent: Command): void {
     .option("--origins <origins>", "Comma-separated origins")
     .option("--entity-types <types>", "Comma-separated entity types")
     .option("--rate-limit <n>", "Rate limit per minute")
+    .option("--dpop-required", "Require DPoP token binding")
     .option("--tenant-id <id>", "Tenant ID")
     .option("--save", "Save the API key to profile config")
     .action(
@@ -124,6 +126,7 @@ export function registerApiKeysCommand(parent: Command): void {
           origins?: string;
           entityTypes?: string;
           rateLimit?: string;
+          dpopRequired?: boolean;
           tenantId?: string;
           save?: boolean;
         };
@@ -133,7 +136,7 @@ export function registerApiKeysCommand(parent: Command): void {
         let body: unknown;
         if (json) {
           body = await parseJsonInput(json as string | undefined);
-        } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit || opts.tenantId) {
+        } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit || opts.dpopRequired !== undefined || opts.tenantId) {
           body = buildBodyFromFlags(opts);
         } else {
           body = await parseJsonInput();
@@ -176,6 +179,10 @@ export function registerApiKeysCommand(parent: Command): void {
       command: "geonic admin api-keys create --name my-key --scopes entities:read,entities:write --origins '*'",
     },
     {
+      description: "Create an API key with DPoP required",
+      command: "geonic admin api-keys create --name my-key --dpop-required",
+    },
+    {
       description: "Create an API key from JSON and save to config",
       command: "geonic admin api-keys create @key.json --save",
     },
@@ -190,6 +197,8 @@ export function registerApiKeysCommand(parent: Command): void {
     .option("--origins <origins>", "Comma-separated origins")
     .option("--entity-types <types>", "Comma-separated entity types")
     .option("--rate-limit <n>", "Rate limit per minute")
+    .option("--dpop-required", "Require DPoP token binding")
+    .option("--no-dpop-required", "Disable DPoP token binding")
     .action(
       withErrorHandler(
         async (keyId: unknown, json: unknown, _opts: unknown, cmd: Command) => {
@@ -199,6 +208,7 @@ export function registerApiKeysCommand(parent: Command): void {
             origins?: string;
             entityTypes?: string;
             rateLimit?: string;
+            dpopRequired?: boolean;
           };
 
           validateOrigins(undefined, opts);
@@ -206,7 +216,7 @@ export function registerApiKeysCommand(parent: Command): void {
           let body: unknown;
           if (json) {
             body = await parseJsonInput(json as string | undefined);
-          } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit) {
+          } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit || opts.dpopRequired !== undefined) {
             body = buildBodyFromFlags(opts);
           } else {
             body = await parseJsonInput();

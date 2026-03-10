@@ -7,6 +7,11 @@
 
 ## [Unreleased]
 
+### 2026-03-11
+- **Feat**: API キー管理コマンドに `--dpop-required` フラグを追加 — DPoP トークンバインド (RFC 9449) の有効化に対応 (#66)
+- **Feat**: `admin api-keys update` に `--no-dpop-required` フラグを追加 — DPoP の無効化に対応 (#66)
+- **Test**: `dpopRequired` フラグのユニットテストを追加（create / update / 単独フラグ分岐） (#66)
+
 ## [0.5.0] - 2026-03-10
 
 ### 2026-03-08
