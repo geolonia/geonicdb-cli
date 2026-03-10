@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-10
+
 ### 2026-03-08
 - **Feat**: `geonic admin api-keys` コマンドを追加 — APIキーの CRUD 管理 (#57)
 - **Feat**: `geonic me api-keys` コマンドを追加 — ユーザー自身の APIキー セルフサービス管理 (#57)
@@ -93,7 +95,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.2.0...v0.3.0
