@@ -1,6 +1,6 @@
 import { Given, When, Then } from "@cucumber/cucumber";
 import { strict as assert } from "node:assert";
-import { GdbWorld, TEST_EMAIL, TEST_PASSWORD, performLogin } from "../support/world.js";
+import { GdbWorld, performLogin } from "../support/world.js";
 
 Given("I am logged in", async function (this: GdbWorld) {
   await performLogin(this);
@@ -23,18 +23,6 @@ Given("I have invalid authentication tokens", function (this: GdbWorld) {
     token: "invalid",
     refreshToken: "invalid",
   });
-});
-
-When("I run login with credentials", async function (this: GdbWorld) {
-  await this.run(["login"], { GDB_EMAIL: TEST_EMAIL, GDB_PASSWORD: TEST_PASSWORD });
-});
-
-When("I run login with credentials and URL", async function (this: GdbWorld) {
-  await this.run(["login", "--url", this.serverUrl], { GDB_EMAIL: TEST_EMAIL, GDB_PASSWORD: TEST_PASSWORD });
-});
-
-When("I run login with invalid credentials", async function (this: GdbWorld) {
-  await this.run(["login"], { GDB_EMAIL: "wrong@test.com", GDB_PASSWORD: "WrongPassword999!" });
 });
 
 When("I run login without credentials", async function (this: GdbWorld) {

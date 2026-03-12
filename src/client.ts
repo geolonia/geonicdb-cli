@@ -270,10 +270,14 @@ export class GdbClient {
       body?: unknown;
       params?: Record<string, string>;
       headers?: Record<string, string>;
+      skipTenantHeader?: boolean;
     },
   ): Promise<ClientResponse<T>> {
     const url = this.buildUrl(path, options?.params);
     const headers = this.buildHeaders(options?.headers);
+    if (options?.skipTenantHeader) {
+      delete headers["NGSILD-Tenant"];
+    }
     const body = options?.body ? JSON.stringify(options.body) : undefined;
 
     this.logRequest(method, url, headers, body);
@@ -370,6 +374,7 @@ export class GdbClient {
       body?: unknown;
       params?: Record<string, string>;
       headers?: Record<string, string>;
+      skipTenantHeader?: boolean;
     },
   ): Promise<ClientResponse<T>> {
     try {

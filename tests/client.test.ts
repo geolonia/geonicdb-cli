@@ -776,6 +776,49 @@ describe("GdbClient", () => {
       const calledOpts = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1];
       expect(calledOpts.body).toBe(JSON.stringify({ key: "value" }));
     });
+
+    it("removes NGSILD-Tenant header when skipTenantHeader is true", async () => {
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        service: "my_tenant",
+      });
+
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+      await client.rawRequest("POST", "/auth/login", {
+        body: { email: "test@test.com", password: "pass" },
+        skipTenantHeader: true,
+      });
+
+      const calledOpts = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1];
+      expect(calledOpts.headers).not.toHaveProperty("NGSILD-Tenant");
+    });
+
+    it("keeps NGSILD-Tenant header when skipTenantHeader is not set", async () => {
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        service: "my_tenant",
+      });
+
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+      await client.rawRequest("POST", "/auth/login", {
+        body: { email: "test@test.com", password: "pass" },
+      });
+
+      const calledOpts = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1];
+      expect(calledOpts.headers["NGSILD-Tenant"]).toBe("my_tenant");
+    });
   });
 
   describe("doRefresh network error", () => {

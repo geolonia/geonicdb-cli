@@ -7,6 +7,14 @@
 
 ## [Unreleased]
 
+### 2026-03-12
+- **Breaking**: `auth login` の email/password フローを対話モード専用に変更 — `GDB_EMAIL` / `GDB_PASSWORD` 環境変数サポートを廃止（シェルヒストリへのクレデンシャル漏洩を防止） (#70)
+- **Feat**: `auth login` にマルチテナント対応を追加 — `availableTenants` レスポンスの表示と対話的テナント選択 (#67)
+- **Fix**: `auth login` が `/auth/login` リクエストに `NGSILD-Tenant` ヘッダーを送信しないよう修正 (#68)
+- **Fix**: 401 エラー時のメッセージを `geonic auth login` に修正 (#69)
+- **Docs**: README の auth セクションを拡充 — 対話ログイン、マルチテナント、OAuth Client Credentials の説明を追加 (#70)
+- **Test**: `promptTenantSelection` / `skipTenantHeader` / マルチテナントフローのテストを追加 (#70)
+
 ## [0.6.0] - 2026-03-11
 
 ### 2026-03-11

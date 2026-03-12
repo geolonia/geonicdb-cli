@@ -9,7 +9,8 @@ import {
 } from "../helpers.js";
 import { loadConfig, saveConfig, getCurrentProfile, validateUrl } from "../config.js";
 import { printSuccess, printError, printInfo, printWarning } from "../output.js";
-import { isInteractive, promptEmail, promptPassword } from "../prompt.js";
+import { isInteractive, promptEmail, promptPassword, promptTenantSelection } from "../prompt.js";
+import type { TenantChoice } from "../prompt.js";
 import { getTokenStatus, formatDuration } from "../token.js";
 import { clientCredentialsGrant } from "../oauth.js";
 import { addExamples } from "./help.js";
@@ -68,21 +69,16 @@ function createLoginCommand(): Command {
           return;
         }
 
-        // Email/password flow
-        let email = process.env.GDB_EMAIL;
-        let password = process.env.GDB_PASSWORD;
-
-        if (!email || !password) {
-          if (isInteractive()) {
-            if (!email) email = await promptEmail();
-            if (!password) password = await promptPassword();
-          } else {
-            printError(
-              "Set GDB_EMAIL and GDB_PASSWORD environment variables, or run in a terminal for interactive login.",
-            );
-            process.exit(1);
-          }
+        // Email/password flow (interactive only)
+        if (!isInteractive()) {
+          printError(
+            "Interactive terminal required. Run `geonic auth login` in a terminal with TTY.",
+          );
+          process.exit(1);
         }
+
+        const email = await promptEmail();
+        const password = await promptPassword();
 
         const client = createClient(cmd);
         const body: Record<string, string> = { email, password };
@@ -90,15 +86,39 @@ function createLoginCommand(): Command {
           body.tenantId = loginOpts.tenantId;
         }
 
-        const response = await client.rawRequest("POST", "/auth/login", { body });
+        const response = await client.rawRequest("POST", "/auth/login", {
+          body,
+          skipTenantHeader: true,
+        });
 
         const data = response.data as Record<string, unknown>;
-        const token = (data.accessToken ?? data.token) as string | undefined;
-        const refreshToken = data.refreshToken as string | undefined;
+        let token = (data.accessToken ?? data.token) as string | undefined;
+        let refreshToken = data.refreshToken as string | undefined;
 
         if (!token) {
           printError("No token received from server.");
           process.exit(1);
+        }
+
+        // Handle multi-tenant: show available tenants and prompt for selection
+        const availableTenants = data.availableTenants as TenantChoice[] | undefined;
+        const currentTenantId = data.tenantId as string | undefined;
+
+        if (availableTenants && availableTenants.length > 1 && !loginOpts.tenantId) {
+          const selectedTenantId = await promptTenantSelection(availableTenants, currentTenantId);
+          if (selectedTenantId && selectedTenantId !== currentTenantId) {
+            // Re-login with selected tenant
+            const reloginResponse = await client.rawRequest("POST", "/auth/login", {
+              body: { email, password, tenantId: selectedTenantId },
+              skipTenantHeader: true,
+            });
+            const reloginData = reloginResponse.data as Record<string, unknown>;
+            const newToken = (reloginData.accessToken ?? reloginData.token) as string | undefined;
+            if (newToken) {
+              token = newToken;
+              refreshToken = reloginData.refreshToken as string | undefined;
+            }
+          }
         }
 
         const config = loadConfig(globalOpts.profile);
@@ -352,10 +372,6 @@ export function registerAuthCommands(program: Command): void {
       description: "Login with OAuth client credentials",
       command:
         "geonic auth login --client-credentials --client-id MY_ID --client-secret MY_SECRET",
-    },
-    {
-      description: "Login with environment variables",
-      command: "GDB_EMAIL=user@example.com GDB_PASSWORD=pass geonic auth login",
     },
     {
       description: "Login to a specific tenant",

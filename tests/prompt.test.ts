@@ -9,7 +9,7 @@ vi.mock("node:readline/promises", () => ({
   })),
 }));
 
-import { isInteractive, promptEmail, promptPassword } from "../src/prompt.js";
+import { isInteractive, promptEmail, promptPassword, promptTenantSelection } from "../src/prompt.js";
 
 describe("prompt", () => {
   const originalStdinIsTTY = process.stdin.isTTY;
@@ -240,6 +240,100 @@ describe("prompt", () => {
         stdinListeners["error"]?.forEach((cb) => cb(error));
         await expect(promise).rejects.toThrow("pipe error");
       });
+    });
+  });
+
+  describe("promptTenantSelection", () => {
+    let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      consoleSpy.mockRestore();
+    });
+
+    it("returns selected tenant when user enters a valid number", async () => {
+      mockQuestion.mockResolvedValue("2");
+      const tenants = [
+        { tenantId: "city_a", role: "admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      const result = await promptTenantSelection(tenants, "city_a");
+      expect(result).toBe("city_b");
+      expect(mockClose).toHaveBeenCalled();
+    });
+
+    it("returns undefined when user presses Enter without input", async () => {
+      mockQuestion.mockResolvedValue("");
+      const tenants = [
+        { tenantId: "city_a", role: "admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      const result = await promptTenantSelection(tenants, "city_a");
+      expect(result).toBeUndefined();
+    });
+
+    it("returns undefined when user enters whitespace only", async () => {
+      mockQuestion.mockResolvedValue("   ");
+      const tenants = [{ tenantId: "city_a", role: "admin" }];
+      const result = await promptTenantSelection(tenants);
+      expect(result).toBeUndefined();
+    });
+
+    it("returns undefined for out-of-range number", async () => {
+      mockQuestion.mockResolvedValue("99");
+      const tenants = [
+        { tenantId: "city_a", role: "admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      const result = await promptTenantSelection(tenants, "city_a");
+      expect(result).toBeUndefined();
+    });
+
+    it("returns undefined for zero", async () => {
+      mockQuestion.mockResolvedValue("0");
+      const tenants = [{ tenantId: "city_a", role: "admin" }];
+      const result = await promptTenantSelection(tenants);
+      expect(result).toBeUndefined();
+    });
+
+    it("returns undefined for negative number", async () => {
+      mockQuestion.mockResolvedValue("-1");
+      const tenants = [{ tenantId: "city_a", role: "admin" }];
+      const result = await promptTenantSelection(tenants);
+      expect(result).toBeUndefined();
+    });
+
+    it("displays current tenant marker", async () => {
+      mockQuestion.mockResolvedValue("");
+      const tenants = [
+        { tenantId: "city_a", role: "admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      await promptTenantSelection(tenants, "city_a");
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("← current"));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringMatching(/\*.*city_a/));
+    });
+
+    it("displays tenants without current marker when currentTenantId is not provided", async () => {
+      mockQuestion.mockResolvedValue("");
+      const tenants = [
+        { tenantId: "city_a", role: "admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      await promptTenantSelection(tenants);
+      // No "← current" marker should appear
+      const calls = consoleSpy.mock.calls.flat().join("\n");
+      expect(calls).not.toContain("← current");
+    });
+
+    it("closes readline even when question throws", async () => {
+      mockQuestion.mockRejectedValue(new Error("readline error"));
+      const tenants = [{ tenantId: "city_a", role: "admin" }];
+      await expect(promptTenantSelection(tenants)).rejects.toThrow("readline error");
+      expect(mockClose).toHaveBeenCalled();
     });
   });
 });
