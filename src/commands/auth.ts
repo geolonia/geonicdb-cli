@@ -70,6 +70,11 @@ function createLoginCommand(): Command {
         }
 
         // Email/password flow (interactive only)
+        if (!globalOpts.url) {
+          printError("No URL configured. Use `geonic config set url <url>` or pass --url.");
+          process.exit(1);
+        }
+
         if (!isInteractive()) {
           printError(
             "Interactive terminal required. Run `geonic auth login` in a terminal with TTY.",

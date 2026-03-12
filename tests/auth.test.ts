@@ -202,6 +202,22 @@ describe("auth commands", () => {
       expect(printSuccess).toHaveBeenCalledWith(expect.stringContaining("Login successful"));
     });
 
+    it("prints error and exits when URL is not configured (without prompting)", async () => {
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: undefined,
+        profile: "default",
+      } as never);
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("No URL configured"));
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      // Must NOT prompt for credentials
+      expect(promptEmail).not.toHaveBeenCalled();
+      expect(promptPassword).not.toHaveBeenCalled();
+    });
+
     it("prints error and exits when non-interactive", async () => {
       vi.mocked(isInteractive).mockReturnValue(false);
       const program = makeProgram();
