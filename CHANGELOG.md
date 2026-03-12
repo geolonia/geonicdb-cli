@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-03-13
+
 ### 2026-03-12
 - **Breaking**: `auth login` の email/password フローを対話モード専用に変更 — `GDB_EMAIL` / `GDB_PASSWORD` 環境変数サポートを廃止（シェルヒストリへのクレデンシャル漏洩を防止） (#70)
 - **Feat**: `auth login` にマルチテナント対応を追加 — `availableTenants` レスポンスの表示と対話的テナント選択 (#67)
@@ -110,7 +112,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.4.0...v0.4.1
