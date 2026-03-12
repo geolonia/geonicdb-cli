@@ -101,11 +101,23 @@ export class GdbWorld extends World {
 setWorldConstructor(GdbWorld);
 
 /**
- * Perform a real login against the test server and return the active profile config.
+ * Perform a real login against the test server via direct API call and write
+ * the token to the CLI config.  This avoids the interactive-only CLI login
+ * flow and keeps E2E setup fast & deterministic.
  */
 export async function performLogin(world: GdbWorld): Promise<Record<string, unknown>> {
-  world.writeConfig({ url: world.serverUrl });
-  await world.run(["login"], { GDB_EMAIL: TEST_EMAIL, GDB_PASSWORD: TEST_PASSWORD });
-  assert.equal(world.lastResult.exitCode, 0, `Login failed during setup.\nstdout: ${world.lastResult.stdout}\nstderr: ${world.lastResult.stderr}`);
+  const loginUrl = new URL("/auth/login", world.serverUrl).toString();
+  const res = await fetch(loginUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD }),
+  });
+  assert.equal(res.ok, true, `Login API call failed: HTTP ${res.status}`);
+  const data = (await res.json()) as Record<string, unknown>;
+  const token = (data.accessToken ?? data.token) as string;
+  assert.ok(token, "No token received from login API");
+  const config: Record<string, unknown> = { url: world.serverUrl, token };
+  if (data.refreshToken) config.refreshToken = data.refreshToken;
+  world.writeConfig(config);
   return world.readProfileConfig();
 }

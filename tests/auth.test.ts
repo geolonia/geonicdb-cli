@@ -38,6 +38,7 @@ vi.mock("../src/prompt.js", () => ({
   isInteractive: vi.fn(),
   promptEmail: vi.fn(),
   promptPassword: vi.fn(),
+  promptTenantSelection: vi.fn(),
 }));
 
 vi.mock("../src/token.js", () => ({
@@ -51,8 +52,8 @@ vi.mock("../src/oauth.js", () => ({
 
 import { createClient, getFormat, outputResponse, resolveOptions } from "../src/helpers.js";
 import { printSuccess, printError, printInfo, printWarning } from "../src/output.js";
-import { loadConfig, saveConfig, getCurrentProfile } from "../src/config.js";
-import { isInteractive, promptEmail, promptPassword } from "../src/prompt.js";
+import { loadConfig, saveConfig, getCurrentProfile, validateUrl } from "../src/config.js";
+import { isInteractive, promptEmail, promptPassword, promptTenantSelection } from "../src/prompt.js";
 import { getTokenStatus, formatDuration } from "../src/token.js";
 import { clientCredentialsGrant } from "../src/oauth.js";
 import { registerAuthCommands } from "../src/commands/auth.js";
@@ -76,17 +77,12 @@ describe("auth commands", () => {
     exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
       throw new Error("process.exit");
     });
-    // Clear env vars
-    delete process.env.GDB_EMAIL;
-    delete process.env.GDB_PASSWORD;
     delete process.env.GDB_OAUTH_CLIENT_ID;
     delete process.env.GDB_OAUTH_CLIENT_SECRET;
   });
 
   afterEach(() => {
     exitSpy.mockRestore();
-    delete process.env.GDB_EMAIL;
-    delete process.env.GDB_PASSWORD;
     delete process.env.GDB_OAUTH_CLIENT_ID;
     delete process.env.GDB_OAUTH_CLIENT_SECRET;
   });
@@ -184,30 +180,12 @@ describe("auth commands", () => {
   });
 
   describe("auth login (email/password)", () => {
-    it("uses GDB_EMAIL/GDB_PASSWORD env vars", async () => {
-      process.env.GDB_EMAIL = "user@example.com";
-      process.env.GDB_PASSWORD = "pass123";
-      client.rawRequest.mockResolvedValue(
-        mockResponse({ accessToken: "tok-abc", refreshToken: "ref-xyz" }),
-      );
-      const program = makeProgram();
-      await runCommand(program, ["auth", "login"]);
-      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/auth/login", {
-        body: { email: "user@example.com", password: "pass123" },
-      });
-      expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "tok-abc", refreshToken: "ref-xyz" }),
-        "default",
-      );
-      expect(printSuccess).toHaveBeenCalledWith(expect.stringContaining("Login successful"));
-    });
-
-    it("uses interactive prompts when isInteractive and no env vars", async () => {
+    it("prompts for email and password interactively", async () => {
       vi.mocked(isInteractive).mockReturnValue(true);
       vi.mocked(promptEmail).mockResolvedValue("prompt@example.com");
       vi.mocked(promptPassword).mockResolvedValue("promptpass");
       client.rawRequest.mockResolvedValue(
-        mockResponse({ accessToken: "interactive-token" }),
+        mockResponse({ accessToken: "interactive-token", refreshToken: "ref-xyz" }),
       );
       const program = makeProgram();
       await runCommand(program, ["auth", "login"]);
@@ -215,40 +193,65 @@ describe("auth commands", () => {
       expect(promptPassword).toHaveBeenCalled();
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/auth/login", {
         body: { email: "prompt@example.com", password: "promptpass" },
+        skipTenantHeader: true,
       });
-    });
-
-    it("prompts only for missing credentials when one env var is set", async () => {
-      process.env.GDB_EMAIL = "env@example.com";
-      vi.mocked(isInteractive).mockReturnValue(true);
-      vi.mocked(promptPassword).mockResolvedValue("interactive-pass");
-      client.rawRequest.mockResolvedValue(
-        mockResponse({ accessToken: "partial-token" }),
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "interactive-token", refreshToken: "ref-xyz" }),
+        "default",
       );
-      const program = makeProgram();
-      await runCommand(program, ["auth", "login"]);
-      expect(promptEmail).not.toHaveBeenCalled();
-      expect(promptPassword).toHaveBeenCalled();
-      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/auth/login", {
-        body: { email: "env@example.com", password: "interactive-pass" },
-      });
+      expect(printSuccess).toHaveBeenCalledWith(expect.stringContaining("Login successful"));
     });
 
-    it("prints error and exits when non-interactive and no env vars", async () => {
+    it("prints error and exits when URL is not configured (without prompting)", async () => {
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: undefined,
+        profile: "default",
+      } as never);
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("No URL configured"));
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      // Must NOT prompt for credentials
+      expect(promptEmail).not.toHaveBeenCalled();
+      expect(promptPassword).not.toHaveBeenCalled();
+    });
+
+    it("prints error and exits when URL is invalid (without prompting)", async () => {
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "not-a-url",
+        profile: "default",
+      } as never);
+      vi.mocked(validateUrl).mockImplementationOnce(() => {
+        throw new Error('Invalid URL: "not-a-url". URL must start with http:// or https://.');
+      });
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("Invalid URL"));
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(promptEmail).not.toHaveBeenCalled();
+      expect(promptPassword).not.toHaveBeenCalled();
+    });
+
+    it("prints error and exits when non-interactive", async () => {
       vi.mocked(isInteractive).mockReturnValue(false);
       const program = makeProgram();
       await expect(
         runCommand(program, ["auth", "login"]),
       ).rejects.toThrow("process.exit");
       expect(printError).toHaveBeenCalledWith(
-        expect.stringContaining("GDB_EMAIL"),
+        expect.stringContaining("Interactive terminal required"),
       );
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
     it("includes tenantId in the request body when --tenant-id is provided", async () => {
-      process.env.GDB_EMAIL = "user@example.com";
-      process.env.GDB_PASSWORD = "pass123";
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass123");
       client.rawRequest.mockResolvedValue(
         mockResponse({ accessToken: "tenant-token" }),
       );
@@ -256,12 +259,28 @@ describe("auth commands", () => {
       await runCommand(program, ["auth", "login", "--tenant-id", "my-tenant"]);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/auth/login", {
         body: { email: "user@example.com", password: "pass123", tenantId: "my-tenant" },
+        skipTenantHeader: true,
       });
     });
 
+    it("sends skipTenantHeader to prevent NGSILD-Tenant on login", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass123");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok" }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/auth/login", expect.objectContaining({
+        skipTenantHeader: true,
+      }));
+    });
+
     it("prints error and exits when no token in response", async () => {
-      process.env.GDB_EMAIL = "user@example.com";
-      process.env.GDB_PASSWORD = "pass123";
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass123");
       client.rawRequest.mockResolvedValue(mockResponse({ message: "ok" }));
       const program = makeProgram();
       await expect(
@@ -271,8 +290,9 @@ describe("auth commands", () => {
     });
 
     it("saves refreshToken when present in response", async () => {
-      process.env.GDB_EMAIL = "user@example.com";
-      process.env.GDB_PASSWORD = "pass123";
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass123");
       client.rawRequest.mockResolvedValue(
         mockResponse({ accessToken: "tok", refreshToken: "ref" }),
       );
@@ -285,8 +305,9 @@ describe("auth commands", () => {
     });
 
     it("deletes refreshToken when not present in response", async () => {
-      process.env.GDB_EMAIL = "user@example.com";
-      process.env.GDB_PASSWORD = "pass123";
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass123");
       const configObj = { refreshToken: "old-refresh" } as Record<string, unknown>;
       vi.mocked(loadConfig).mockReturnValue(configObj as never);
       client.rawRequest.mockResolvedValue(
@@ -294,14 +315,14 @@ describe("auth commands", () => {
       );
       const program = makeProgram();
       await runCommand(program, ["auth", "login"]);
-      // refreshToken should have been deleted
       expect(configObj.refreshToken).toBeUndefined();
       expect(saveConfig).toHaveBeenCalled();
     });
 
     it("reads token from data.token when accessToken is not present", async () => {
-      process.env.GDB_EMAIL = "user@example.com";
-      process.env.GDB_PASSWORD = "pass123";
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass123");
       client.rawRequest.mockResolvedValue(
         mockResponse({ token: "legacy-token" }),
       );
@@ -309,6 +330,121 @@ describe("auth commands", () => {
       await runCommand(program, ["auth", "login"]);
       expect(saveConfig).toHaveBeenCalledWith(
         expect.objectContaining({ token: "legacy-token" }),
+        "default",
+      );
+    });
+  });
+
+  describe("auth login (multi-tenant)", () => {
+    beforeEach(() => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass123");
+    });
+
+    it("shows tenant selection when availableTenants has multiple entries", async () => {
+      const tenants = [
+        { tenantId: "city_a", role: "tenant_admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok", tenantId: "city_a", availableTenants: tenants }),
+      );
+      vi.mocked(promptTenantSelection).mockResolvedValue(undefined);
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      expect(promptTenantSelection).toHaveBeenCalledWith(tenants, "city_a");
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "tok" }),
+        "default",
+      );
+    });
+
+    it("re-logins with selected tenant when user picks a different one", async () => {
+      const tenants = [
+        { tenantId: "city_a", role: "tenant_admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-a", tenantId: "city_a", availableTenants: tenants }),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-b", refreshToken: "ref-b", tenantId: "city_b" }),
+        );
+      vi.mocked(promptTenantSelection).mockResolvedValue("city_b");
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      expect(client.rawRequest).toHaveBeenCalledTimes(2);
+      expect(client.rawRequest).toHaveBeenLastCalledWith("POST", "/auth/login", {
+        body: { email: "user@example.com", password: "pass123", tenantId: "city_b" },
+        skipTenantHeader: true,
+      });
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "tok-b", refreshToken: "ref-b" }),
+        "default",
+      );
+    });
+
+    it("skips tenant selection when --tenant-id is explicitly provided", async () => {
+      const tenants = [
+        { tenantId: "city_a", role: "tenant_admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok", tenantId: "city_a", availableTenants: tenants }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login", "--tenant-id", "city_a"]);
+      expect(promptTenantSelection).not.toHaveBeenCalled();
+    });
+
+    it("skips tenant selection when only one tenant is available", async () => {
+      const tenants = [{ tenantId: "city_a", role: "tenant_admin" }];
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok", tenantId: "city_a", availableTenants: tenants }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      expect(promptTenantSelection).not.toHaveBeenCalled();
+    });
+
+    it("prints error and exits when re-login returns no token", async () => {
+      const tenants = [
+        { tenantId: "city_a", role: "tenant_admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-a", tenantId: "city_a", availableTenants: tenants }),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ message: "ok" }), // no token
+        );
+      vi.mocked(promptTenantSelection).mockResolvedValue("city_b");
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith("Re-login failed: no token received for selected tenant.");
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it("keeps original token when user selects current tenant", async () => {
+      const tenants = [
+        { tenantId: "city_a", role: "tenant_admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok-a", tenantId: "city_a", availableTenants: tenants }),
+      );
+      vi.mocked(promptTenantSelection).mockResolvedValue("city_a");
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      // Should not re-login since selectedTenantId === currentTenantId
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "tok-a" }),
         "default",
       );
     });
@@ -395,7 +531,6 @@ describe("auth commands", () => {
       const program = makeProgram();
       await runCommand(program, ["me"]);
       expect(outputResponse).toHaveBeenCalled();
-      // Should not print token status or profile info when format is json
       expect(getTokenStatus).not.toHaveBeenCalled();
     });
 
@@ -471,7 +606,6 @@ describe("auth commands", () => {
       vi.mocked(getFormat).mockReturnValue("table");
       const program = makeProgram();
       await runCommand(program, ["me"]);
-      // Should not print any expiry messages
       expect(printWarning).not.toHaveBeenCalled();
     });
 
@@ -709,8 +843,9 @@ describe("auth commands", () => {
 
   describe("hidden aliases", () => {
     it("login alias at top level works", async () => {
-      process.env.GDB_EMAIL = "user@example.com";
-      process.env.GDB_PASSWORD = "pass123";
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass123");
       client.rawRequest.mockResolvedValue(
         mockResponse({ accessToken: "alias-token" }),
       );
@@ -718,6 +853,7 @@ describe("auth commands", () => {
       await runCommand(program, ["login"]);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/auth/login", {
         body: { email: "user@example.com", password: "pass123" },
+        skipTenantHeader: true,
       });
     });
 

@@ -121,7 +121,47 @@ geonic help [<command>] [<subcommand>]
 | `auth nonce` | Get a nonce and PoW challenge for API key authentication |
 | `auth token-exchange` | Exchange API key for a session JWT via nonce + PoW |
 
-The `auth login` command reads `GDB_EMAIL` and `GDB_PASSWORD` environment variables. It also supports OAuth Client Credentials flow with `--client-id` and `--client-secret`.
+#### Email/Password Login
+
+`auth login` uses interactive prompts for email and password. A TTY is required — credentials are never accepted via environment variables or command-line arguments to prevent leaking secrets in shell history.
+
+```bash
+geonic auth login
+```
+
+| Option | Description |
+|---|---|
+| `--tenant-id <id>` | Log in to a specific tenant |
+
+**Multi-tenant support**: When you belong to multiple tenants, `auth login` displays the list and lets you select one interactively. Use `--tenant-id` to skip the prompt.
+
+```text
+$ geonic auth login
+Email: user@example.com
+Password: ********
+Login successful. Token saved to config.
+
+Available tenants:
+  * 1) my_city (tenant_admin) ← current
+    2) another_city (user)
+
+Select tenant number (Enter to keep current):
+```
+
+#### OAuth Client Credentials
+
+For machine-to-machine authentication (CI/CD, scripts), use the OAuth Client Credentials flow:
+
+```bash
+geonic auth login --client-credentials --client-id MY_ID --client-secret MY_SECRET
+```
+
+| Option | Description |
+|---|---|
+| `--client-credentials` | Use OAuth 2.0 Client Credentials flow |
+| `--client-id <id>` | OAuth client ID (or `GDB_OAUTH_CLIENT_ID` env var) |
+| `--client-secret <secret>` | OAuth client secret (or `GDB_OAUTH_CLIENT_SECRET` env var) |
+| `--scope <scopes>` | OAuth scopes (space-separated) |
 
 #### API Key Token Exchange
 
