@@ -282,28 +282,38 @@ describe("prompt", () => {
       expect(result).toBeUndefined();
     });
 
-    it("returns undefined for out-of-range number", async () => {
-      mockQuestion.mockResolvedValue("99");
+    it("re-prompts on out-of-range number then accepts valid input", async () => {
+      mockQuestion
+        .mockResolvedValueOnce("99")
+        .mockResolvedValueOnce("1");
       const tenants = [
         { tenantId: "city_a", role: "admin" },
         { tenantId: "city_b", role: "user" },
       ];
       const result = await promptTenantSelection(tenants, "city_a");
-      expect(result).toBeUndefined();
+      expect(result).toBe("city_a");
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid selection"));
+      expect(mockQuestion).toHaveBeenCalledTimes(2);
     });
 
-    it("returns undefined for zero", async () => {
-      mockQuestion.mockResolvedValue("0");
+    it("re-prompts on zero then accepts valid input", async () => {
+      mockQuestion
+        .mockResolvedValueOnce("0")
+        .mockResolvedValueOnce("1");
+      const tenants = [{ tenantId: "city_a", role: "admin" }];
+      const result = await promptTenantSelection(tenants);
+      expect(result).toBe("city_a");
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid selection"));
+    });
+
+    it("re-prompts on negative number then accepts Enter to keep current", async () => {
+      mockQuestion
+        .mockResolvedValueOnce("-1")
+        .mockResolvedValueOnce("");
       const tenants = [{ tenantId: "city_a", role: "admin" }];
       const result = await promptTenantSelection(tenants);
       expect(result).toBeUndefined();
-    });
-
-    it("returns undefined for negative number", async () => {
-      mockQuestion.mockResolvedValue("-1");
-      const tenants = [{ tenantId: "city_a", role: "admin" }];
-      const result = await promptTenantSelection(tenants);
-      expect(result).toBeUndefined();
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid selection"));
     });
 
     it("displays current tenant marker", async () => {

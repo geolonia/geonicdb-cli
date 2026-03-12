@@ -93,7 +93,7 @@ export function withErrorHandler<T extends unknown[]>(fn: (...args: T) => Promis
         return;
       }
       if (err instanceof GdbClientError && err.status === 401) {
-        printError("Authentication failed. Run `geonic auth login` to re-authenticate.");
+        printError("Authentication failed. Please re-authenticate (e.g., `geonic auth login` or check your API key).");
       } else if (err instanceof GdbClientError && err.status === 403) {
         const detail = (err.ngsiError?.detail ?? err.ngsiError?.description ?? "").toLowerCase();
         if (detail.includes("entity type") || detail.includes("allowedentitytypes")) {

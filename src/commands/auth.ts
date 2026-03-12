@@ -114,10 +114,12 @@ function createLoginCommand(): Command {
             });
             const reloginData = reloginResponse.data as Record<string, unknown>;
             const newToken = (reloginData.accessToken ?? reloginData.token) as string | undefined;
-            if (newToken) {
-              token = newToken;
-              refreshToken = reloginData.refreshToken as string | undefined;
+            if (!newToken) {
+              printError("Re-login failed: no token received for selected tenant.");
+              process.exit(1);
             }
+            token = newToken;
+            refreshToken = reloginData.refreshToken as string | undefined;
           }
         }
 

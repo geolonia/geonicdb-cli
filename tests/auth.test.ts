@@ -375,6 +375,27 @@ describe("auth commands", () => {
       expect(promptTenantSelection).not.toHaveBeenCalled();
     });
 
+    it("prints error and exits when re-login returns no token", async () => {
+      const tenants = [
+        { tenantId: "city_a", role: "tenant_admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-a", tenantId: "city_a", availableTenants: tenants }),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ message: "ok" }), // no token
+        );
+      vi.mocked(promptTenantSelection).mockResolvedValue("city_b");
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith("Re-login failed: no token received for selected tenant.");
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
     it("keeps original token when user selects current tenant", async () => {
       const tenants = [
         { tenantId: "city_a", role: "tenant_admin" },

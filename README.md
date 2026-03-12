@@ -135,7 +135,7 @@ geonic auth login
 
 **Multi-tenant support**: When you belong to multiple tenants, `auth login` displays the list and lets you select one interactively. Use `--tenant-id` to skip the prompt.
 
-```
+```text
 $ geonic auth login
 Email: user@example.com
 Password: ********

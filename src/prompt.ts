@@ -122,14 +122,16 @@ export async function promptTenantSelection(
       const marker = t.tenantId === currentTenantId ? "  *" : "   ";
       console.log(`${marker} ${i + 1}) ${t.tenantId} (${t.role})${current}`);
     }
-    const answer = await rl.question("\nSelect tenant number (Enter to keep current): ");
-    const trimmed = answer.trim();
-    if (!trimmed) return undefined;
-    const index = parseInt(trimmed, 10) - 1;
-    if (index >= 0 && index < tenants.length) {
-      return tenants[index].tenantId;
+    for (;;) {
+      const answer = await rl.question("\nSelect tenant number (Enter to keep current): ");
+      const trimmed = answer.trim();
+      if (!trimmed) return undefined;
+      const index = parseInt(trimmed, 10) - 1;
+      if (index >= 0 && index < tenants.length) {
+        return tenants[index].tenantId;
+      }
+      console.log(`Invalid selection. Please enter a number between 1 and ${tenants.length}.`);
     }
-    return undefined;
   } finally {
     rl.close();
   }
