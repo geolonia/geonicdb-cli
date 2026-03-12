@@ -52,7 +52,7 @@ vi.mock("../src/oauth.js", () => ({
 
 import { createClient, getFormat, outputResponse, resolveOptions } from "../src/helpers.js";
 import { printSuccess, printError, printInfo, printWarning } from "../src/output.js";
-import { loadConfig, saveConfig, getCurrentProfile } from "../src/config.js";
+import { loadConfig, saveConfig, getCurrentProfile, validateUrl } from "../src/config.js";
 import { isInteractive, promptEmail, promptPassword, promptTenantSelection } from "../src/prompt.js";
 import { getTokenStatus, formatDuration } from "../src/token.js";
 import { clientCredentialsGrant } from "../src/oauth.js";
@@ -214,6 +214,24 @@ describe("auth commands", () => {
       expect(printError).toHaveBeenCalledWith(expect.stringContaining("No URL configured"));
       expect(exitSpy).toHaveBeenCalledWith(1);
       // Must NOT prompt for credentials
+      expect(promptEmail).not.toHaveBeenCalled();
+      expect(promptPassword).not.toHaveBeenCalled();
+    });
+
+    it("prints error and exits when URL is invalid (without prompting)", async () => {
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "not-a-url",
+        profile: "default",
+      } as never);
+      vi.mocked(validateUrl).mockImplementationOnce(() => {
+        throw new Error('Invalid URL: "not-a-url". URL must start with http:// or https://.');
+      });
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("Invalid URL"));
+      expect(exitSpy).toHaveBeenCalledWith(1);
       expect(promptEmail).not.toHaveBeenCalled();
       expect(promptPassword).not.toHaveBeenCalled();
     });

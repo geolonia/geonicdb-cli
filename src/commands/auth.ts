@@ -75,6 +75,13 @@ function createLoginCommand(): Command {
           process.exit(1);
         }
 
+        try {
+          validateUrl(globalOpts.url);
+        } catch (err) {
+          printError((err as Error).message);
+          process.exit(1);
+        }
+
         if (!isInteractive()) {
           printError(
             "Interactive terminal required. Run `geonic auth login` in a terminal with TTY.",
