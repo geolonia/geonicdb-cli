@@ -43,11 +43,12 @@ BeforeAll(async function () {
 
 Before(async function (this: GdbWorld) {
   // DB cleanup for scenario isolation — delete documents but preserve collections/indexes
-  // to avoid server-side inconsistencies caused by full collection drops
+  // and skip auth-related collections (users) to avoid server-side cache inconsistencies
   const db = mongoClient.db();
+  const skipCollections = new Set(["users"]);
   const collections = await db.listCollections().toArray();
   for (const c of collections) {
-    if (!c.name.startsWith("system.")) {
+    if (!c.name.startsWith("system.") && !skipCollections.has(c.name)) {
       await db.collection(c.name).deleteMany({});
     }
   }
