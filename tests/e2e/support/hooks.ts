@@ -42,13 +42,17 @@ BeforeAll(async function () {
 });
 
 Before(async function (this: GdbWorld) {
-  // DB cleanup for scenario isolation — delete documents but preserve collections/indexes
-  // and skip auth-related collections (users) to avoid server-side cache inconsistencies
+  // DB cleanup for scenario isolation — only clear data collections.
+  // Auth-related collections (users, tenants, policies, etc.) are preserved
+  // to avoid server-side cache inconsistencies that cause 401 errors.
   const db = mongoClient.db();
-  const skipCollections = new Set(["users"]);
+  const dataCollections = new Set([
+    "entities", "subscriptions", "csourceRegistrations",
+    "temporalEntities", "rules", "custom-data-models", "snapshots",
+  ]);
   const collections = await db.listCollections().toArray();
   for (const c of collections) {
-    if (!c.name.startsWith("system.") && !skipCollections.has(c.name)) {
+    if (dataCollections.has(c.name)) {
       await db.collection(c.name).deleteMany({});
     }
   }
