@@ -20,6 +20,7 @@ vi.mock("../src/output.js", () => ({
 
 vi.mock("../src/commands/help.js", () => ({
   addExamples: vi.fn(),
+  addNotes: vi.fn(),
 }));
 
 import {

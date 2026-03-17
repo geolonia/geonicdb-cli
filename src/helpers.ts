@@ -5,6 +5,20 @@ import { printError, printOutput, printCount } from "./output.js";
 import type { ClientResponse, GlobalOptions, OutputFormat } from "./types.js";
 
 /**
+ * Valid scope values for --scopes option help text.
+ */
+export const SCOPES_HELP_NOTES = [
+  "Valid scopes:",
+  "  read:entities, write:entities, read:subscriptions, write:subscriptions,",
+  "  read:registrations, write:registrations, read:rules, write:rules,",
+  "  read:custom-data-models, write:custom-data-models,",
+  "  admin:users, admin:tenants, admin:policies, admin:oauth-clients,",
+  "  admin:api-keys, admin:metrics",
+  "",
+  "write:X implies read:X. admin:X implies both read:X and write:X.",
+];
+
+/**
  * Resolve merged options from config + CLI flags.
  */
 export function resolveOptions(cmd: Command): GlobalOptions {

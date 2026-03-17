@@ -3,7 +3,8 @@ import { withErrorHandler, createClient, resolveOptions, getFormat, outputRespon
 import { loadConfig, saveConfig } from "../config.js";
 import { parseJsonInput } from "../input.js";
 import { printError, printWarning } from "../output.js";
-import { addExamples } from "./help.js";
+import { addExamples, addNotes } from "./help.js";
+import { SCOPES_HELP_NOTES } from "../helpers.js";
 
 export function addMeApiKeysSubcommand(me: Command): void {
   const apiKeys = me
@@ -126,6 +127,8 @@ export function addMeApiKeysSubcommand(me: Command): void {
         console.error("API key created.");
       }),
     );
+
+  addNotes(create, SCOPES_HELP_NOTES);
 
   addExamples(create, [
     {

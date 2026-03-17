@@ -3,7 +3,8 @@ import { withErrorHandler, createClient, resolveOptions, getFormat, outputRespon
 import { loadConfig, saveConfig } from "../../config.js";
 import { parseJsonInput } from "../../input.js";
 import { printError, printWarning } from "../../output.js";
-import { addExamples } from "../help.js";
+import { addExamples, addNotes } from "../help.js";
+import { SCOPES_HELP_NOTES } from "../../helpers.js";
 
 function validateOrigins(body: unknown, opts: Record<string, unknown>): void {
   // Validate origins if provided via flags
@@ -173,10 +174,12 @@ export function registerApiKeysCommand(parent: Command): void {
       }),
     );
 
+  addNotes(create, SCOPES_HELP_NOTES);
+
   addExamples(create, [
     {
       description: "Create an API key with flags",
-      command: "geonic admin api-keys create --name my-key --scopes entities:read,entities:write --origins '*'",
+      command: "geonic admin api-keys create --name my-key --scopes read:entities,write:entities --origins '*'",
     },
     {
       description: "Create an API key with DPoP required",
@@ -236,6 +239,8 @@ export function registerApiKeysCommand(parent: Command): void {
         },
       ),
     );
+
+  addNotes(update, SCOPES_HELP_NOTES);
 
   addExamples(update, [
     {
