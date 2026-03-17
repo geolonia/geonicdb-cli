@@ -189,13 +189,25 @@ export function registerTemporalCommand(program: Command): void {
   // temporal entities create
   const create = entities
     .command("create [json]")
-    .description("Create a temporal entity")
+    .description(
+      "Create a temporal entity\n\n" +
+        "JSON payload: an NGSI-LD entity with temporal attribute instances.\n" +
+        "Each attribute value is an array of {value, observedAt} objects.",
+    )
     .action(createCreateAction());
 
   addExamples(create, [
     {
-      description: "Create temporal entity from a file",
+      description: "Create from a file",
       command: "geonic temporal entities create @temporal-entity.json",
+    },
+    {
+      description: "Create from stdin pipe",
+      command: "cat temporal-entity.json | geonic temporal entities create",
+    },
+    {
+      description: "Interactive mode",
+      command: "geonic temporal entities create",
     },
   ]);
 
@@ -219,6 +231,10 @@ export function registerTemporalCommand(program: Command): void {
   opsQuery.action(createQueryAction());
 
   addExamples(opsQuery, [
+    {
+      description: "Query with inline JSON",
+      command: `geonic temporal entityOperations query '{"entities":[{"type":"Sensor"}],"attrs":["temperature"]}'`,
+    },
     {
       description: "Query with aggregation (hourly count)",
       command:

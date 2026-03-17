@@ -167,7 +167,15 @@ export function registerEntitiesCommand(program: Command): void {
   // entities create
   const create = entities
     .command("create")
-    .description("Create a new entity")
+    .description(
+      "Create a new entity\n\n" +
+        "JSON payload example:\n" +
+        "  {\n" +
+        '    "id": "urn:ngsi-ld:Sensor:001",\n' +
+        '    "type": "Sensor",\n' +
+        '    "temperature": {"type": "Property", "value": 25}\n' +
+        "  }",
+    )
     .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
     .action(
       withErrorHandler(async (json: string | undefined, _opts: unknown, cmd: Command) => {
@@ -181,8 +189,12 @@ export function registerEntitiesCommand(program: Command): void {
 
   addExamples(create, [
     {
-      description: "Create from inline JSON",
+      description: "Create from inline JSON (minimal)",
       command: `geonic entities create '{"id":"urn:ngsi-ld:Sensor:001","type":"Sensor"}'`,
+    },
+    {
+      description: "Create with attributes",
+      command: `geonic entities create '{"id":"urn:ngsi-ld:Sensor:001","type":"Sensor","temperature":{"type":"Property","value":25},"location":{"type":"GeoProperty","value":{"type":"Point","coordinates":[139.77,35.68]}}}'`,
     },
     {
       description: "Create from a file",
@@ -192,12 +204,20 @@ export function registerEntitiesCommand(program: Command): void {
       description: "Create from stdin pipe",
       command: "cat entity.json | geonic entities create",
     },
+    {
+      description: "Interactive mode (omit JSON argument)",
+      command: "geonic entities create",
+    },
   ]);
 
   // entities update
   const update = entities
     .command("update")
-    .description("Update attributes of an entity (PATCH)")
+    .description(
+      "Update attributes of an entity (PATCH)\n\n" +
+        "JSON payload: only specified attributes are modified.\n" +
+        '  e.g. {"temperature": {"type": "Property", "value": 30}}',
+    )
     .argument("<id>", "Entity ID")
     .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
     .action(
@@ -217,20 +237,28 @@ export function registerEntitiesCommand(program: Command): void {
 
   addExamples(update, [
     {
-      description: "Update entity attributes from inline JSON",
+      description: "Update a Property attribute",
       command:
-        "geonic entities update urn:ngsi-ld:Sensor:001 '{\"temperature\":{\"value\":25}}'",
+        `geonic entities update urn:ngsi-ld:Sensor:001 '{"temperature":{"type":"Property","value":30}}'`,
     },
     {
-      description: "Update entity attributes from a file",
+      description: "Update from a file",
       command: "geonic entities update urn:ngsi-ld:Sensor:001 @attrs.json",
+    },
+    {
+      description: "Update from stdin pipe",
+      command: "cat attrs.json | geonic entities update urn:ngsi-ld:Sensor:001",
     },
   ]);
 
   // entities replace
   const replace = entities
     .command("replace")
-    .description("Replace all attributes of an entity (PUT)")
+    .description(
+      "Replace all attributes of an entity (PUT)\n\n" +
+        "JSON payload: all existing attributes are replaced.\n" +
+        '  e.g. {"temperature": {"type": "Property", "value": 20}}',
+    )
     .argument("<id>", "Entity ID")
     .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
     .action(
@@ -250,8 +278,16 @@ export function registerEntitiesCommand(program: Command): void {
 
   addExamples(replace, [
     {
-      description: "Replace all attributes from a file",
+      description: "Replace all attributes with inline JSON",
+      command: `geonic entities replace urn:ngsi-ld:Sensor:001 '{"temperature":{"type":"Property","value":20}}'`,
+    },
+    {
+      description: "Replace from a file",
       command: "geonic entities replace urn:ngsi-ld:Sensor:001 @attrs.json",
+    },
+    {
+      description: "Replace from stdin pipe",
+      command: "cat attrs.json | geonic entities replace urn:ngsi-ld:Sensor:001",
     },
   ]);
 

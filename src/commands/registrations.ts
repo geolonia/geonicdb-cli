@@ -76,7 +76,15 @@ export function registerRegistrationsCommand(program: Command): void {
   // registrations create
   const create = registrations
     .command("create [json]")
-    .description("Create a registration")
+    .description(
+      "Create a registration\n\n" +
+        "JSON payload example:\n" +
+        "  {\n" +
+        '    "type": "ContextSourceRegistration",\n' +
+        '    "information": [{"entities": [{"type": "Room"}]}],\n' +
+        '    "endpoint": "http://localhost:4000/source"\n' +
+        "  }",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -91,8 +99,16 @@ export function registerRegistrationsCommand(program: Command): void {
 
   addExamples(create, [
     {
-      description: "Create a registration from a file",
+      description: "Create with inline JSON",
+      command: `geonic registrations create '{"type":"ContextSourceRegistration","information":[{"entities":[{"type":"Room"}]}],"endpoint":"http://localhost:4000/source"}'`,
+    },
+    {
+      description: "Create from a file",
       command: "geonic registrations create @registration.json",
+    },
+    {
+      description: "Create from stdin pipe",
+      command: "cat registration.json | geonic registrations create",
     },
   ]);
 
@@ -119,9 +135,16 @@ export function registerRegistrationsCommand(program: Command): void {
 
   addExamples(regUpdate, [
     {
-      description: "Update a registration from a file",
-      command:
-        "geonic registrations update urn:ngsi-ld:ContextSourceRegistration:001 @registration.json",
+      description: "Update endpoint",
+      command: `geonic registrations update urn:ngsi-ld:ContextSourceRegistration:001 '{"endpoint":"http://localhost:5000/source"}'`,
+    },
+    {
+      description: "Update from a file",
+      command: "geonic registrations update urn:ngsi-ld:ContextSourceRegistration:001 @registration.json",
+    },
+    {
+      description: "Update from stdin pipe",
+      command: "cat registration.json | geonic registrations update urn:ngsi-ld:ContextSourceRegistration:001",
     },
   ]);
 

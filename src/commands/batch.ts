@@ -17,7 +17,11 @@ export function registerBatchCommand(program: Command): void {
   // batch create
   const create = batch
     .command("create [json]")
-    .description("Batch create entities")
+    .description(
+      "Batch create entities\n\n" +
+        "JSON payload: an array of NGSI-LD entities.\n" +
+        '  e.g. [{"id": "urn:ngsi-ld:Sensor:001", "type": "Sensor"}, ...]',
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -31,11 +35,15 @@ export function registerBatchCommand(program: Command): void {
 
   addExamples(create, [
     {
+      description: "Batch create with inline JSON",
+      command: `geonic batch create '[{"id":"urn:ngsi-ld:Sensor:001","type":"Sensor"},{"id":"urn:ngsi-ld:Sensor:002","type":"Sensor"}]'`,
+    },
+    {
       description: "Batch create from a file",
       command: "geonic batch create @entities.json",
     },
     {
-      description: "Batch create from stdin",
+      description: "Batch create from stdin pipe",
       command: "cat entities.json | geonic batch create",
     },
   ]);
@@ -43,7 +51,11 @@ export function registerBatchCommand(program: Command): void {
   // batch upsert
   const upsert = batch
     .command("upsert [json]")
-    .description("Batch upsert entities")
+    .description(
+      "Batch upsert entities\n\n" +
+        "JSON payload: an array of NGSI-LD entities.\n" +
+        "Creates entities that don't exist, updates those that do.",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -57,11 +69,15 @@ export function registerBatchCommand(program: Command): void {
 
   addExamples(upsert, [
     {
+      description: "Batch upsert with inline JSON",
+      command: `geonic batch upsert '[{"id":"urn:ngsi-ld:Sensor:001","type":"Sensor","temperature":{"type":"Property","value":25}}]'`,
+    },
+    {
       description: "Batch upsert from a file",
       command: "geonic batch upsert @entities.json",
     },
     {
-      description: "Batch upsert from stdin",
+      description: "Batch upsert from stdin pipe",
       command: "cat entities.json | geonic batch upsert",
     },
   ]);
@@ -69,7 +85,11 @@ export function registerBatchCommand(program: Command): void {
   // batch update
   const update = batch
     .command("update [json]")
-    .description("Batch update entity attributes")
+    .description(
+      "Batch update entity attributes\n\n" +
+        "JSON payload: an array of NGSI-LD entities with attributes to update.\n" +
+        "Each entity must include id and type; only specified attributes are modified.",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -95,7 +115,11 @@ export function registerBatchCommand(program: Command): void {
   // batch delete
   const del = batch
     .command("delete [json]")
-    .description("Batch delete entities by ID")
+    .description(
+      "Batch delete entities by ID\n\n" +
+        'JSON payload: an array of entity ID strings.\n' +
+        '  e.g. ["urn:ngsi-ld:Sensor:001","urn:ngsi-ld:Sensor:002"]',
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -109,11 +133,15 @@ export function registerBatchCommand(program: Command): void {
 
   addExamples(del, [
     {
+      description: "Batch delete with inline JSON",
+      command: `geonic batch delete '["urn:ngsi-ld:Sensor:001","urn:ngsi-ld:Sensor:002"]'`,
+    },
+    {
       description: "Batch delete from a file",
       command: "geonic batch delete @entity-ids.json",
     },
     {
-      description: "Batch delete from stdin",
+      description: "Batch delete from stdin pipe",
       command: "cat entity-ids.json | geonic batch delete",
     },
   ]);
@@ -121,7 +149,15 @@ export function registerBatchCommand(program: Command): void {
   // batch query
   const query = batch
     .command("query [json]")
-    .description("Query entities by posting a query payload")
+    .description(
+      "Query entities by posting a query payload\n\n" +
+        "JSON payload example:\n" +
+        "  {\n" +
+        '    "entities": [{"type": "Sensor"}],\n' +
+        '    "attrs": ["temperature"],\n' +
+        '    "q": "temperature>30"\n' +
+        "  }",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -135,11 +171,15 @@ export function registerBatchCommand(program: Command): void {
 
   addExamples(query, [
     {
-      description: "Query entities from a file",
+      description: "Query with inline JSON",
+      command: `geonic batch query '{"entities":[{"type":"Sensor"}],"attrs":["temperature"]}'`,
+    },
+    {
+      description: "Query from a file",
       command: "geonic batch query @query.json",
     },
     {
-      description: "Query entities from stdin",
+      description: "Query from stdin pipe",
       command: "cat query.json | geonic batch query",
     },
   ]);
@@ -147,7 +187,11 @@ export function registerBatchCommand(program: Command): void {
   // batch merge
   const merge = batch
     .command("merge [json]")
-    .description("Batch merge-patch entities")
+    .description(
+      "Batch merge-patch entities\n\n" +
+        "JSON payload: an array of NGSI-LD entities.\n" +
+        "Each entity must include id and type; attributes are merge-patched.",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);

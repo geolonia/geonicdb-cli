@@ -56,7 +56,18 @@ export function registerModelsCommand(program: Command): void {
   // models create
   const create = models
     .command("create [json]")
-    .description("Create a new model")
+    .description(
+      "Create a new model\n\n" +
+        "JSON payload example:\n" +
+        "  {\n" +
+        '    "type": "Sensor",\n' +
+        '    "domain": "iot",\n' +
+        '    "description": "IoT Sensor",\n' +
+        '    "propertyDetails": {\n' +
+        '      "temperature": {"ngsiType": "Property", "valueType": "Number", "example": 25}\n' +
+        "    }\n" +
+        "  }",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const body = await parseJsonInput(json as string | undefined);
@@ -70,15 +81,27 @@ export function registerModelsCommand(program: Command): void {
 
   addExamples(create, [
     {
-      description: "Create a model from a file",
+      description: "Create with inline JSON",
+      command: `geonic models create '{"type":"Sensor","domain":"iot","description":"IoT Sensor","propertyDetails":{"temperature":{"ngsiType":"Property","valueType":"Number","example":25}}}'`,
+    },
+    {
+      description: "Create from a file",
       command: "geonic models create @model.json",
+    },
+    {
+      description: "Create from stdin pipe",
+      command: "cat model.json | geonic models create",
     },
   ]);
 
   // models update
   const update = models
     .command("update <id> [json]")
-    .description("Update a model")
+    .description(
+      "Update a model\n\n" +
+        "JSON payload: only specified fields are updated.\n" +
+        '  e.g. {"description": "Updated model"}',
+    )
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
@@ -98,8 +121,16 @@ export function registerModelsCommand(program: Command): void {
 
   addExamples(update, [
     {
-      description: "Update a model from a file",
+      description: "Update description",
+      command: `geonic models update <model-id> '{"description":"Updated description"}'`,
+    },
+    {
+      description: "Update from a file",
       command: "geonic models update <model-id> @model.json",
+    },
+    {
+      description: "Update from stdin pipe",
+      command: "cat model.json | geonic models update <model-id>",
     },
   ]);
 

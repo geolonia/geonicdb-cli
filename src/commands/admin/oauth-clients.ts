@@ -55,7 +55,14 @@ export function registerOAuthClientsCommand(parent: Command): void {
   // oauth-clients create
   const create = oauthClients
     .command("create [json]")
-    .description("Create a new OAuth client")
+    .description(
+      "Create a new OAuth client\n\n" +
+        "JSON payload example:\n" +
+        "  {\n" +
+        '    "clientName": "my-app",\n' +
+        '    "allowedScopes": ["read:entities", "write:entities"]\n' +
+        "  }",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const body = await parseJsonInput(json as string | undefined);
@@ -71,15 +78,27 @@ export function registerOAuthClientsCommand(parent: Command): void {
 
   addExamples(create, [
     {
-      description: "Create an OAuth client from a JSON file",
+      description: "Create with inline JSON",
+      command: `geonic admin oauth-clients create '{"clientName":"my-app","allowedScopes":["read:entities","write:entities"]}'`,
+    },
+    {
+      description: "Create from a JSON file",
       command: "geonic admin oauth-clients create @client.json",
+    },
+    {
+      description: "Create from stdin pipe",
+      command: "cat client.json | geonic admin oauth-clients create",
     },
   ]);
 
   // oauth-clients update
   const update = oauthClients
     .command("update <id> [json]")
-    .description("Update an OAuth client")
+    .description(
+      "Update an OAuth client\n\n" +
+        "JSON payload: only specified fields are updated.\n" +
+        '  e.g. {"description": "Updated client"}',
+    )
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
@@ -99,8 +118,16 @@ export function registerOAuthClientsCommand(parent: Command): void {
 
   addExamples(update, [
     {
-      description: "Update an OAuth client from a JSON file",
+      description: "Update description",
+      command: `geonic admin oauth-clients update <client-id> '{"description":"Updated client"}'`,
+    },
+    {
+      description: "Update from a JSON file",
       command: "geonic admin oauth-clients update <client-id> @client.json",
+    },
+    {
+      description: "Update from stdin pipe",
+      command: "cat client.json | geonic admin oauth-clients update <client-id>",
     },
   ]);
 
@@ -155,7 +182,14 @@ export function registerCaddeCommand(parent: Command): void {
   // cadde set
   const caddeSet = cadde
     .command("set [json]")
-    .description("Set CADDE configuration")
+    .description(
+      "Set CADDE configuration\n\n" +
+        "JSON payload example:\n" +
+        "  {\n" +
+        '    "provider": "my-provider",\n' +
+        '    "endpoint": "http://localhost:6000"\n' +
+        "  }",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const body = await parseJsonInput(json as string | undefined);
@@ -171,8 +205,16 @@ export function registerCaddeCommand(parent: Command): void {
 
   addExamples(caddeSet, [
     {
-      description: "Set CADDE configuration from a JSON file",
+      description: "Set with inline JSON",
+      command: `geonic admin cadde set '{"provider":"my-provider","endpoint":"http://localhost:6000"}'`,
+    },
+    {
+      description: "Set from a JSON file",
       command: "geonic admin cadde set @cadde-config.json",
+    },
+    {
+      description: "Set from stdin pipe",
+      command: "cat cadde-config.json | geonic admin cadde set",
     },
   ]);
 

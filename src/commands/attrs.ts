@@ -71,7 +71,11 @@ export function addAttrsSubcommands(attrs: Command): void {
   // attrs add
   const add = attrs
     .command("add")
-    .description("Add attributes to an entity")
+    .description(
+      "Add attributes to an entity\n\n" +
+        "JSON payload example:\n" +
+        '  {"humidity": {"type": "Property", "value": 60}}',
+    )
     .argument("<entityId>", "Entity ID")
     .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
     .action(
@@ -96,15 +100,27 @@ export function addAttrsSubcommands(attrs: Command): void {
 
   addExamples(add, [
     {
+      description: "Add an attribute with inline JSON",
+      command: `geonic entities attrs add urn:ngsi-ld:Sensor:001 '{"humidity":{"type":"Property","value":60}}'`,
+    },
+    {
       description: "Add attributes from a file",
       command: "geonic entities attrs add urn:ngsi-ld:Sensor:001 @attrs.json",
+    },
+    {
+      description: "Add from stdin pipe",
+      command: "cat attrs.json | geonic entities attrs add urn:ngsi-ld:Sensor:001",
     },
   ]);
 
   // attrs update
   const attrUpdate = attrs
     .command("update")
-    .description("Update a specific attribute of an entity")
+    .description(
+      "Update a specific attribute of an entity\n\n" +
+        "JSON payload example:\n" +
+        '  {"type": "Property", "value": 25}',
+    )
     .argument("<entityId>", "Entity ID")
     .argument("<attrName>", "Attribute name")
     .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
@@ -131,9 +147,12 @@ export function addAttrsSubcommands(attrs: Command): void {
 
   addExamples(attrUpdate, [
     {
-      description: "Update a specific attribute",
-      command:
-        "geonic entities attrs update urn:ngsi-ld:Sensor:001 temperature '{\"value\":25}'",
+      description: "Update a Property value",
+      command: `geonic entities attrs update urn:ngsi-ld:Sensor:001 temperature '{"type":"Property","value":25}'`,
+    },
+    {
+      description: "Update from a file",
+      command: "geonic entities attrs update urn:ngsi-ld:Sensor:001 temperature @attr.json",
     },
   ]);
 

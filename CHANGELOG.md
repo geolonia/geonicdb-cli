@@ -7,6 +7,12 @@
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-03-17
+
+### 2026-03-17
+- **Docs**: 全 JSON 入力コマンドのヘルプを改善 — description に JSON payload example を追加、examples にインライン JSON・stdin pipe・interactive mode の具体例を追加 (#72)
+- **Fix**: E2E テストの `performLogin` にリトライとトークン検証を追加 — DB クリーンアップ後のレースコンディションによるフレーキーテストを修正 (#72)
+
 ## [0.6.1] - 2026-03-13
 
 ### 2026-03-12
@@ -112,7 +118,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.4.1...v0.5.0

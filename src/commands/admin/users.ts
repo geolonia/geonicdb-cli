@@ -55,7 +55,15 @@ export function registerUsersCommand(parent: Command): void {
   // users create
   const create = users
     .command("create [json]")
-    .description("Create a new user")
+    .description(
+      "Create a new user\n\n" +
+        "JSON payload example:\n" +
+        "  {\n" +
+        '    "email": "user@example.com",\n' +
+        '    "password": "SecurePassword123!",\n' +
+        '    "role": "super_admin"\n' +
+        "  }",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const body = await parseJsonInput(json as string | undefined);
@@ -71,15 +79,27 @@ export function registerUsersCommand(parent: Command): void {
 
   addExamples(create, [
     {
-      description: "Create a user from a JSON file",
+      description: "Create with inline JSON",
+      command: `geonic admin users create '{"email":"user@example.com","password":"SecurePassword123!","role":"super_admin"}'`,
+    },
+    {
+      description: "Create from a JSON file",
       command: "geonic admin users create @user.json",
+    },
+    {
+      description: "Create from stdin pipe",
+      command: "cat user.json | geonic admin users create",
     },
   ]);
 
   // users update
   const update = users
     .command("update <id> [json]")
-    .description("Update a user")
+    .description(
+      "Update a user\n\n" +
+        "JSON payload: only specified fields are updated.\n" +
+        '  e.g. {"role": "admin"}',
+    )
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
@@ -99,8 +119,16 @@ export function registerUsersCommand(parent: Command): void {
 
   addExamples(update, [
     {
-      description: "Update a user from a JSON file",
+      description: "Update role with inline JSON",
+      command: `geonic admin users update <user-id> '{"role":"admin"}'`,
+    },
+    {
+      description: "Update from a JSON file",
       command: "geonic admin users update <user-id> @user.json",
+    },
+    {
+      description: "Update from stdin pipe",
+      command: "cat user.json | geonic admin users update <user-id>",
     },
   ]);
 
