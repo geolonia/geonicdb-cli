@@ -104,20 +104,53 @@ setWorldConstructor(GdbWorld);
  * Perform a real login against the test server via direct API call and write
  * the token to the CLI config.  This avoids the interactive-only CLI login
  * flow and keeps E2E setup fast & deterministic.
+ *
+ * Retries up to 3 times to handle race conditions where the DB was just
+ * cleared and the server hasn't yet recreated the admin user.
  */
 export async function performLogin(world: GdbWorld): Promise<Record<string, unknown>> {
-  const loginUrl = new URL("/auth/login", world.serverUrl).toString();
-  const res = await fetch(loginUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD }),
-  });
-  assert.equal(res.ok, true, `Login API call failed: HTTP ${res.status}`);
-  const data = (await res.json()) as Record<string, unknown>;
-  const token = (data.accessToken ?? data.token) as string;
-  assert.ok(token, "No token received from login API");
-  const config: Record<string, unknown> = { url: world.serverUrl, token };
-  if (data.refreshToken) config.refreshToken = data.refreshToken;
-  world.writeConfig(config);
-  return world.readProfileConfig();
+  const maxRetries = 3;
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    if (attempt > 0) await sleep(100 * attempt);
+
+    const loginUrl = new URL("/auth/login", world.serverUrl).toString();
+    const res = await fetch(loginUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD }),
+    });
+    if (!res.ok) {
+      lastError = new Error(`Login API call failed: HTTP ${res.status}`);
+      continue;
+    }
+    const data = (await res.json()) as Record<string, unknown>;
+    const token = (data.accessToken ?? data.token) as string;
+    if (!token) {
+      lastError = new Error("No token received from login API");
+      continue;
+    }
+
+    // Verify the token actually works before writing config
+    const meUrl = new URL("/me", world.serverUrl).toString();
+    const meRes = await fetch(meUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!meRes.ok) {
+      lastError = new Error(`Token verification failed: /me returned HTTP ${meRes.status}`);
+      continue;
+    }
+
+    const config: Record<string, unknown> = { url: world.serverUrl, token };
+    if (data.refreshToken) config.refreshToken = data.refreshToken;
+    world.writeConfig(config);
+    return world.readProfileConfig();
+  }
+
+  assert.fail(lastError?.message ?? "performLogin failed after retries");
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

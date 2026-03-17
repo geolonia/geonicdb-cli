@@ -11,6 +11,7 @@
 
 ### 2026-03-17
 - **Docs**: 全 JSON 入力コマンドのヘルプを改善 — description に JSON payload example を追加、examples にインライン JSON・stdin pipe・interactive mode の具体例を追加 (#72)
+- **Fix**: E2E テストの `performLogin` にリトライとトークン検証を追加 — DB クリーンアップ後のレースコンディションによるフレーキーテストを修正 (#72)
 
 ## [0.6.1] - 2026-03-13
 
