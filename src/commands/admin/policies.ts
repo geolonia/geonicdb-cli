@@ -55,7 +55,14 @@ export function registerPoliciesCommand(parent: Command): void {
   // policies create
   const create = policies
     .command("create [json]")
-    .description("Create a new policy")
+    .description(
+      "Create a new policy\n\n" +
+        "JSON payload example:\n" +
+        "  {\n" +
+        '    "description": "Allow all entities",\n' +
+        '    "rules": [{"ruleId": "allow-all", "effect": "Permit"}]\n' +
+        "  }",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const body = await parseJsonInput(json as string | undefined);
@@ -71,15 +78,27 @@ export function registerPoliciesCommand(parent: Command): void {
 
   addExamples(create, [
     {
-      description: "Create a policy from a JSON file",
+      description: "Create with inline JSON",
+      command: `geonic admin policies create '{"description":"Allow all entities","rules":[{"ruleId":"allow-all","effect":"Permit"}]}'`,
+    },
+    {
+      description: "Create from a JSON file",
       command: "geonic admin policies create @policy.json",
+    },
+    {
+      description: "Create from stdin pipe",
+      command: "cat policy.json | geonic admin policies create",
     },
   ]);
 
   // policies update
   const update = policies
     .command("update <id> [json]")
-    .description("Update a policy")
+    .description(
+      "Update a policy\n\n" +
+        "JSON payload: only specified fields are updated.\n" +
+        '  e.g. {"description": "Updated policy"}',
+    )
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
@@ -99,8 +118,16 @@ export function registerPoliciesCommand(parent: Command): void {
 
   addExamples(update, [
     {
-      description: "Update a policy from a JSON file",
+      description: "Update description",
+      command: `geonic admin policies update <policy-id> '{"description":"Updated policy"}'`,
+    },
+    {
+      description: "Update from a JSON file",
       command: "geonic admin policies update <policy-id> @policy.json",
+    },
+    {
+      description: "Update from stdin pipe",
+      command: "cat policy.json | geonic admin policies update <policy-id>",
     },
   ]);
 

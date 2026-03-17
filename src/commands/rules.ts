@@ -55,7 +55,16 @@ export function registerRulesCommand(program: Command): void {
   // rules create
   const create = rules
     .command("create [json]")
-    .description("Create a new rule")
+    .description(
+      "Create a new rule\n\n" +
+        "JSON payload example:\n" +
+        "  {\n" +
+        '    "name": "high-temp-alert",\n' +
+        '    "description": "Alert on high temperature",\n' +
+        '    "conditions": [{"type": "celExpression", "expression": "entity.temperature > 30"}],\n' +
+        '    "actions": [{"type": "webhook", "url": "http://localhost:5000/alert", "method": "POST"}]\n' +
+        "  }",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const body = await parseJsonInput(json as string | undefined);
@@ -69,15 +78,27 @@ export function registerRulesCommand(program: Command): void {
 
   addExamples(create, [
     {
-      description: "Create a rule from a file",
+      description: "Create with inline JSON",
+      command: `geonic rules create '{"name":"high-temp-alert","conditions":[{"type":"celExpression","expression":"entity.temperature > 30"}],"actions":[{"type":"webhook","url":"http://localhost:5000/alert","method":"POST"}]}'`,
+    },
+    {
+      description: "Create from a file",
       command: "geonic rules create @rule.json",
+    },
+    {
+      description: "Create from stdin pipe",
+      command: "cat rule.json | geonic rules create",
     },
   ]);
 
   // rules update
   const update = rules
     .command("update <id> [json]")
-    .description("Update a rule")
+    .description(
+      "Update a rule\n\n" +
+        "JSON payload: only specified fields are updated.\n" +
+        "  e.g. {\"description\": \"Updated rule\"}",
+    )
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
@@ -97,8 +118,16 @@ export function registerRulesCommand(program: Command): void {
 
   addExamples(update, [
     {
-      description: "Update a rule from a file",
+      description: "Update description",
+      command: `geonic rules update <rule-id> '{"description":"Updated rule"}'`,
+    },
+    {
+      description: "Update from a file",
       command: "geonic rules update <rule-id> @rule.json",
+    },
+    {
+      description: "Update from stdin pipe",
+      command: "cat rule.json | geonic rules update <rule-id>",
     },
   ]);
 

@@ -79,7 +79,16 @@ export function registerSubscriptionsCommand(program: Command): void {
   // subscriptions create
   const create = subscriptions
     .command("create [json]")
-    .description("Create a subscription")
+    .description(
+      "Create a subscription\n\n" +
+        "JSON payload example:\n" +
+        "  {\n" +
+        '    "type": "Subscription",\n' +
+        '    "entities": [{"type": "Sensor"}],\n' +
+        '    "watchedAttributes": ["temperature"],\n' +
+        '    "notification": {"endpoint": {"uri": "http://localhost:3000/notify"}}\n' +
+        "  }",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -94,19 +103,31 @@ export function registerSubscriptionsCommand(program: Command): void {
 
   addExamples(create, [
     {
+      description: "Create with inline JSON",
+      command: `geonic subscriptions create '{"type":"Subscription","entities":[{"type":"Sensor"}],"watchedAttributes":["temperature"],"notification":{"endpoint":{"uri":"http://localhost:3000/notify"}}}'`,
+    },
+    {
       description: "Create from a JSON file",
       command: "geonic subscriptions create @subscription.json",
     },
     {
-      description: "Create from stdin",
+      description: "Create from stdin pipe",
       command: "cat subscription.json | geonic subscriptions create",
+    },
+    {
+      description: "Interactive mode",
+      command: "geonic subscriptions create",
     },
   ]);
 
   // subscriptions update
   const update = subscriptions
     .command("update <id> [json]")
-    .description("Update a subscription")
+    .description(
+      "Update a subscription\n\n" +
+        "JSON payload: only specified fields are updated.\n" +
+        '  e.g. {"description": "Updated subscription"}',
+    )
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
@@ -126,9 +147,16 @@ export function registerSubscriptionsCommand(program: Command): void {
 
   addExamples(update, [
     {
-      description: "Update a subscription from a file",
-      command:
-        "geonic subscriptions update urn:ngsi-ld:Subscription:001 @sub.json",
+      description: "Update description",
+      command: `geonic subscriptions update urn:ngsi-ld:Subscription:001 '{"description":"Updated subscription"}'`,
+    },
+    {
+      description: "Update from a file",
+      command: "geonic subscriptions update urn:ngsi-ld:Subscription:001 @sub.json",
+    },
+    {
+      description: "Update from stdin pipe",
+      command: "cat sub.json | geonic subscriptions update urn:ngsi-ld:Subscription:001",
     },
   ]);
 

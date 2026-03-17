@@ -55,7 +55,14 @@ export function registerTenantsCommand(parent: Command): void {
   // tenants create
   const create = tenants
     .command("create [json]")
-    .description("Create a new tenant")
+    .description(
+      "Create a new tenant\n\n" +
+        "JSON payload example:\n" +
+        "  {\n" +
+        '    "name": "production",\n' +
+        '    "description": "Production environment tenant"\n' +
+        "  }",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const body = await parseJsonInput(json as string | undefined);
@@ -71,15 +78,35 @@ export function registerTenantsCommand(parent: Command): void {
 
   addExamples(create, [
     {
-      description: "Create a tenant from a JSON file",
+      description: "Create with inline JSON",
+      command: `geonic admin tenants create '{"name":"my-tenant","description":"My first tenant"}'`,
+    },
+    {
+      description: "Minimal (name only)",
+      command: `geonic admin tenants create '{"name":"production"}'`,
+    },
+    {
+      description: "Create from a JSON file",
       command: "geonic admin tenants create @tenant.json",
+    },
+    {
+      description: "Create from stdin pipe",
+      command: "cat tenant.json | geonic admin tenants create",
+    },
+    {
+      description: "Interactive mode (omit JSON argument)",
+      command: "geonic admin tenants create",
     },
   ]);
 
   // tenants update
   const update = tenants
     .command("update <id> [json]")
-    .description("Update a tenant")
+    .description(
+      "Update a tenant\n\n" +
+        "JSON payload: only specified fields are updated.\n" +
+        '  e.g. {"name": "new-name", "description": "Updated description"}',
+    )
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
@@ -99,8 +126,24 @@ export function registerTenantsCommand(parent: Command): void {
 
   addExamples(update, [
     {
-      description: "Update a tenant from a JSON file",
-      command: "geonic admin tenants update <tenant-id> @tenant.json",
+      description: "Update description with inline JSON",
+      command: `geonic admin tenants update <tenant-id> '{"description":"Updated description"}'`,
+    },
+    {
+      description: "Rename a tenant",
+      command: `geonic admin tenants update <tenant-id> '{"name":"new-name"}'`,
+    },
+    {
+      description: "Update from a JSON file",
+      command: "geonic admin tenants update <tenant-id> @patch.json",
+    },
+    {
+      description: "Update from stdin pipe",
+      command: "cat patch.json | geonic admin tenants update <tenant-id>",
+    },
+    {
+      description: "Interactive mode",
+      command: "geonic admin tenants update <tenant-id>",
     },
   ]);
 
