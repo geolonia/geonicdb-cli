@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-03-17
+
 ### 2026-03-17
 - **Feat**: `--scopes` オプションを持つコマンドのヘルプに有効なスコープ一覧を NOTES セクションとして追加 (#73)
 - **Docs**: README の Valid Scopes セクションを全18スコープに更新、包含関係と特殊スコープの説明を追加 (#73)
@@ -124,7 +126,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.5.0...v0.6.0
