@@ -11,6 +11,7 @@
 - **Feat**: `--scopes` オプションを持つコマンドのヘルプに有効なスコープ一覧を NOTES セクションとして追加 (#73)
 - **Docs**: README の Valid Scopes セクションを全18スコープに更新、包含関係と特殊スコープの説明を追加 (#73)
 - **Fix**: `admin api-keys create` の例で誤ったスコープ形式 (`entities:read`) を正しい形式 (`read:entities`) に修正 (#73)
+- **Fix**: E2E テストの config を v2 フォーマットで統一し、CLI プロセスでの auto-migration による認証フレーキーテストを修正 (#73)
 
 ## [0.6.2] - 2026-03-17
 
