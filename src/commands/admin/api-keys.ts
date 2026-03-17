@@ -4,7 +4,7 @@ import { loadConfig, saveConfig } from "../../config.js";
 import { parseJsonInput } from "../../input.js";
 import { printError, printWarning } from "../../output.js";
 import { addExamples, addNotes } from "../help.js";
-import { SCOPES_HELP_NOTES } from "../../helpers.js";
+import { API_KEY_SCOPES_HELP_NOTES } from "../../helpers.js";
 
 function validateOrigins(body: unknown, opts: Record<string, unknown>): void {
   // Validate origins if provided via flags
@@ -174,7 +174,7 @@ export function registerApiKeysCommand(parent: Command): void {
       }),
     );
 
-  addNotes(create, SCOPES_HELP_NOTES);
+  addNotes(create, API_KEY_SCOPES_HELP_NOTES);
 
   addExamples(create, [
     {
@@ -240,7 +240,7 @@ export function registerApiKeysCommand(parent: Command): void {
       ),
     );
 
-  addNotes(update, SCOPES_HELP_NOTES);
+  addNotes(update, API_KEY_SCOPES_HELP_NOTES);
 
   addExamples(update, [
     {

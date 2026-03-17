@@ -4,7 +4,7 @@ import { loadConfig, saveConfig } from "../config.js";
 import { parseJsonInput } from "../input.js";
 import { printError, printWarning } from "../output.js";
 import { addExamples, addNotes } from "./help.js";
-import { SCOPES_HELP_NOTES } from "../helpers.js";
+import { API_KEY_SCOPES_HELP_NOTES } from "../helpers.js";
 
 export function addMeApiKeysSubcommand(me: Command): void {
   const apiKeys = me
@@ -128,7 +128,7 @@ export function addMeApiKeysSubcommand(me: Command): void {
       }),
     );
 
-  addNotes(create, SCOPES_HELP_NOTES);
+  addNotes(create, API_KEY_SCOPES_HELP_NOTES);
 
   addExamples(create, [
     {

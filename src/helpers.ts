@@ -5,7 +5,7 @@ import { printError, printOutput, printCount } from "./output.js";
 import type { ClientResponse, GlobalOptions, OutputFormat } from "./types.js";
 
 /**
- * Valid scope values for --scopes option help text.
+ * Valid scope values for --scopes option help text (OAuth clients).
  */
 export const SCOPES_HELP_NOTES = [
   "Valid scopes:",
@@ -16,6 +16,15 @@ export const SCOPES_HELP_NOTES = [
   "  admin:api-keys, admin:metrics",
   "",
   "write:X implies read:X. admin:X implies both read:X and write:X.",
+];
+
+/**
+ * Valid scope values for --scopes option help text (API keys).
+ */
+export const API_KEY_SCOPES_HELP_NOTES = [
+  "Valid scopes:",
+  "  read:entities, write:entities, read:subscriptions, write:subscriptions,",
+  "  read:registrations, write:registrations",
 ];
 
 /**
