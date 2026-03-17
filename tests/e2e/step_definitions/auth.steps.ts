@@ -7,10 +7,7 @@ Given("I am logged in", async function (this: GdbWorld) {
 });
 
 Given("I am logged in with token {string}", function (this: GdbWorld, token: string) {
-  const config = this.readConfig();
-  config.token = token;
-  config.url = config.url ?? this.serverUrl;
-  this.writeConfig(config);
+  this.writeConfig({ url: this.serverUrl, token });
 });
 
 Given("I am not logged in", function (this: GdbWorld) {

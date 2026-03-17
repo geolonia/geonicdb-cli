@@ -68,10 +68,16 @@ export class GdbWorld extends World {
     }
   }
 
-  /** Write a config file in the temp config dir */
+  /** Write a config file in the temp config dir (auto-wraps v1 flat configs into v2 format) */
   writeConfig(config: Record<string, unknown>): void {
     mkdirSync(this.configDir, { recursive: true });
-    writeFileSync(join(this.configDir, "config.json"), JSON.stringify(config, null, 2) + "\n");
+    // Ensure v2 format so the CLI doesn't need to auto-migrate (avoids extra file I/O)
+    const toWrite = config.version === 2 ? config : {
+      version: 2,
+      currentProfile: "default",
+      profiles: { default: config },
+    };
+    writeFileSync(join(this.configDir, "config.json"), JSON.stringify(toWrite, null, 2) + "\n");
   }
 
   /** Read the current config file (raw JSON) */
@@ -133,9 +139,13 @@ export async function performLogin(world: GdbWorld): Promise<Record<string, unkn
         continue;
       }
 
-      const config: Record<string, unknown> = { url: world.serverUrl, token };
-      if (data.refreshToken) config.refreshToken = data.refreshToken;
-      world.writeConfig(config);
+      const profile: Record<string, unknown> = { url: world.serverUrl, token };
+      if (data.refreshToken) profile.refreshToken = data.refreshToken;
+      world.writeConfig({
+        version: 2,
+        currentProfile: "default",
+        profiles: { default: profile },
+      });
       return world.readProfileConfig();
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
