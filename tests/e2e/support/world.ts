@@ -113,7 +113,7 @@ export async function performLogin(world: GdbWorld): Promise<Record<string, unkn
   let lastError: Error | undefined;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    if (attempt > 0) await sleep(100 * attempt);
+    if (attempt > 0) await sleep(200 * attempt);
 
     try {
       const loginUrl = new URL("/auth/login", world.serverUrl).toString();
@@ -130,16 +130,6 @@ export async function performLogin(world: GdbWorld): Promise<Record<string, unkn
       const token = (data.accessToken ?? data.token) as string;
       if (!token) {
         lastError = new Error("No token received from login API");
-        continue;
-      }
-
-      // Verify the token actually works before writing config
-      const meUrl = new URL("/me", world.serverUrl).toString();
-      const meRes = await fetch(meUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!meRes.ok) {
-        lastError = new Error(`Token verification failed: /me returned HTTP ${meRes.status}`);
         continue;
       }
 

@@ -42,18 +42,16 @@ BeforeAll(async function () {
 });
 
 Before(async function (this: GdbWorld) {
-  // DB cleanup for scenario isolation — only clear data collections.
-  // Auth-related collections (users, tenants, policies, etc.) are preserved
-  // to avoid server-side cache inconsistencies that cause 401 errors.
+  // DB cleanup for scenario isolation — drop collections to bypass server caching
   const db = mongoClient.db();
-  const dataCollections = new Set([
-    "entities", "subscriptions", "csourceRegistrations",
-    "temporalEntities", "rules", "custom-data-models", "snapshots",
-  ]);
   const collections = await db.listCollections().toArray();
   for (const c of collections) {
-    if (dataCollections.has(c.name)) {
-      await db.collection(c.name).deleteMany({});
+    if (!c.name.startsWith("system.")) {
+      await db.collection(c.name).drop().catch((err: Error & { code?: number }) => {
+        if (err.code !== 26 && !err.message.includes("ns not found")) {
+          console.warn(`Warning: failed to drop collection ${c.name}: ${err.message}`);
+        }
+      });
     }
   }
 
