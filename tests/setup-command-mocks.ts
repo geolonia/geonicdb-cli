@@ -15,6 +15,7 @@ vi.mock("../src/helpers.js", () => ({
   getFormat: vi.fn(),
   outputResponse: vi.fn(),
   withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
+  SCOPES_HELP_NOTES: [],
 }));
 
 vi.mock("../src/input.js", () => ({
@@ -32,4 +33,5 @@ vi.mock("../src/output.js", () => ({
 
 vi.mock("../src/commands/help.js", () => ({
   addExamples: vi.fn(),
+  addNotes: vi.fn(),
 }));

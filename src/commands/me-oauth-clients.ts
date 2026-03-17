@@ -4,7 +4,8 @@ import { loadConfig, saveConfig, validateUrl } from "../config.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess, printError, printInfo, printWarning } from "../output.js";
 import { clientCredentialsGrant } from "../oauth.js";
-import { addExamples } from "./help.js";
+import { addExamples, addNotes } from "./help.js";
+import { SCOPES_HELP_NOTES } from "../helpers.js";
 
 export function addMeOAuthClientsSubcommand(me: Command): void {
   const oauthClients = me
@@ -105,6 +106,8 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
         printSuccess("OAuth client created.");
       }),
     );
+
+  addNotes(create, SCOPES_HELP_NOTES);
 
   addExamples(create, [
     {

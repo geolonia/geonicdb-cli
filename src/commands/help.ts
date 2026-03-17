@@ -7,9 +7,14 @@ interface Example {
 }
 
 const examplesMap = new WeakMap<Command, Example[]>();
+const notesMap = new WeakMap<Command, string[]>();
 
 export function addExamples(cmd: Command, examples: Example[]): void {
   examplesMap.set(cmd, examples);
+}
+
+export function addNotes(cmd: Command, notes: string[]): void {
+  notesMap.set(cmd, notes);
 }
 
 function header(title: string): string {
@@ -194,6 +199,17 @@ export function formatCommandDetails(
       lines.push(`  ${ex.description}:`);
       lines.push(`    $ ${ex.command}`);
       lines.push("");
+    }
+  }
+
+  // NOTES
+  const notes = notesMap.get(cmd);
+  if (notes && notes.length > 0) {
+    lines.push("");
+    lines.push(header("NOTES"));
+    lines.push("");
+    for (const note of notes) {
+      lines.push(`  ${note}`);
     }
   }
 

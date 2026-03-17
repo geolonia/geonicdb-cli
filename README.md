@@ -564,7 +564,11 @@ When both a Bearer token and an API key are configured, both headers are sent (t
 
 ### Valid Scopes
 
-`read:entities`, `write:entities`, `read:subscriptions`, `write:subscriptions`, `read:registrations`, `write:registrations`
+`read:entities`, `write:entities`, `read:subscriptions`, `write:subscriptions`, `read:registrations`, `write:registrations`, `read:rules`, `write:rules`, `read:custom-data-models`, `write:custom-data-models`, `admin:users`, `admin:tenants`, `admin:policies`, `admin:oauth-clients`, `admin:api-keys`, `admin:metrics`
+
+`write:X` implies `read:X`. `admin:X` implies both `read:X` and `write:X`.
+
+Special scopes: `permanent` (no token expiry), `jwt` (JWT format token).
 
 ### Entity Type Restrictions
 
