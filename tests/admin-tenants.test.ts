@@ -103,6 +103,47 @@ describe("admin tenants commands", () => {
       expect(outputResponse).toHaveBeenCalled();
       expect(printSuccess).toHaveBeenCalledWith("Tenant updated.");
     });
+
+    it("enables anonymous access with --anonymous-access", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "tenants", "update", "t1", "--anonymous-access"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
+        body: { anonymousAccessEnabled: true },
+      });
+      expect(parseJsonInput).not.toHaveBeenCalled();
+      expect(printSuccess).toHaveBeenCalledWith("Tenant updated.");
+    });
+
+    it("disables anonymous access with --no-anonymous-access", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "tenants", "update", "t1", "--no-anonymous-access"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
+        body: { anonymousAccessEnabled: false },
+      });
+      expect(parseJsonInput).not.toHaveBeenCalled();
+      expect(printSuccess).toHaveBeenCalledWith("Tenant updated.");
+    });
+
+    it("prefers json argument over --anonymous-access flag", async () => {
+      const body = { name: "updated" };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "tenants", "update", "t1", '{"name":"updated"}', "--anonymous-access"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", { body });
+    });
+
+    it("falls back to parseJsonInput when no json and no flag", async () => {
+      const body = { description: "interactive" };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "tenants", "update", "t1"]);
+      expect(parseJsonInput).toHaveBeenCalledWith(undefined);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", { body });
+    });
   });
 
   describe("tenants delete", () => {

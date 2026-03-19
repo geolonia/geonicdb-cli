@@ -57,11 +57,27 @@ export function registerPoliciesCommand(parent: Command): void {
     .command("create [json]")
     .description(
       "Create a new policy\n\n" +
-        "JSON payload example:\n" +
+        "JSON payload examples:\n\n" +
+        "  Allow all entities:\n" +
         "  {\n" +
         '    "description": "Allow all entities",\n' +
         '    "rules": [{"ruleId": "allow-all", "effect": "Permit"}]\n' +
-        "  }",
+        "  }\n\n" +
+        "  Allow read access to a specific entity type:\n" +
+        "  {\n" +
+        '    "description": "Allow read access to Landmark entities",\n' +
+        '    "target": {\n' +
+        '      "resources": [{"attributeId": "entityType", "matchValue": "Landmark"}],\n' +
+        '      "actions": [{"attributeId": "action", "matchValue": "read"}]\n' +
+        "    },\n" +
+        '    "rules": [{"ruleId": "permit-read", "effect": "Permit"}]\n' +
+        "  }\n\n" +
+        "Target fields:\n" +
+        "  subjects   — e.g. {attributeId: \"role\", matchValue: \"anonymous\"}\n" +
+        "  resources  — e.g. {attributeId: \"entityType\", matchValue: \"Landmark\"}\n" +
+        "  actions    — e.g. {attributeId: \"action\", matchValue: \"read\"}\n" +
+        "               or   {attributeId: \"method\", matchValue: \"GET\"}\n" +
+        "  environments — e.g. {attributeId: \"time\", matchValue: \"08:00-18:00\"}",
     )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
@@ -80,6 +96,14 @@ export function registerPoliciesCommand(parent: Command): void {
     {
       description: "Create with inline JSON",
       command: `geonic admin policies create '{"description":"Allow all entities","rules":[{"ruleId":"allow-all","effect":"Permit"}]}'`,
+    },
+    {
+      description: "Create with target (entity type + action)",
+      command: `geonic admin policies create '{"description":"Allow read Landmark","target":{"resources":[{"attributeId":"entityType","matchValue":"Landmark"}],"actions":[{"attributeId":"action","matchValue":"read"}]},"rules":[{"ruleId":"permit-read","effect":"Permit"}]}'`,
+    },
+    {
+      description: "Create anonymous access policy",
+      command: `geonic admin policies create '{"policyId":"public-read","target":{"subjects":[{"attributeId":"role","matchValue":"anonymous"}],"resources":[{"attributeId":"entityType","matchValue":"WeatherObserved"}],"actions":[{"attributeId":"method","matchValue":"GET"}]},"rules":[{"effect":"Permit"}]}'`,
     },
     {
       description: "Create from a JSON file",
