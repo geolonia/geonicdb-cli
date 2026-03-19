@@ -61,8 +61,11 @@ export function registerUsersCommand(parent: Command): void {
         "  {\n" +
         '    "email": "user@example.com",\n' +
         '    "password": "SecurePassword123!",\n' +
-        '    "role": "super_admin"\n' +
-        "  }",
+        '    "role": "tenant_admin",\n' +
+        '    "tenantId": "<tenant-id>"\n' +
+        "  }\n\n" +
+        "Roles: super_admin, tenant_admin, user\n" +
+        "tenantId is required for tenant_admin and user roles.",
     )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
@@ -79,8 +82,12 @@ export function registerUsersCommand(parent: Command): void {
 
   addExamples(create, [
     {
-      description: "Create with inline JSON",
-      command: `geonic admin users create '{"email":"user@example.com","password":"SecurePassword123!","role":"super_admin"}'`,
+      description: "Create a tenant admin",
+      command: `geonic admin users create '{"email":"admin@example.com","password":"SecurePass12345!","role":"tenant_admin","tenantId":"<tenant-id>"}'`,
+    },
+    {
+      description: "Create a user for a tenant",
+      command: `geonic admin users create '{"email":"user@example.com","password":"SecurePass12345!","role":"user","tenantId":"<tenant-id>"}'`,
     },
     {
       description: "Create from a JSON file",
