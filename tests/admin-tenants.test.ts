@@ -109,7 +109,7 @@ describe("admin tenants commands", () => {
       const program = makeProgram();
       await runCommand(program, ["admin", "tenants", "update", "t1", "--anonymous-access"]);
       expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
-        body: { anonymousAccessEnabled: true },
+        body: { settings: { features: { anonymousAccessEnabled: true } } },
       });
       expect(parseJsonInput).not.toHaveBeenCalled();
       expect(printSuccess).toHaveBeenCalledWith("Tenant updated.");
@@ -120,7 +120,7 @@ describe("admin tenants commands", () => {
       const program = makeProgram();
       await runCommand(program, ["admin", "tenants", "update", "t1", "--no-anonymous-access"]);
       expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
-        body: { anonymousAccessEnabled: false },
+        body: { settings: { features: { anonymousAccessEnabled: false } } },
       });
       expect(parseJsonInput).not.toHaveBeenCalled();
       expect(printSuccess).toHaveBeenCalledWith("Tenant updated.");

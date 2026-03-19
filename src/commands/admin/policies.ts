@@ -63,21 +63,21 @@ export function registerPoliciesCommand(parent: Command): void {
         '    "description": "Allow all entities",\n' +
         '    "rules": [{"ruleId": "allow-all", "effect": "Permit"}]\n' +
         "  }\n\n" +
-        "  Allow read access to a specific entity type:\n" +
+        "  Allow GET access to a specific entity type:\n" +
         "  {\n" +
-        '    "description": "Allow read access to Landmark entities",\n' +
+        '    "description": "Allow GET access to Landmark entities",\n' +
         '    "target": {\n' +
         '      "resources": [{"attributeId": "entityType", "matchValue": "Landmark"}],\n' +
-        '      "actions": [{"attributeId": "action", "matchValue": "read"}]\n' +
+        '      "actions": [{"attributeId": "method", "matchValue": "GET"}]\n' +
         "    },\n" +
-        '    "rules": [{"ruleId": "permit-read", "effect": "Permit"}]\n' +
+        '    "rules": [{"ruleId": "permit-get", "effect": "Permit"}]\n' +
         "  }\n\n" +
         "Target fields:\n" +
-        "  subjects   — e.g. {attributeId: \"role\", matchValue: \"anonymous\"}\n" +
-        "  resources  — e.g. {attributeId: \"entityType\", matchValue: \"Landmark\"}\n" +
-        "  actions    — e.g. {attributeId: \"action\", matchValue: \"read\"}\n" +
-        "               or   {attributeId: \"method\", matchValue: \"GET\"}\n" +
-        "  environments — e.g. {attributeId: \"time\", matchValue: \"08:00-18:00\"}",
+        "  subjects   — attributeId: role, userId, email, tenantId\n" +
+        "  resources  — attributeId: path, entityType, entityId, entityOwner, tenantService\n" +
+        "  actions    — attributeId: method (GET, POST, PATCH, DELETE)\n\n" +
+        "Each element: {attributeId, matchValue, matchFunction?}\n" +
+        "  matchFunction: \"string-equal\" (default) | \"string-regexp\" | \"glob\"",
     )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
@@ -98,8 +98,8 @@ export function registerPoliciesCommand(parent: Command): void {
       command: `geonic admin policies create '{"description":"Allow all entities","rules":[{"ruleId":"allow-all","effect":"Permit"}]}'`,
     },
     {
-      description: "Create with target (entity type + action)",
-      command: `geonic admin policies create '{"description":"Allow read Landmark","target":{"resources":[{"attributeId":"entityType","matchValue":"Landmark"}],"actions":[{"attributeId":"action","matchValue":"read"}]},"rules":[{"ruleId":"permit-read","effect":"Permit"}]}'`,
+      description: "Create with target (entity type + method)",
+      command: `geonic admin policies create '{"description":"Allow GET Landmark","target":{"resources":[{"attributeId":"entityType","matchValue":"Landmark"}],"actions":[{"attributeId":"method","matchValue":"GET"}]},"rules":[{"ruleId":"permit-get","effect":"Permit"}]}'`,
     },
     {
       description: "Create anonymous access policy",

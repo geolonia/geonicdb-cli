@@ -117,7 +117,11 @@ export function registerTenantsCommand(parent: Command): void {
           if (json) {
             body = (await parseJsonInput(json as string)) as Record<string, unknown>;
           } else if (options.anonymousAccess !== undefined) {
-            body = { anonymousAccessEnabled: options.anonymousAccess };
+            body = {
+              settings: {
+                features: { anonymousAccessEnabled: options.anonymousAccess },
+              },
+            };
           } else {
             body = (await parseJsonInput(undefined)) as Record<string, unknown>;
           }
