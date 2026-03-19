@@ -107,10 +107,24 @@ export function registerTenantsCommand(parent: Command): void {
         "JSON payload: only specified fields are updated.\n" +
         '  e.g. {"name": "new-name", "description": "Updated description"}',
     )
+    .option("--anonymous-access", "Enable anonymous access for the tenant")
+    .option("--no-anonymous-access", "Disable anonymous access for the tenant")
     .action(
       withErrorHandler(
-        async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
-          const body = await parseJsonInput(json as string | undefined);
+        async (id: unknown, json: unknown, opts: unknown, cmd: Command) => {
+          const options = opts as { anonymousAccess?: boolean };
+          let body: Record<string, unknown>;
+          if (json) {
+            body = (await parseJsonInput(json as string)) as Record<string, unknown>;
+          } else if (options.anonymousAccess !== undefined) {
+            body = {
+              settings: {
+                features: { anonymousAccessEnabled: options.anonymousAccess },
+              },
+            };
+          } else {
+            body = (await parseJsonInput(undefined)) as Record<string, unknown>;
+          }
           const client = createClient(cmd);
           const format = getFormat(cmd);
           const response = await client.rawRequest(
@@ -132,6 +146,14 @@ export function registerTenantsCommand(parent: Command): void {
     {
       description: "Rename a tenant",
       command: `geonic admin tenants update <tenant-id> '{"name":"new-name"}'`,
+    },
+    {
+      description: "Enable anonymous access",
+      command: "geonic admin tenants update <tenant-id> --anonymous-access",
+    },
+    {
+      description: "Disable anonymous access",
+      command: "geonic admin tenants update <tenant-id> --no-anonymous-access",
     },
     {
       description: "Update from a JSON file",

@@ -57,11 +57,27 @@ export function registerPoliciesCommand(parent: Command): void {
     .command("create [json]")
     .description(
       "Create a new policy\n\n" +
-        "JSON payload example:\n" +
+        "JSON payload examples:\n\n" +
+        "  Allow all entities:\n" +
         "  {\n" +
         '    "description": "Allow all entities",\n' +
         '    "rules": [{"ruleId": "allow-all", "effect": "Permit"}]\n' +
-        "  }",
+        "  }\n\n" +
+        "  Allow GET access to a specific entity type:\n" +
+        "  {\n" +
+        '    "description": "Allow GET access to Landmark entities",\n' +
+        '    "target": {\n' +
+        '      "resources": [{"attributeId": "entityType", "matchValue": "Landmark"}],\n' +
+        '      "actions": [{"attributeId": "method", "matchValue": "GET"}]\n' +
+        "    },\n" +
+        '    "rules": [{"ruleId": "permit-get", "effect": "Permit"}]\n' +
+        "  }\n\n" +
+        "Target fields:\n" +
+        "  subjects   — attributeId: role, userId, email, tenantId\n" +
+        "  resources  — attributeId: path, entityType, entityId, entityOwner, tenantService\n" +
+        "  actions    — attributeId: method (GET, POST, PATCH, DELETE)\n\n" +
+        "Each element: {attributeId, matchValue, matchFunction?}\n" +
+        "  matchFunction: \"string-equal\" (default) | \"string-regexp\" | \"glob\"",
     )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
@@ -80,6 +96,14 @@ export function registerPoliciesCommand(parent: Command): void {
     {
       description: "Create with inline JSON",
       command: `geonic admin policies create '{"description":"Allow all entities","rules":[{"ruleId":"allow-all","effect":"Permit"}]}'`,
+    },
+    {
+      description: "Create with target (entity type + method)",
+      command: `geonic admin policies create '{"description":"Allow GET Landmark","target":{"resources":[{"attributeId":"entityType","matchValue":"Landmark"}],"actions":[{"attributeId":"method","matchValue":"GET"}]},"rules":[{"ruleId":"permit-get","effect":"Permit"}]}'`,
+    },
+    {
+      description: "Create anonymous access policy",
+      command: `geonic admin policies create '{"policyId":"public-read","target":{"subjects":[{"attributeId":"role","matchValue":"anonymous"}],"resources":[{"attributeId":"entityType","matchValue":"WeatherObserved"}],"actions":[{"attributeId":"method","matchValue":"GET"}]},"rules":[{"effect":"Permit"}]}'`,
     },
     {
       description: "Create from a JSON file",
