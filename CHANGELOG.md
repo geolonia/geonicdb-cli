@@ -7,16 +7,19 @@
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-03-20
+
 ### 2026-03-20
-- **Feat**: `admin api-keys create/update` および `me api-keys create` に `--permissions` オプションを追加 — `read`, `write`, `create`, `update`, `delete` を指定して XACML ポリシーを自動生成 (GeonicDB #753)
-- **Breaking**: `admin tenants update` から `--anonymous-access` / `--no-anonymous-access` フラグを削除 — テナントフィーチャーフラグが廃止され、匿名アクセスは XACML ポリシーで制御 (GeonicDB #752)
-- **Breaking**: スコープヘルプから `write:X implies read:X` の記述を削除 — `write:X` は `read:X` を暗黙的に含まなくなった (GeonicDB #723)
-- **Docs**: `admin policies create` のヘルプに `servicePath` リソース属性、priority の説明（大きい数値=高優先度）、デフォルトロールポリシーの説明を追加 (GeonicDB #747, #751, #752)
+- **Feat**: `admin api-keys create/update` および `me api-keys create` に `--permissions` オプションを追加 — `read`, `write`, `create`, `update`, `delete` を指定して XACML ポリシーを自動生成 (GeonicDB #753) (#79)
+- **Breaking**: `admin tenants update` から `--anonymous-access` / `--no-anonymous-access` フラグを削除 — テナントフィーチャーフラグが廃止され、匿名アクセスは XACML ポリシーで制御 (GeonicDB #752) (#79)
+- **Breaking**: スコープヘルプから `write:X implies read:X` の記述を削除 — `write:X` は `read:X` を暗黙的に含まなくなった (GeonicDB #723) (#79)
+- **Docs**: `admin policies create` のヘルプに `servicePath` リソース属性、priority の説明（大きい数値=高優先度）、デフォルトロールポリシーの説明を追加 (GeonicDB #747, #751, #752) (#79)
 - **Docs**: README を更新 — `--permissions` オプション、XACML 認可モデル、スコープ包含関係、API キーヘッダ排他仕様を反映 (#79)
 
 ### 2026-03-19
-- **Feat**: `admin tenants update` に `--anonymous-access` / `--no-anonymous-access` オプションを追加 — テナントの匿名アクセス設定を CLI から管理可能に (#76)
-- **Docs**: `admin policies create` のヘルプに `target` フィールド（subjects, resources, actions, environments）のスキーマ例を追加 (#75)
+- **Feat**: `admin tenants update` に `--anonymous-access` / `--no-anonymous-access` オプションを追加 — テナントの匿名アクセス設定を CLI から管理可能に (#78)
+- **Docs**: `admin policies create` のヘルプに `target` フィールド（subjects, resources, actions, environments）のスキーマ例を追加 (#78)
+- **Docs**: `admin users create` のヘルプを API 仕様に合わせて改善 (#77)
 
 ### 2026-03-17
 - **Fix**: API キーコマンド (`me api-keys`, `admin api-keys`) のヘルプで表示されるスコープ一覧を、API キーで実際に使用可能な6スコープに修正 (#74)
@@ -140,7 +143,9 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.4...v0.7.0
+[0.6.4]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.0...v0.6.1
