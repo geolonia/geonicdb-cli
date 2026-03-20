@@ -324,6 +324,52 @@ describe("admin api-keys commands", () => {
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/api-keys", { body });
     });
 
+    it("includes permissions when --permissions flag is set", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(
+          mockResponse({ keyId: "k-perms", key: "gdb_perms" }, 201),
+        );
+        const program = makeProgram();
+        await runCommand(program, [
+          "admin", "api-keys", "create",
+          "--name", "perms-key",
+          "--permissions", "read,write",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/api-keys", {
+          body: {
+            name: "perms-key",
+            permissions: ["read", "write"],
+          },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("uses flag path with --permissions as the only flag", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(
+          mockResponse({ keyId: "k-perms2", key: "gdb_perms2" }, 201),
+        );
+        const program = makeProgram();
+        await runCommand(program, [
+          "admin", "api-keys", "create",
+          "--permissions", "read",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/api-keys", {
+          body: {
+            permissions: ["read"],
+          },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
     it("accepts valid allowedOrigins in JSON body", async () => {
       const body = { name: "valid-key", allowedOrigins: ["https://example.com"] };
       vi.mocked(parseJsonInput).mockResolvedValue(body);
@@ -406,6 +452,26 @@ describe("admin api-keys commands", () => {
         ]);
         expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/api-keys/k1", {
           body: { dpopRequired: false },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("includes permissions when --permissions flag is set", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ keyId: "k1" }));
+        const program = makeProgram();
+        await runCommand(program, [
+          "admin", "api-keys", "update", "k1",
+          "--permissions", "read,create,delete",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/api-keys/k1", {
+          body: {
+            permissions: ["read", "create", "delete"],
+          },
         });
       } finally {
         process.stdin.isTTY = isTTY;

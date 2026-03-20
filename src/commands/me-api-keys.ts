@@ -41,6 +41,7 @@ export function addMeApiKeysSubcommand(me: Command): void {
     .option("--entity-types <types>", "Allowed entity types (comma-separated)")
     .option("--rate-limit <n>", "Rate limit per minute")
     .option("--dpop-required", "Require DPoP token binding")
+    .option("--permissions <perms>", "Comma-separated permissions (read, write, create, update, delete)")
     .option("--save", "Save the API key to config for automatic use")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
@@ -51,6 +52,7 @@ export function addMeApiKeysSubcommand(me: Command): void {
           entityTypes?: string;
           rateLimit?: string;
           dpopRequired?: boolean;
+          permissions?: string;
           save?: boolean;
         };
 
@@ -66,13 +68,14 @@ export function addMeApiKeysSubcommand(me: Command): void {
         let body: unknown;
         if (json) {
           body = await parseJsonInput(json as string | undefined);
-        } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit || opts.dpopRequired !== undefined) {
+        } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit || opts.dpopRequired !== undefined || opts.permissions) {
           const payload: Record<string, unknown> = {};
           if (opts.name) payload.name = opts.name;
           if (opts.scopes) payload.allowedScopes = opts.scopes.split(",").map((s: string) => s.trim()).filter(Boolean);
           if (opts.origins) payload.allowedOrigins = opts.origins.split(",").map((s: string) => s.trim()).filter(Boolean);
           if (opts.entityTypes) payload.allowedEntityTypes = opts.entityTypes.split(",").map((s: string) => s.trim()).filter(Boolean);
           if (opts.dpopRequired !== undefined) payload.dpopRequired = opts.dpopRequired;
+          if (opts.permissions) payload.permissions = opts.permissions.split(",").map((s: string) => s.trim()).filter(Boolean);
           if (opts.rateLimit) {
             const raw = opts.rateLimit.trim();
             if (!/^\d+$/.test(raw)) {
@@ -128,12 +131,22 @@ export function addMeApiKeysSubcommand(me: Command): void {
       }),
     );
 
-  addNotes(create, API_KEY_SCOPES_HELP_NOTES);
+  addNotes(create, [
+    ...API_KEY_SCOPES_HELP_NOTES,
+    "",
+    "Valid permissions: read, write, create, update, delete",
+    "  write = create + update + delete",
+    "  Permissions auto-generate XACML policies (allowedEntityTypes respected).",
+  ]);
 
   addExamples(create, [
     {
       description: "Create an API key with flags",
       command: "geonic me api-keys create --name my-app --scopes read:entities --origins 'https://example.com'",
+    },
+    {
+      description: "Create with permissions (auto-generates XACML policy)",
+      command: "geonic me api-keys create --name my-app --permissions read,write --save",
     },
     {
       description: "Create and save API key to config",

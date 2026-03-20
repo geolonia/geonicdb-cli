@@ -74,10 +74,14 @@ export function registerPoliciesCommand(parent: Command): void {
         "  }\n\n" +
         "Target fields:\n" +
         "  subjects   — attributeId: role, userId, email, tenantId\n" +
-        "  resources  — attributeId: path, entityType, entityId, entityOwner, tenantService\n" +
+        "  resources  — attributeId: path, entityType, entityId, entityOwner, tenantService, servicePath\n" +
         "  actions    — attributeId: method (GET, POST, PATCH, DELETE)\n\n" +
         "Each element: {attributeId, matchValue, matchFunction?}\n" +
-        "  matchFunction: \"string-equal\" (default) | \"string-regexp\" | \"glob\"",
+        "  matchFunction: \"string-equal\" (default) | \"string-regexp\" | \"glob\"\n\n" +
+        "Priority: higher number = higher priority (default: 0).\n" +
+        "  Custom policies (e.g. 100) override default role policies (0).\n\n" +
+        "Default role policies (priority 0):\n" +
+        "  user → GET only, api_key → all Deny, anonymous → all Deny",
     )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
@@ -104,6 +108,10 @@ export function registerPoliciesCommand(parent: Command): void {
     {
       description: "Create anonymous access policy",
       command: `geonic admin policies create '{"policyId":"public-read","target":{"subjects":[{"attributeId":"role","matchValue":"anonymous"}],"resources":[{"attributeId":"entityType","matchValue":"WeatherObserved"}],"actions":[{"attributeId":"method","matchValue":"GET"}]},"rules":[{"effect":"Permit"}]}'`,
+    },
+    {
+      description: "Create servicePath-based policy (glob match)",
+      command: `geonic admin policies create '{"description":"Allow read on /opendata/**","priority":100,"target":{"resources":[{"attributeId":"servicePath","matchValue":"/opendata/**","matchFunction":"glob"}],"actions":[{"attributeId":"method","matchValue":"GET"}]},"rules":[{"effect":"Permit"}]}'`,
     },
     {
       description: "Create from a JSON file",

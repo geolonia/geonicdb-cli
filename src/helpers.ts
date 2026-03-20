@@ -15,7 +15,8 @@ export const SCOPES_HELP_NOTES = [
   "  admin:users, admin:tenants, admin:policies, admin:oauth-clients,",
   "  admin:api-keys, admin:metrics",
   "",
-  "write:X implies read:X. admin:X implies both read:X and write:X.",
+  "admin:X implies both read:X and write:X.",
+  "write:X does NOT imply read:X — specify both if needed.",
 ];
 
 /**

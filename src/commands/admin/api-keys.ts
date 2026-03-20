@@ -45,6 +45,7 @@ function buildBodyFromFlags(opts: Record<string, unknown>): Record<string, unkno
     payload.rateLimit = { perMinute };
   }
   if (opts.dpopRequired !== undefined) payload.dpopRequired = opts.dpopRequired;
+  if (opts.permissions) payload.permissions = (opts.permissions as string).split(",").map((s: string) => s.trim()).filter(Boolean);
   if (opts.tenantId) payload.tenantId = opts.tenantId;
   return payload;
 }
@@ -117,6 +118,7 @@ export function registerApiKeysCommand(parent: Command): void {
     .option("--entity-types <types>", "Comma-separated entity types")
     .option("--rate-limit <n>", "Rate limit per minute")
     .option("--dpop-required", "Require DPoP token binding")
+    .option("--permissions <perms>", "Comma-separated permissions (read, write, create, update, delete)")
     .option("--tenant-id <id>", "Tenant ID")
     .option("--save", "Save the API key to profile config")
     .action(
@@ -128,6 +130,7 @@ export function registerApiKeysCommand(parent: Command): void {
           entityTypes?: string;
           rateLimit?: string;
           dpopRequired?: boolean;
+          permissions?: string;
           tenantId?: string;
           save?: boolean;
         };
@@ -137,7 +140,7 @@ export function registerApiKeysCommand(parent: Command): void {
         let body: unknown;
         if (json) {
           body = await parseJsonInput(json as string | undefined);
-        } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit || opts.dpopRequired !== undefined || opts.tenantId) {
+        } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit || opts.dpopRequired !== undefined || opts.permissions || opts.tenantId) {
           body = buildBodyFromFlags(opts);
         } else {
           body = await parseJsonInput();
@@ -174,12 +177,22 @@ export function registerApiKeysCommand(parent: Command): void {
       }),
     );
 
-  addNotes(create, API_KEY_SCOPES_HELP_NOTES);
+  addNotes(create, [
+    ...API_KEY_SCOPES_HELP_NOTES,
+    "",
+    "Valid permissions: read, write, create, update, delete",
+    "  write = create + update + delete",
+    "  Permissions auto-generate XACML policies (allowedEntityTypes respected).",
+  ]);
 
   addExamples(create, [
     {
       description: "Create an API key with flags",
       command: "geonic admin api-keys create --name my-key --scopes read:entities,write:entities --origins '*'",
+    },
+    {
+      description: "Create with permissions (auto-generates XACML policy)",
+      command: "geonic admin api-keys create --name my-key --permissions read,write --origins '*'",
     },
     {
       description: "Create an API key with DPoP required",
@@ -202,6 +215,7 @@ export function registerApiKeysCommand(parent: Command): void {
     .option("--rate-limit <n>", "Rate limit per minute")
     .option("--dpop-required", "Require DPoP token binding")
     .option("--no-dpop-required", "Disable DPoP token binding")
+    .option("--permissions <perms>", "Comma-separated permissions (read, write, create, update, delete)")
     .action(
       withErrorHandler(
         async (keyId: unknown, json: unknown, _opts: unknown, cmd: Command) => {
@@ -212,6 +226,7 @@ export function registerApiKeysCommand(parent: Command): void {
             entityTypes?: string;
             rateLimit?: string;
             dpopRequired?: boolean;
+            permissions?: string;
           };
 
           validateOrigins(undefined, opts);
@@ -219,7 +234,7 @@ export function registerApiKeysCommand(parent: Command): void {
           let body: unknown;
           if (json) {
             body = await parseJsonInput(json as string | undefined);
-          } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit || opts.dpopRequired !== undefined) {
+          } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit || opts.dpopRequired !== undefined || opts.permissions) {
             body = buildBodyFromFlags(opts);
           } else {
             body = await parseJsonInput();
