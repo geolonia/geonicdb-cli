@@ -15,7 +15,8 @@ export const SCOPES_HELP_NOTES = [
   "  admin:users, admin:tenants, admin:policies, admin:oauth-clients,",
   "  admin:api-keys, admin:metrics",
   "",
-  "write:X implies read:X. admin:X implies both read:X and write:X.",
+  "admin:X implies both read:X and write:X.",
+  "write:X does NOT imply read:X — specify both if needed.",
 ];
 
 /**
@@ -26,6 +27,24 @@ export const API_KEY_SCOPES_HELP_NOTES = [
   "  read:entities, write:entities, read:subscriptions, write:subscriptions,",
   "  read:registrations, write:registrations",
 ];
+
+/**
+ * Valid permission values for --permissions option.
+ */
+export const VALID_PERMISSIONS = new Set(["read", "write", "create", "update", "delete"]);
+
+/**
+ * Parse and validate --permissions flag value.
+ * Returns the parsed array or calls process.exit(1) on invalid input.
+ */
+export function parsePermissions(raw: string): string[] {
+  const permissions = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  if (permissions.length === 0 || permissions.some((p) => !VALID_PERMISSIONS.has(p))) {
+    printError("--permissions must be a comma-separated list of: read, write, create, update, delete");
+    process.exit(1);
+  }
+  return permissions;
+}
 
 /**
  * Resolve merged options from config + CLI flags.

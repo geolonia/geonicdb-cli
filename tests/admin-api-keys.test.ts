@@ -2,15 +2,20 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createMockClient, mockResponse, createTestProgram, runCommand } from "./test-helpers.js";
 import type { MockClient } from "./test-helpers.js";
 
-vi.mock("../src/helpers.js", () => ({
-  createClient: vi.fn(),
-  getFormat: vi.fn(),
-  outputResponse: vi.fn(),
-  withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
-  SCOPES_HELP_NOTES: [],
-  API_KEY_SCOPES_HELP_NOTES: [],
-  resolveOptions: vi.fn().mockReturnValue({ profile: "default" }),
-}));
+vi.mock("../src/helpers.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/helpers.js")>();
+  return {
+    createClient: vi.fn(),
+    getFormat: vi.fn(),
+    outputResponse: vi.fn(),
+    withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
+    SCOPES_HELP_NOTES: [],
+    API_KEY_SCOPES_HELP_NOTES: [],
+    VALID_PERMISSIONS: actual.VALID_PERMISSIONS,
+    parsePermissions: actual.parsePermissions,
+    resolveOptions: vi.fn().mockReturnValue({ profile: "default" }),
+  };
+});
 
 vi.mock("../src/input.js", () => ({
   parseJsonInput: vi.fn(),
@@ -324,6 +329,84 @@ describe("admin api-keys commands", () => {
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/api-keys", { body });
     });
 
+    it("includes permissions when --permissions flag is set", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(
+          mockResponse({ keyId: "k-perms", key: "gdb_perms" }, 201),
+        );
+        const program = makeProgram();
+        await runCommand(program, [
+          "admin", "api-keys", "create",
+          "--name", "perms-key",
+          "--permissions", "read,write",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/api-keys", {
+          body: {
+            name: "perms-key",
+            permissions: ["read", "write"],
+          },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("uses flag path with --permissions as the only flag", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(
+          mockResponse({ keyId: "k-perms2", key: "gdb_perms2" }, 201),
+        );
+        const program = makeProgram();
+        await runCommand(program, [
+          "admin", "api-keys", "create",
+          "--permissions", "read",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/api-keys", {
+          body: {
+            permissions: ["read"],
+          },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("rejects invalid --permissions values", async () => {
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+        throw new Error("process.exit");
+      });
+
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["admin", "api-keys", "create", "--permissions", "read,foo"])
+      ).rejects.toThrow("process.exit");
+
+      expect(printError).toHaveBeenCalledWith(
+        "--permissions must be a comma-separated list of: read, write, create, update, delete",
+      );
+      exitSpy.mockRestore();
+    });
+
+    it("rejects --permissions with only invalid values", async () => {
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+        throw new Error("process.exit");
+      });
+
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["admin", "api-keys", "create", "--permissions", "admin"])
+      ).rejects.toThrow("process.exit");
+
+      expect(printError).toHaveBeenCalledWith(
+        "--permissions must be a comma-separated list of: read, write, create, update, delete",
+      );
+      exitSpy.mockRestore();
+    });
+
     it("accepts valid allowedOrigins in JSON body", async () => {
       const body = { name: "valid-key", allowedOrigins: ["https://example.com"] };
       vi.mocked(parseJsonInput).mockResolvedValue(body);
@@ -406,6 +489,26 @@ describe("admin api-keys commands", () => {
         ]);
         expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/api-keys/k1", {
           body: { dpopRequired: false },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("includes permissions when --permissions flag is set", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ keyId: "k1" }));
+        const program = makeProgram();
+        await runCommand(program, [
+          "admin", "api-keys", "update", "k1",
+          "--permissions", "read,create,delete",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/api-keys/k1", {
+          body: {
+            permissions: ["read", "create", "delete"],
+          },
         });
       } finally {
         process.stdin.isTTY = isTTY;

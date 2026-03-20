@@ -2,15 +2,20 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createMockClient, mockResponse, createTestProgram, runCommand } from "./test-helpers.js";
 import type { MockClient } from "./test-helpers.js";
 
-vi.mock("../src/helpers.js", () => ({
-  createClient: vi.fn(),
-  getFormat: vi.fn(),
-  outputResponse: vi.fn(),
-  withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
-  SCOPES_HELP_NOTES: [],
-  API_KEY_SCOPES_HELP_NOTES: [],
-  resolveOptions: vi.fn().mockReturnValue({ profile: "default" }),
-}));
+vi.mock("../src/helpers.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/helpers.js")>();
+  return {
+    createClient: vi.fn(),
+    getFormat: vi.fn(),
+    outputResponse: vi.fn(),
+    withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
+    SCOPES_HELP_NOTES: [],
+    API_KEY_SCOPES_HELP_NOTES: [],
+    VALID_PERMISSIONS: actual.VALID_PERMISSIONS,
+    parsePermissions: actual.parsePermissions,
+    resolveOptions: vi.fn().mockReturnValue({ profile: "default" }),
+  };
+});
 
 vi.mock("../src/input.js", () => ({
   parseJsonInput: vi.fn(),
@@ -289,6 +294,30 @@ describe("me api-keys commands", () => {
       await runCommand(program, ["me", "api-keys", "create"]);
       expect(parseJsonInput).toHaveBeenCalledWith();
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/api-keys", { body });
+    });
+
+    it("includes permissions when --permissions flag is set", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(
+          mockResponse({ keyId: "k-perms", key: "gdb_perms" }, 201),
+        );
+        const program = makeProgram();
+        await runCommand(program, [
+          "me", "api-keys", "create",
+          "--name", "perms-key",
+          "--permissions", "read,write",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/api-keys", {
+          body: {
+            name: "perms-key",
+            permissions: ["read", "write"],
+          },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
     });
 
     it("builds body with origins, entity-types and rate-limit flags", async () => {

@@ -20,6 +20,8 @@ import {
   getFormat,
   outputResponse,
   withErrorHandler,
+  parsePermissions,
+  VALID_PERMISSIONS,
 } from "../src/helpers.js";
 
 function fakeCmd(cliOpts: Partial<GlobalOptions> = {}): Command {
@@ -369,6 +371,39 @@ describe("helpers", () => {
       const wrapped = withErrorHandler(fn);
       await expect(wrapped()).rejects.toThrow("process.exit");
       expect(printError).toHaveBeenCalledWith("Forbidden");
+    });
+  });
+
+  describe("parsePermissions", () => {
+    it("parses valid permissions", () => {
+      expect(parsePermissions("read,write")).toEqual(["read", "write"]);
+      expect(parsePermissions("create, update, delete")).toEqual(["create", "update", "delete"]);
+      expect(parsePermissions("read")).toEqual(["read"]);
+    });
+
+    it("exits on invalid permission value", () => {
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+        throw new Error("process.exit");
+      });
+      expect(() => parsePermissions("read,foo")).toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(
+        "--permissions must be a comma-separated list of: read, write, create, update, delete",
+      );
+      exitSpy.mockRestore();
+    });
+
+    it("exits on empty string", () => {
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+        throw new Error("process.exit");
+      });
+      expect(() => parsePermissions("")).toThrow("process.exit");
+      exitSpy.mockRestore();
+    });
+  });
+
+  describe("VALID_PERMISSIONS", () => {
+    it("contains exactly the expected values", () => {
+      expect(VALID_PERMISSIONS).toEqual(new Set(["read", "write", "create", "update", "delete"]));
     });
   });
 });
