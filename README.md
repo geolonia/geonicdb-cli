@@ -213,11 +213,15 @@ Displays the current authenticated user, token expiry, and active profile.
 | `--entity-types <types>` | Allowed entity types (comma-separated) |
 | `--rate-limit <n>` | Rate limit (requests per minute) |
 | `--dpop-required` | Require DPoP token binding (RFC 9449) |
+| `--permissions <perms>` | Permissions for auto-generated XACML policy (comma-separated) |
 | `--save` | Save the API key to profile config |
 
 ```bash
 # Create an API key and save to config
 geonic me api-keys create --name my-app --scopes read:entities --save
+
+# Create with permissions (auto-generates XACML policy)
+geonic me api-keys create --name my-app --permissions read,write --save
 
 # Create from JSON
 geonic me api-keys create '{"name":"my-app","allowedScopes":["read:entities"]}'
@@ -392,6 +396,16 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 | `admin policies activate <id>` | Activate a policy |
 | `admin policies deactivate <id>` | Deactivate a policy |
 
+**XACML Authorization Model**: All authorization is unified under XACML policies. Default role policies (priority 0):
+
+| Role | Default Behavior |
+|---|---|
+| `user` | GET only (read-only) |
+| `api_key` | All Deny |
+| `anonymous` | All Deny |
+
+Custom policies with higher priority (e.g. 100) override defaults. Target resource attributes include: `path`, `entityType`, `entityId`, `entityOwner`, `tenantService`, `servicePath`. The `servicePath` attribute supports glob patterns (e.g. `/opendata/**`) and regex matching.
+
 #### admin oauth-clients
 
 | Subcommand | Description |
@@ -412,7 +426,9 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 | `admin api-keys update <keyId> [json]` | Update an API key |
 | `admin api-keys delete <keyId>` | Delete an API key |
 
-`admin api-keys list` supports `--tenant-id` to filter by tenant. `admin api-keys create` supports flag options: `--name`, `--scopes`, `--origins`, `--entity-types`, `--rate-limit`, `--dpop-required`, `--tenant-id`, `--save`. `admin api-keys update` supports `--name`, `--scopes`, `--origins`, `--entity-types`, `--rate-limit`, `--dpop-required` / `--no-dpop-required`.
+`admin api-keys list` supports `--tenant-id` to filter by tenant. `admin api-keys create` supports flag options: `--name`, `--scopes`, `--origins`, `--entity-types`, `--rate-limit`, `--dpop-required`, `--permissions`, `--tenant-id`, `--save`. `admin api-keys update` supports `--name`, `--scopes`, `--origins`, `--entity-types`, `--rate-limit`, `--dpop-required` / `--no-dpop-required`, `--permissions`.
+
+**Permissions**: The `--permissions` flag accepts a comma-separated list of `read`, `write`, `create`, `update`, `delete`. `write` is an alias for `create` + `update` + `delete`. When specified, XACML policies are auto-generated for the API key (respects `allowedEntityTypes`).
 
 **Note**: `allowedOrigins` must contain at least 1 item when specified. Use `*` to allow all origins. `allowedEntityTypes` is enforced at runtime — API key holders can only access entities of the specified types. `admin api-keys list` / `admin api-keys get` output includes a `dpopRequired` field (boolean).
 
@@ -560,13 +576,13 @@ geonic entities list --api-key gdb_your_api_key_here
 GDB_API_KEY=gdb_your_api_key_here geonic entities list
 ```
 
-When both a Bearer token and an API key are configured, both headers are sent (the server determines precedence).
+When both a Bearer token and an API key are configured, headers are sent exclusively — the API key takes precedence when present.
 
 ### Valid Scopes
 
 `read:entities`, `write:entities`, `read:subscriptions`, `write:subscriptions`, `read:registrations`, `write:registrations`, `read:rules`, `write:rules`, `read:custom-data-models`, `write:custom-data-models`, `admin:users`, `admin:tenants`, `admin:policies`, `admin:oauth-clients`, `admin:api-keys`, `admin:metrics`
 
-`write:X` implies `read:X`. `admin:X` implies both `read:X` and `write:X`.
+`admin:X` implies both `read:X` and `write:X`. `write:X` does **not** imply `read:X` — specify both explicitly if needed.
 
 Special scopes: `permanent` (no token expiry), `jwt` (JWT format token).
 
