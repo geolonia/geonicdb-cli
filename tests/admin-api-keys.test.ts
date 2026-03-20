@@ -2,15 +2,20 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createMockClient, mockResponse, createTestProgram, runCommand } from "./test-helpers.js";
 import type { MockClient } from "./test-helpers.js";
 
-vi.mock("../src/helpers.js", () => ({
-  createClient: vi.fn(),
-  getFormat: vi.fn(),
-  outputResponse: vi.fn(),
-  withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
-  SCOPES_HELP_NOTES: [],
-  API_KEY_SCOPES_HELP_NOTES: [],
-  resolveOptions: vi.fn().mockReturnValue({ profile: "default" }),
-}));
+vi.mock("../src/helpers.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/helpers.js")>();
+  return {
+    createClient: vi.fn(),
+    getFormat: vi.fn(),
+    outputResponse: vi.fn(),
+    withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
+    SCOPES_HELP_NOTES: [],
+    API_KEY_SCOPES_HELP_NOTES: [],
+    VALID_PERMISSIONS: actual.VALID_PERMISSIONS,
+    parsePermissions: actual.parsePermissions,
+    resolveOptions: vi.fn().mockReturnValue({ profile: "default" }),
+  };
+});
 
 vi.mock("../src/input.js", () => ({
   parseJsonInput: vi.fn(),
@@ -368,6 +373,38 @@ describe("admin api-keys commands", () => {
       } finally {
         process.stdin.isTTY = isTTY;
       }
+    });
+
+    it("rejects invalid --permissions values", async () => {
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+        throw new Error("process.exit");
+      });
+
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["admin", "api-keys", "create", "--permissions", "read,foo"])
+      ).rejects.toThrow("process.exit");
+
+      expect(printError).toHaveBeenCalledWith(
+        "--permissions must be a comma-separated list of: read, write, create, update, delete",
+      );
+      exitSpy.mockRestore();
+    });
+
+    it("rejects --permissions with only invalid values", async () => {
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+        throw new Error("process.exit");
+      });
+
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["admin", "api-keys", "create", "--permissions", "admin"])
+      ).rejects.toThrow("process.exit");
+
+      expect(printError).toHaveBeenCalledWith(
+        "--permissions must be a comma-separated list of: read, write, create, update, delete",
+      );
+      exitSpy.mockRestore();
     });
 
     it("accepts valid allowedOrigins in JSON body", async () => {

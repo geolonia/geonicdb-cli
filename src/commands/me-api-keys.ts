@@ -4,7 +4,7 @@ import { loadConfig, saveConfig } from "../config.js";
 import { parseJsonInput } from "../input.js";
 import { printError, printWarning } from "../output.js";
 import { addExamples, addNotes } from "./help.js";
-import { API_KEY_SCOPES_HELP_NOTES } from "../helpers.js";
+import { API_KEY_SCOPES_HELP_NOTES, parsePermissions } from "../helpers.js";
 
 export function addMeApiKeysSubcommand(me: Command): void {
   const apiKeys = me
@@ -75,7 +75,7 @@ export function addMeApiKeysSubcommand(me: Command): void {
           if (opts.origins) payload.allowedOrigins = opts.origins.split(",").map((s: string) => s.trim()).filter(Boolean);
           if (opts.entityTypes) payload.allowedEntityTypes = opts.entityTypes.split(",").map((s: string) => s.trim()).filter(Boolean);
           if (opts.dpopRequired !== undefined) payload.dpopRequired = opts.dpopRequired;
-          if (opts.permissions) payload.permissions = opts.permissions.split(",").map((s: string) => s.trim()).filter(Boolean);
+          if (opts.permissions) payload.permissions = parsePermissions(opts.permissions);
           if (opts.rateLimit) {
             const raw = opts.rateLimit.trim();
             if (!/^\d+$/.test(raw)) {

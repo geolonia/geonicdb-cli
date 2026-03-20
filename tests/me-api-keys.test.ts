@@ -2,15 +2,20 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createMockClient, mockResponse, createTestProgram, runCommand } from "./test-helpers.js";
 import type { MockClient } from "./test-helpers.js";
 
-vi.mock("../src/helpers.js", () => ({
-  createClient: vi.fn(),
-  getFormat: vi.fn(),
-  outputResponse: vi.fn(),
-  withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
-  SCOPES_HELP_NOTES: [],
-  API_KEY_SCOPES_HELP_NOTES: [],
-  resolveOptions: vi.fn().mockReturnValue({ profile: "default" }),
-}));
+vi.mock("../src/helpers.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/helpers.js")>();
+  return {
+    createClient: vi.fn(),
+    getFormat: vi.fn(),
+    outputResponse: vi.fn(),
+    withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
+    SCOPES_HELP_NOTES: [],
+    API_KEY_SCOPES_HELP_NOTES: [],
+    VALID_PERMISSIONS: actual.VALID_PERMISSIONS,
+    parsePermissions: actual.parsePermissions,
+    resolveOptions: vi.fn().mockReturnValue({ profile: "default" }),
+  };
+});
 
 vi.mock("../src/input.js", () => ({
   parseJsonInput: vi.fn(),

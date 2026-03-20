@@ -4,7 +4,7 @@ import { loadConfig, saveConfig } from "../../config.js";
 import { parseJsonInput } from "../../input.js";
 import { printError, printWarning } from "../../output.js";
 import { addExamples, addNotes } from "../help.js";
-import { API_KEY_SCOPES_HELP_NOTES } from "../../helpers.js";
+import { API_KEY_SCOPES_HELP_NOTES, parsePermissions } from "../../helpers.js";
 
 function validateOrigins(body: unknown, opts: Record<string, unknown>): void {
   // Validate origins if provided via flags
@@ -45,7 +45,7 @@ function buildBodyFromFlags(opts: Record<string, unknown>): Record<string, unkno
     payload.rateLimit = { perMinute };
   }
   if (opts.dpopRequired !== undefined) payload.dpopRequired = opts.dpopRequired;
-  if (opts.permissions) payload.permissions = (opts.permissions as string).split(",").map((s: string) => s.trim()).filter(Boolean);
+  if (opts.permissions) payload.permissions = parsePermissions(opts.permissions as string);
   if (opts.tenantId) payload.tenantId = opts.tenantId;
   return payload;
 }
@@ -255,12 +255,22 @@ export function registerApiKeysCommand(parent: Command): void {
       ),
     );
 
-  addNotes(update, API_KEY_SCOPES_HELP_NOTES);
+  addNotes(update, [
+    ...API_KEY_SCOPES_HELP_NOTES,
+    "",
+    "Valid permissions: read, write, create, update, delete",
+    "  write = create + update + delete",
+    "  Permissions auto-generate XACML policies (allowedEntityTypes respected).",
+  ]);
 
   addExamples(update, [
     {
       description: "Update an API key name",
       command: "geonic admin api-keys update <key-id> --name new-name",
+    },
+    {
+      description: "Update permissions",
+      command: "geonic admin api-keys update <key-id> --permissions read,write",
     },
     {
       description: "Enable DPoP requirement",
