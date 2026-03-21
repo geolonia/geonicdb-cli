@@ -195,6 +195,8 @@ Displays the current authenticated user, token expiry, and active profile.
 | `me oauth-clients create [json]` | Create a new OAuth client |
 | `me oauth-clients delete <id>` | Delete an OAuth client |
 
+`me oauth-clients create` supports flag options: `--name`, `--policy`, `--save`. Use `--save` to store client credentials in config for automatic re-authentication.
+
 #### me api-keys
 
 | Subcommand | Description |
@@ -208,23 +210,18 @@ Displays the current authenticated user, token expiry, and active profile.
 | Flag | Description |
 |---|---|
 | `--name <name>` | Key name |
-| `--scopes <scopes>` | Allowed scopes (comma-separated) |
+| `--policy <policyId>` | Policy ID to attach (XACML policy) |
 | `--origins <origins>` | Allowed origins (comma-separated, at least 1 required) |
-| `--entity-types <types>` | Allowed entity types (comma-separated) |
 | `--rate-limit <n>` | Rate limit (requests per minute) |
 | `--dpop-required` | Require DPoP token binding (RFC 9449) |
-| `--permissions <perms>` | Permissions for auto-generated XACML policy (comma-separated) |
 | `--save` | Save the API key to profile config |
 
 ```bash
-# Create an API key and save to config
-geonic me api-keys create --name my-app --scopes read:entities --save
-
-# Create with permissions (auto-generates XACML policy)
-geonic me api-keys create --name my-app --permissions read,write --save
+# Create an API key with a policy and save to config
+geonic me api-keys create --name my-app --policy <policy-id> --save
 
 # Create from JSON
-geonic me api-keys create '{"name":"my-app","allowedScopes":["read:entities"]}'
+geonic me api-keys create '{"name":"my-app","policyId":"<policy-id>"}'
 ```
 
 `me api-keys list` output includes a `dpopRequired` field (boolean).
@@ -426,11 +423,11 @@ Custom policies with higher priority (e.g. 100) override defaults. Target resour
 | `admin api-keys update <keyId> [json]` | Update an API key |
 | `admin api-keys delete <keyId>` | Delete an API key |
 
-`admin api-keys list` supports `--tenant-id` to filter by tenant. `admin api-keys create` supports flag options: `--name`, `--scopes`, `--origins`, `--entity-types`, `--rate-limit`, `--dpop-required`, `--permissions`, `--tenant-id`, `--save`. `admin api-keys update` supports `--name`, `--scopes`, `--origins`, `--entity-types`, `--rate-limit`, `--dpop-required` / `--no-dpop-required`, `--permissions`.
+`admin api-keys list` supports `--tenant-id` to filter by tenant. `admin api-keys create` supports flag options: `--name`, `--policy`, `--origins`, `--rate-limit`, `--dpop-required`, `--tenant-id`, `--save`. `admin api-keys update` supports `--name`, `--policy`, `--origins`, `--rate-limit`, `--dpop-required` / `--no-dpop-required`.
 
-**Permissions**: The `--permissions` flag accepts a comma-separated list of `read`, `write`, `create`, `update`, `delete`. `write` is an alias for `create` + `update` + `delete`. When specified, XACML policies are auto-generated for the API key (respects `allowedEntityTypes`).
+**Policy**: Use `--policy <policyId>` to attach an existing XACML policy to the API key. Manage policies with `geonic admin policies` commands.
 
-**Note**: `allowedOrigins` must contain at least 1 item when specified. Use `*` to allow all origins. `allowedEntityTypes` is enforced at runtime — API key holders can only access entities of the specified types. `admin api-keys list` / `admin api-keys get` output includes a `dpopRequired` field (boolean).
+**Note**: `allowedOrigins` must contain at least 1 item when specified. Use `*` to allow all origins. `admin api-keys list` / `admin api-keys get` output includes a `dpopRequired` field (boolean).
 
 #### admin cadde
 
@@ -578,17 +575,11 @@ GDB_API_KEY=gdb_your_api_key_here geonic entities list
 
 When both a Bearer token and an API key are configured, headers are sent exclusively — the API key takes precedence when present.
 
-### Valid Scopes
+### Authorization Model
 
-`read:entities`, `write:entities`, `read:subscriptions`, `write:subscriptions`, `read:registrations`, `write:registrations`, `read:rules`, `write:rules`, `read:custom-data-models`, `write:custom-data-models`, `admin:users`, `admin:tenants`, `admin:policies`, `admin:oauth-clients`, `admin:api-keys`, `admin:metrics`
+All authorization for API keys and OAuth clients is controlled via XACML policies. Use `--policy <policyId>` when creating API keys or OAuth clients to attach an existing policy. Manage policies with `geonic admin policies` commands.
 
-`admin:X` implies both `read:X` and `write:X`. `write:X` does **not** imply `read:X` — specify both explicitly if needed.
-
-Special scopes: `permanent` (no token expiry), `jwt` (JWT format token).
-
-### Entity Type Restrictions
-
-API keys with `allowedEntityTypes` are restricted to the specified entity types at runtime. Attempting to access entities of other types results in a 403 error with a descriptive message.
+See the [admin policies](#admin-policies) section for details on the XACML authorization model, default role policies, and target resource attributes.
 
 ## Development
 
