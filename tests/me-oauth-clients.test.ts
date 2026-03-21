@@ -7,8 +7,6 @@ vi.mock("../src/helpers.js", () => ({
   getFormat: vi.fn(),
   outputResponse: vi.fn(),
   withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
-  SCOPES_HELP_NOTES: [],
-  API_KEY_SCOPES_HELP_NOTES: [],
   resolveOptions: vi.fn(),
 }));
 
@@ -81,7 +79,7 @@ describe("me oauth-clients commands", () => {
 
   describe("oauth-clients create", () => {
     it("posts body from JSON input and prints success", async () => {
-      const body = { clientName: "my-bot", allowedScopes: ["read:entities"] };
+      const body = { name: "my-bot", policyId: "p1" };
       vi.mocked(parseJsonInput).mockResolvedValue(body);
       client.rawRequest.mockResolvedValue(
         mockResponse({ clientId: "c2", clientSecret: "secret" }, 201),
@@ -91,7 +89,7 @@ describe("me oauth-clients commands", () => {
         "me",
         "oauth-clients",
         "create",
-        '{"clientName":"my-bot","allowedScopes":["read:entities"]}',
+        '{"name":"my-bot","policyId":"p1"}',
       ]);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/oauth-clients", { body });
       expect(outputResponse).toHaveBeenCalled();
@@ -101,7 +99,7 @@ describe("me oauth-clients commands", () => {
       expect(printSuccess).toHaveBeenCalledWith("OAuth client created.");
     });
 
-    it("builds body from --name and --scopes flags", async () => {
+    it("builds body from --name and --policy flags", async () => {
       const isTTY = process.stdin.isTTY;
       process.stdin.isTTY = true;
       try {
@@ -115,13 +113,13 @@ describe("me oauth-clients commands", () => {
           "create",
           "--name",
           "my-ci",
-          "--scopes",
-          "read:entities,write:entities",
+          "--policy",
+          "my-policy",
         ]);
         expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/oauth-clients", {
           body: {
-            clientName: "my-ci",
-            allowedScopes: ["read:entities", "write:entities"],
+            name: "my-ci",
+            policyId: "my-policy",
           },
         });
       } finally {
@@ -142,7 +140,6 @@ describe("me oauth-clients commands", () => {
             {
               clientId: "c4",
               clientSecret: "s3cret",
-              allowedScopes: ["read:entities"],
             },
             201,
           ),
@@ -166,7 +163,6 @@ describe("me oauth-clients commands", () => {
           baseUrl: "https://example.com/",
           clientId: "c4",
           clientSecret: "s3cret",
-          scope: "read:entities",
         });
         expect(saveConfig).toHaveBeenCalledWith(
           expect.objectContaining({

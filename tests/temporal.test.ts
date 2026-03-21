@@ -7,8 +7,6 @@ vi.mock("../src/helpers.js", () => ({
   getFormat: vi.fn(),
   outputResponse: vi.fn(),
   withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
-  SCOPES_HELP_NOTES: [],
-  API_KEY_SCOPES_HELP_NOTES: [],
   resolveOptions: vi.fn(),
 }));
 
