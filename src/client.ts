@@ -164,6 +164,17 @@ export class GdbClient {
     return (!!this.refreshToken || (!!this.clientId && !!this.clientSecret)) && !this.apiKey;
   }
 
+  /** Check whether an error indicates an authentication/token problem that may be resolved by refreshing. */
+  private static isTokenError(err: GdbClientError): boolean {
+    if (err.status === 401) return true;
+    // The server returns 403 for malformed / expired JWTs in some cases
+    if (err.status === 403) {
+      const msg = (err.message ?? "").toLowerCase();
+      return msg.includes("not assigned to any tenant") || msg.includes("invalid token");
+    }
+    return false;
+  }
+
   private async performTokenRefresh(): Promise<boolean> {
     if (this.refreshPromise) return this.refreshPromise;
 
@@ -317,7 +328,7 @@ export class GdbClient {
     try {
       return await this.executeRequest<T>(method, path, options);
     } catch (err) {
-      if (err instanceof GdbClientError && err.status === 401 && this.canRefresh()) {
+      if (err instanceof GdbClientError && GdbClient.isTokenError(err) && this.canRefresh()) {
         const refreshed = await this.performTokenRefresh();
         if (refreshed) {
           return await this.executeRequest<T>(method, path, options);
@@ -380,7 +391,7 @@ export class GdbClient {
     try {
       return await this.executeRawRequest<T>(method, path, options);
     } catch (err) {
-      if (err instanceof GdbClientError && err.status === 401 && this.canRefresh()) {
+      if (err instanceof GdbClientError && GdbClient.isTokenError(err) && this.canRefresh()) {
         const refreshed = await this.performTokenRefresh();
         if (refreshed) {
           return await this.executeRawRequest<T>(method, path, options);
