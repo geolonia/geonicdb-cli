@@ -197,6 +197,14 @@ Displays the current authenticated user, token expiry, and active profile.
 
 `me oauth-clients create` supports flag options: `--name`, `--policy`, `--save`. Use `--save` to store client credentials in config for automatic re-authentication.
 
+```bash
+# Create with flags
+geonic me oauth-clients create --name my-ci-bot --policy <policy-id>
+
+# Create from JSON (note: field is "name", not "clientName")
+geonic me oauth-clients create '{"name":"my-bot","policyId":"<policy-id>"}'
+```
+
 #### me api-keys
 
 | Subcommand | Description |
