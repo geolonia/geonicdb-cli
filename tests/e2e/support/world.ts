@@ -11,6 +11,9 @@ export const TEST_EMAIL = "admin@test.com";
 export const TEST_PASSWORD = "SuperSecretPassword123!";
 export const JWT_SECRET = "e2e-test-secret-key-minimum-32-characters-long";
 
+export const TENANT_ADMIN_EMAIL = "tenant-admin@test.com";
+export const TENANT_ADMIN_PASSWORD = "TenantAdmin123!";
+
 export interface CliResult {
   stdout: string;
   stderr: string;
@@ -107,14 +110,11 @@ export class GdbWorld extends World {
 setWorldConstructor(GdbWorld);
 
 /**
- * Perform a real login against the test server via direct API call and write
- * the token to the CLI config.  This avoids the interactive-only CLI login
- * flow and keeps E2E setup fast & deterministic.
- *
+ * Internal helper: login with given credentials and write the token to CLI config.
  * Retries up to 3 times to handle race conditions where the DB was just
- * cleared and the server hasn't yet recreated the admin user.
+ * cleared and the server hasn't yet recreated users.
  */
-export async function performLogin(world: GdbWorld): Promise<Record<string, unknown>> {
+async function loginAs(world: GdbWorld, email: string, password: string): Promise<Record<string, unknown>> {
   const maxRetries = 3;
   let lastError: Error | undefined;
 
@@ -126,7 +126,7 @@ export async function performLogin(world: GdbWorld): Promise<Record<string, unkn
       const res = await fetch(loginUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: TEST_EMAIL, password: TEST_PASSWORD }),
+        body: JSON.stringify({ email, password }),
       });
       if (!res.ok) {
         lastError = new Error(`Login API call failed: HTTP ${res.status}`);
@@ -152,7 +152,21 @@ export async function performLogin(world: GdbWorld): Promise<Record<string, unkn
     }
   }
 
-  assert.fail(lastError?.message ?? "performLogin failed after retries");
+  assert.fail(lastError?.message ?? `loginAs(${email}) failed after retries`);
+}
+
+/**
+ * Login as tenant admin (default for data API operations).
+ */
+export async function performLogin(world: GdbWorld): Promise<Record<string, unknown>> {
+  return loginAs(world, TENANT_ADMIN_EMAIL, TENANT_ADMIN_PASSWORD);
+}
+
+/**
+ * Login as super admin (for admin API operations).
+ */
+export async function performSuperAdminLogin(world: GdbWorld): Promise<Record<string, unknown>> {
+  return loginAs(world, TEST_EMAIL, TEST_PASSWORD);
 }
 
 function sleep(ms: number): Promise<void> {

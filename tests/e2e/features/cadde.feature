@@ -6,18 +6,18 @@ Feature: Admin CADDE configuration
   So that I can configure data exchange settings
 
   Scenario: Get CADDE configuration
-    Given I am logged in
+    Given I am logged in as super admin
     When I run `geonic admin cadde get`
     Then the exit code should be 0
 
   Scenario: Set CADDE configuration
-    Given I am logged in
+    Given I am logged in as super admin
     When I run `geonic admin cadde set '{"provider":"test","endpoint":"http://localhost:6000"}'`
     Then the exit code should be 0
     And the output should contain "CADDE configuration set."
 
   Scenario: Delete CADDE configuration
-    Given I am logged in
+    Given I am logged in as super admin
     When I run `geonic admin cadde delete`
     Then the exit code should be 0
     And the output should contain "CADDE configuration deleted."
