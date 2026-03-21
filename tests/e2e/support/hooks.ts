@@ -42,11 +42,14 @@ BeforeAll(async function () {
 });
 
 Before(async function (this: GdbWorld) {
-  // DB cleanup for scenario isolation — drop collections to bypass server caching
+  // DB cleanup for scenario isolation — drop data collections only.
+  // Preserve auth/policy collections (users, policies, tenant) so the
+  // server's default XACML policies and super-admin user survive cleanup.
+  const preserveCollections = new Set(["users", "policies", "tenant"]);
   const db = mongoClient.db();
   const collections = await db.listCollections().toArray();
   for (const c of collections) {
-    if (!c.name.startsWith("system.")) {
+    if (!c.name.startsWith("system.") && !preserveCollections.has(c.name)) {
       await db.collection(c.name).drop().catch((err: Error & { code?: number }) => {
         if (err.code !== 26 && !err.message.includes("ns not found")) {
           console.warn(`Warning: failed to drop collection ${c.name}: ${err.message}`);
