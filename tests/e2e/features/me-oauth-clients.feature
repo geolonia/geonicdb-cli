@@ -1,4 +1,4 @@
-@extended-api @wip
+@extended-api
 Feature: User self-service OAuth client management
   As a logged-in user
   I want to manage my own OAuth clients
