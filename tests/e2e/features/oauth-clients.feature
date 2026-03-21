@@ -1,4 +1,4 @@
-@extended-api
+@extended-api @wip
 Feature: Admin OAuth client management
   As an admin CLI user
   I want to manage OAuth clients
