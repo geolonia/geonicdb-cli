@@ -64,7 +64,7 @@ BeforeAll(async function () {
   const tenantRes = await fetch(new URL("/admin/tenants", server.url).toString(), {
     method: "POST",
     headers: authHeaders,
-    body: JSON.stringify({ name: "e2e-test", description: "E2E test tenant" }),
+    body: JSON.stringify({ name: "e2e_test", description: "E2E test tenant" }),
   });
   if (!tenantRes.ok) throw new Error(`Tenant creation failed: HTTP ${tenantRes.status}`);
   const tenantData = (await tenantRes.json()) as Record<string, unknown>;
