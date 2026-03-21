@@ -1,14 +1,20 @@
 import { BeforeAll, AfterAll, Before, After } from "@cucumber/cucumber";
 import { createServer, type GeonicDBServer } from "geonicdb";
-import { MongoClient, type Document } from "mongodb";
+import { MongoClient, type Db, type Document } from "mongodb";
 import { GdbWorld, TEST_EMAIL, TEST_PASSWORD, JWT_SECRET, TENANT_ADMIN_EMAIL, TENANT_ADMIN_PASSWORD } from "./world.js";
 
 let server: GeonicDBServer;
 let mongoClient: MongoClient;
+let db: Db;
+
+const DB_NAME = "local-context-broker";
 
 // Collections whose contents are restored (not dropped) between scenarios
-// so the server's default XACML policies and super-admin user survive cleanup.
-const preservedCollectionNames = ["users", "policies", "tenant", "memberships", "oauth-clients", "api-keys"] as const;
+// so the server's default XACML policies, tenants, and users survive cleanup.
+const preservedCollectionNames = [
+  "users", "policies", "policySets", "tenants",
+  "tenantMemberships", "oauthClients", "apiKeys", "loginAttempts",
+] as const;
 const baselineDocs = new Map<string, Document[]>();
 
 // Suppress all server console output during E2E tests
@@ -44,6 +50,7 @@ BeforeAll(async function () {
   server = await createServer({ silent: true });
   mongoClient = new MongoClient(server.mongoUri);
   await mongoClient.connect();
+  db = mongoClient.db(DB_NAME);
 
   // Login as super admin and create test tenant + tenant_admin user
   const loginRes = await fetch(new URL("/auth/login", server.url).toString(), {
@@ -84,7 +91,6 @@ BeforeAll(async function () {
   if (!userRes.ok) throw new Error(`Tenant admin user creation failed: HTTP ${userRes.status}`);
 
   // Snapshot initial state of preserved collections AFTER tenant + user setup
-  const db = mongoClient.db();
   for (const name of preservedCollectionNames) {
     baselineDocs.set(name, await db.collection(name).find({}).toArray());
   }
@@ -93,7 +99,6 @@ BeforeAll(async function () {
 Before(async function (this: GdbWorld) {
   // DB cleanup for scenario isolation
   const preserveSet = new Set<string>(preservedCollectionNames);
-  const db = mongoClient.db();
   const collections = await db.listCollections().toArray();
 
   for (const c of collections) {
@@ -108,10 +113,11 @@ Before(async function (this: GdbWorld) {
 
   // Restore preserved collections to initial state
   for (const name of preservedCollectionNames) {
-    await db.collection(name).deleteMany({});
+    const col = db.collection(name);
+    await col.deleteMany({});
     const docs = baselineDocs.get(name) ?? [];
     if (docs.length > 0) {
-      await db.collection(name).insertMany(docs);
+      await col.insertMany(docs);
     }
   }
 
