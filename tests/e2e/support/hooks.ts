@@ -68,7 +68,7 @@ BeforeAll(async function () {
   });
   if (!tenantRes.ok) throw new Error(`Tenant creation failed: HTTP ${tenantRes.status}`);
   const tenantData = (await tenantRes.json()) as Record<string, unknown>;
-  const tenantId = tenantData.tenantId as string;
+  const tenantId = (tenantData.tenantId ?? tenantData.id) as string;
 
   // Create tenant_admin user
   const userRes = await fetch(new URL("/admin/users", server.url).toString(), {
