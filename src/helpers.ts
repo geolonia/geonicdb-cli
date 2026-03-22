@@ -5,48 +5,6 @@ import { printError, printOutput, printCount } from "./output.js";
 import type { ClientResponse, GlobalOptions, OutputFormat } from "./types.js";
 
 /**
- * Valid scope values for --scopes option help text (OAuth clients).
- */
-export const SCOPES_HELP_NOTES = [
-  "Valid scopes:",
-  "  read:entities, write:entities, read:subscriptions, write:subscriptions,",
-  "  read:registrations, write:registrations, read:rules, write:rules,",
-  "  read:custom-data-models, write:custom-data-models,",
-  "  admin:users, admin:tenants, admin:policies, admin:oauth-clients,",
-  "  admin:api-keys, admin:metrics",
-  "",
-  "admin:X implies both read:X and write:X.",
-  "write:X does NOT imply read:X — specify both if needed.",
-];
-
-/**
- * Valid scope values for --scopes option help text (API keys).
- */
-export const API_KEY_SCOPES_HELP_NOTES = [
-  "Valid scopes:",
-  "  read:entities, write:entities, read:subscriptions, write:subscriptions,",
-  "  read:registrations, write:registrations",
-];
-
-/**
- * Valid permission values for --permissions option.
- */
-export const VALID_PERMISSIONS = new Set(["read", "write", "create", "update", "delete"]);
-
-/**
- * Parse and validate --permissions flag value.
- * Returns the parsed array or calls process.exit(1) on invalid input.
- */
-export function parsePermissions(raw: string): string[] {
-  const permissions = raw.split(",").map((s) => s.trim()).filter(Boolean);
-  if (permissions.length === 0 || permissions.some((p) => !VALID_PERMISSIONS.has(p))) {
-    printError("--permissions must be a comma-separated list of: read, write, create, update, delete");
-    process.exit(1);
-  }
-  return permissions;
-}
-
-/**
  * Resolve merged options from config + CLI flags.
  */
 export function resolveOptions(cmd: Command): GlobalOptions {
@@ -135,6 +93,8 @@ export function withErrorHandler<T extends unknown[]>(fn: (...args: T) => Promis
         return;
       }
       if (err instanceof GdbClientError && err.status === 401) {
+        printError("Authentication failed. Please re-authenticate (e.g., `geonic auth login` or check your API key).");
+      } else if (err instanceof GdbClientError && err.status === 403 && /not assigned to any tenant|invalid token/i.test(err.message)) {
         printError("Authentication failed. Please re-authenticate (e.g., `geonic auth login` or check your API key).");
       } else if (err instanceof GdbClientError && err.status === 403) {
         const detail = (err.ngsiError?.detail ?? err.ngsiError?.description ?? "").toLowerCase();

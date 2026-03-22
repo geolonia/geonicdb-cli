@@ -38,7 +38,7 @@ Feature: Authentication
     Given I am logged in
     When I run `geonic whoami`
     Then the exit code should be 0
-    And stdout should contain "admin@test.com"
+    And stdout should contain "tenant-admin@test.com"
 
   Scenario: Show message when not logged in
     Given I am not logged in
@@ -52,7 +52,7 @@ Feature: Authentication
     Then the exit code should be 0
     And stdout should be valid JSON
     And the JSON output should have key "email"
-    And the JSON output key "email" should be "admin@test.com"
+    And the JSON output key "email" should be "tenant-admin@test.com"
 
   Scenario: Whoami with expired token
     Given I have invalid authentication tokens

@@ -5,20 +5,20 @@ Feature: Admin OAuth client management
   So that I can control application access
 
   Scenario: List OAuth clients
-    Given I am logged in
+    Given I am logged in as super admin
     When I run `geonic admin oauth-clients list`
     Then the exit code should be 0
     And stdout should be valid JSON
 
   Scenario: Create an OAuth client
-    Given I am logged in
-    When I run `geonic admin oauth-clients create '{"clientName":"test-client-01","allowedScopes":[]}'`
+    Given I am logged in as super admin
+    When I run `geonic admin oauth-clients create '{"name":"test-client-01"}'`
     Then the exit code should be 0
     And the output should contain "OAuth client created."
 
   Scenario: Get an OAuth client by ID
-    Given I am logged in
-    And I run `geonic admin oauth-clients create '{"clientName":"test-client-02","allowedScopes":[]}'`
+    Given I am logged in as super admin
+    And I run `geonic admin oauth-clients create '{"name":"test-client-02"}'`
     And I run `geonic admin oauth-clients list --format json`
     And I save the ID from the JSON output
     When I run `geonic admin oauth-clients get $ID` replacing ID
@@ -26,8 +26,8 @@ Feature: Admin OAuth client management
     And stdout should be valid JSON
 
   Scenario: Update an OAuth client
-    Given I am logged in
-    And I run `geonic admin oauth-clients create '{"clientName":"test-client-04","allowedScopes":[]}'`
+    Given I am logged in as super admin
+    And I run `geonic admin oauth-clients create '{"name":"test-client-04"}'`
     And I run `geonic admin oauth-clients list --format json`
     And I save the ID from the JSON output
     When I run `geonic admin oauth-clients update $ID '{"description":"Updated client"}'` replacing ID
@@ -37,8 +37,8 @@ Feature: Admin OAuth client management
     And the output should contain "Updated client"
 
   Scenario: Delete an OAuth client
-    Given I am logged in
-    And I run `geonic admin oauth-clients create '{"clientName":"test-client-03","allowedScopes":[]}'`
+    Given I am logged in as super admin
+    And I run `geonic admin oauth-clients create '{"name":"test-client-03"}'`
     And I run `geonic admin oauth-clients list --format json`
     And I save the ID from the JSON output
     When I run `geonic admin oauth-clients delete $ID` replacing ID

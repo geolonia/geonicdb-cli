@@ -5,19 +5,19 @@ Feature: Admin user management
   So that I can control access to the system
 
   Scenario: List users
-    Given I am logged in
+    Given I am logged in as super admin
     When I run `geonic admin users list`
     Then the exit code should be 0
     And stdout should be valid JSON
 
   Scenario: Create a user
-    Given I am logged in
+    Given I am logged in as super admin
     When I run `geonic admin users create '{"email":"testuser01@example.com","password":"TestPassword123!","role":"super_admin"}'`
     Then the exit code should be 0
     And the output should contain "User created."
 
   Scenario: Get a user by ID
-    Given I am logged in
+    Given I am logged in as super admin
     And I run `geonic admin users create '{"email":"testuser02@example.com","password":"TestPassword123!","role":"super_admin"}'`
     And I run `geonic admin users list --format json`
     And I save the ID from the JSON output where "email" is "testuser02@example.com"
@@ -27,7 +27,7 @@ Feature: Admin user management
     And the output should contain "testuser02@example.com"
 
   Scenario: Delete a user
-    Given I am logged in
+    Given I am logged in as super admin
     And I run `geonic admin users create '{"email":"testuser03@example.com","password":"TestPassword123!","role":"super_admin"}'`
     And I run `geonic admin users list --format json`
     And I save the ID from the JSON output where "email" is "testuser03@example.com"
@@ -36,7 +36,7 @@ Feature: Admin user management
     And the output should contain "User deleted."
 
   Scenario: Activate and deactivate a user
-    Given I am logged in
+    Given I am logged in as super admin
     And I run `geonic admin users create '{"email":"testuser04@example.com","password":"TestPassword123!","role":"super_admin"}'`
     And I run `geonic admin users list --format json`
     And I save the ID from the JSON output where "email" is "testuser04@example.com"
@@ -48,7 +48,7 @@ Feature: Admin user management
     And the output should contain "User activated."
 
   Scenario: Unlock a user
-    Given I am logged in
+    Given I am logged in as super admin
     And I run `geonic admin users create '{"email":"testuser05@example.com","password":"TestPassword123!","role":"super_admin"}'`
     And I run `geonic admin users list --format json`
     And I save the ID from the JSON output where "email" is "testuser05@example.com"

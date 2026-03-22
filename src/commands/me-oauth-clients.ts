@@ -5,7 +5,6 @@ import { parseJsonInput } from "../input.js";
 import { printSuccess, printError, printInfo, printWarning } from "../output.js";
 import { clientCredentialsGrant } from "../oauth.js";
 import { addExamples, addNotes } from "./help.js";
-import { SCOPES_HELP_NOTES } from "../helpers.js";
 
 export function addMeOAuthClientsSubcommand(me: Command): void {
   const oauthClients = me
@@ -37,24 +36,24 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
     .command("create [json]")
     .description("Create a new OAuth client")
     .option("--name <name>", "Client name")
-    .option("--scopes <scopes>", "Allowed scopes (comma-separated)")
+    .option("--policy <policyId>", "Policy ID to attach")
     .option("--save", "Save credentials to config for automatic re-authentication")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const opts = cmd.opts() as {
           name?: string;
-          scopes?: string;
+          policy?: string;
           save?: boolean;
         };
 
         let body: unknown;
         if (json) {
           body = await parseJsonInput(json as string | undefined);
-        } else if (opts.name || opts.scopes) {
+        } else if (opts.name || opts.policy) {
           // Build body from flags
           const payload: Record<string, unknown> = {};
-          if (opts.name) payload.clientName = opts.name;
-          if (opts.scopes) payload.allowedScopes = opts.scopes.split(",").map((s) => s.trim());
+          if (opts.name) payload.name = opts.name;
+          if (opts.policy) payload.policyId = opts.policy;
           body = payload;
         } else {
           // Read from stdin (pipe or interactive)
@@ -85,7 +84,6 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
             baseUrl,
             clientId,
             clientSecret,
-            scope: (data.allowedScopes as string[] | undefined)?.join(" "),
           });
 
           const config = loadConfig(globalOpts.profile);
@@ -107,12 +105,19 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
       }),
     );
 
-  addNotes(create, SCOPES_HELP_NOTES);
+  addNotes(create, [
+    "Use --policy to attach an existing XACML policy to the OAuth client.",
+    "Manage policies with `geonic admin policies` commands.",
+  ]);
 
   addExamples(create, [
     {
       description: "Create an OAuth client with flags",
-      command: "geonic me oauth-clients create --name my-ci-bot --scopes read:entities,write:entities",
+      command: "geonic me oauth-clients create --name my-ci-bot",
+    },
+    {
+      description: "Create with a policy attached",
+      command: "geonic me oauth-clients create --name my-ci-bot --policy <policy-id>",
     },
     {
       description: "Create and save credentials for auto-reauth",
@@ -120,7 +125,7 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
     },
     {
       description: "Create an OAuth client from JSON",
-      command: 'geonic me oauth-clients create \'{"clientName":"my-bot","allowedScopes":["read:entities"]}\'',
+      command: 'geonic me oauth-clients create \'{"name":"my-bot","policyId":"<policy-id>"}\'',
     },
   ]);
 

@@ -4,7 +4,6 @@ import { loadConfig, saveConfig } from "../config.js";
 import { parseJsonInput } from "../input.js";
 import { printError, printWarning } from "../output.js";
 import { addExamples, addNotes } from "./help.js";
-import { API_KEY_SCOPES_HELP_NOTES, parsePermissions } from "../helpers.js";
 
 export function addMeApiKeysSubcommand(me: Command): void {
   const apiKeys = me
@@ -36,23 +35,19 @@ export function addMeApiKeysSubcommand(me: Command): void {
     .command("create [json]")
     .description("Create a new API key")
     .option("--name <name>", "Key name")
-    .option("--scopes <scopes>", "Allowed scopes (comma-separated)")
+    .option("--policy <policyId>", "Policy ID to attach")
     .option("--origins <origins>", "Allowed origins (comma-separated)")
-    .option("--entity-types <types>", "Allowed entity types (comma-separated)")
     .option("--rate-limit <n>", "Rate limit per minute")
     .option("--dpop-required", "Require DPoP token binding")
-    .option("--permissions <perms>", "Comma-separated permissions (read, write, create, update, delete)")
     .option("--save", "Save the API key to config for automatic use")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const opts = cmd.opts() as {
           name?: string;
-          scopes?: string;
+          policy?: string;
           origins?: string;
-          entityTypes?: string;
           rateLimit?: string;
           dpopRequired?: boolean;
-          permissions?: string;
           save?: boolean;
         };
 
@@ -68,14 +63,12 @@ export function addMeApiKeysSubcommand(me: Command): void {
         let body: unknown;
         if (json) {
           body = await parseJsonInput(json as string | undefined);
-        } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit || opts.dpopRequired !== undefined || opts.permissions) {
+        } else if (opts.name || opts.policy || opts.origins || opts.rateLimit || opts.dpopRequired !== undefined) {
           const payload: Record<string, unknown> = {};
           if (opts.name) payload.name = opts.name;
-          if (opts.scopes) payload.allowedScopes = opts.scopes.split(",").map((s: string) => s.trim()).filter(Boolean);
+          if (opts.policy) payload.policyId = opts.policy;
           if (opts.origins) payload.allowedOrigins = opts.origins.split(",").map((s: string) => s.trim()).filter(Boolean);
-          if (opts.entityTypes) payload.allowedEntityTypes = opts.entityTypes.split(",").map((s: string) => s.trim()).filter(Boolean);
           if (opts.dpopRequired !== undefined) payload.dpopRequired = opts.dpopRequired;
-          if (opts.permissions) payload.permissions = parsePermissions(opts.permissions);
           if (opts.rateLimit) {
             const raw = opts.rateLimit.trim();
             if (!/^\d+$/.test(raw)) {
@@ -132,21 +125,14 @@ export function addMeApiKeysSubcommand(me: Command): void {
     );
 
   addNotes(create, [
-    ...API_KEY_SCOPES_HELP_NOTES,
-    "",
-    "Valid permissions: read, write, create, update, delete",
-    "  write = create + update + delete",
-    "  Permissions auto-generate XACML policies (allowedEntityTypes respected).",
+    "Use --policy to attach an existing XACML policy to the API key.",
+    "Manage policies with `geonic admin policies` commands.",
   ]);
 
   addExamples(create, [
     {
-      description: "Create an API key with flags",
-      command: "geonic me api-keys create --name my-app --scopes read:entities --origins 'https://example.com'",
-    },
-    {
-      description: "Create with permissions (auto-generates XACML policy)",
-      command: "geonic me api-keys create --name my-app --permissions read,write --save",
+      description: "Create an API key with a policy",
+      command: "geonic me api-keys create --name my-app --policy <policy-id>",
     },
     {
       description: "Create and save API key to config",
@@ -154,7 +140,7 @@ export function addMeApiKeysSubcommand(me: Command): void {
     },
     {
       description: "Create an API key from JSON",
-      command: 'geonic me api-keys create \'{"name":"my-app","allowedScopes":["read:entities"]}\'',
+      command: 'geonic me api-keys create \'{"name":"my-app","policyId":"<policy-id>"}\'',
     },
     {
       description: "Create an API key with rate limiting",

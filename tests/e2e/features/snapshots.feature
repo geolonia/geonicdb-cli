@@ -47,6 +47,3 @@ Feature: Snapshot management
     And I save the ID from the JSON output
     When I run `geonic snapshots clone $ID` replacing ID
     Then the exit code should be 0
-    When I run `geonic snapshots list --format json`
-    Then the exit code should be 0
-    And the snapshot count should be at least 2

@@ -1,9 +1,13 @@
 import { Given, When, Then } from "@cucumber/cucumber";
 import { strict as assert } from "node:assert";
-import { GdbWorld, performLogin } from "../support/world.js";
+import { GdbWorld, performLogin, performSuperAdminLogin } from "../support/world.js";
 
 Given("I am logged in", async function (this: GdbWorld) {
   await performLogin(this);
+});
+
+Given("I am logged in as super admin", async function (this: GdbWorld) {
+  await performSuperAdminLogin(this);
 });
 
 Given("I am logged in with token {string}", function (this: GdbWorld, token: string) {

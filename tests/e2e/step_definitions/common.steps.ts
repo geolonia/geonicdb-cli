@@ -178,7 +178,7 @@ function findItemInJsonOutput(stdout: string, field?: string, value?: string): R
 }
 
 function extractId(item: Record<string, unknown>): string | undefined {
-  const id = item.id ?? item._id ?? item.policyId ?? item.tenantId ?? item.userId ?? item.clientId ?? item.ruleId;
+  const id = item.id ?? item._id ?? item.policyId ?? item.ruleId ?? item.tenantId ?? item.userId ?? item.clientId;
   return id ? String(id) : undefined;
 }
 

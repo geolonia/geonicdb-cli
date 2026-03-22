@@ -4,7 +4,6 @@ import { loadConfig, saveConfig } from "../../config.js";
 import { parseJsonInput } from "../../input.js";
 import { printError, printWarning } from "../../output.js";
 import { addExamples, addNotes } from "../help.js";
-import { API_KEY_SCOPES_HELP_NOTES, parsePermissions } from "../../helpers.js";
 
 function validateOrigins(body: unknown, opts: Record<string, unknown>): void {
   // Validate origins if provided via flags
@@ -28,9 +27,8 @@ function validateOrigins(body: unknown, opts: Record<string, unknown>): void {
 function buildBodyFromFlags(opts: Record<string, unknown>): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   if (opts.name) payload.name = opts.name;
-  if (opts.scopes) payload.allowedScopes = (opts.scopes as string).split(",").map((s: string) => s.trim()).filter(Boolean);
+  if (opts.policy) payload.policyId = opts.policy;
   if (opts.origins) payload.allowedOrigins = (opts.origins as string).split(",").map((s: string) => s.trim()).filter(Boolean);
-  if (opts.entityTypes) payload.allowedEntityTypes = (opts.entityTypes as string).split(",").map((s: string) => s.trim()).filter(Boolean);
   if (opts.rateLimit) {
     const raw = String(opts.rateLimit).trim();
     if (!/^\d+$/.test(raw)) {
@@ -45,7 +43,6 @@ function buildBodyFromFlags(opts: Record<string, unknown>): Record<string, unkno
     payload.rateLimit = { perMinute };
   }
   if (opts.dpopRequired !== undefined) payload.dpopRequired = opts.dpopRequired;
-  if (opts.permissions) payload.permissions = parsePermissions(opts.permissions as string);
   if (opts.tenantId) payload.tenantId = opts.tenantId;
   return payload;
 }
@@ -113,24 +110,20 @@ export function registerApiKeysCommand(parent: Command): void {
     .command("create [json]")
     .description("Create a new API key")
     .option("--name <name>", "Key name")
-    .option("--scopes <scopes>", "Comma-separated scopes")
+    .option("--policy <policyId>", "Policy ID to attach")
     .option("--origins <origins>", "Comma-separated origins")
-    .option("--entity-types <types>", "Comma-separated entity types")
     .option("--rate-limit <n>", "Rate limit per minute")
     .option("--dpop-required", "Require DPoP token binding")
-    .option("--permissions <perms>", "Comma-separated permissions (read, write, create, update, delete)")
     .option("--tenant-id <id>", "Tenant ID")
     .option("--save", "Save the API key to profile config")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const opts = cmd.opts() as {
           name?: string;
-          scopes?: string;
+          policy?: string;
           origins?: string;
-          entityTypes?: string;
           rateLimit?: string;
           dpopRequired?: boolean;
-          permissions?: string;
           tenantId?: string;
           save?: boolean;
         };
@@ -140,7 +133,7 @@ export function registerApiKeysCommand(parent: Command): void {
         let body: unknown;
         if (json) {
           body = await parseJsonInput(json as string | undefined);
-        } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit || opts.dpopRequired !== undefined || opts.permissions || opts.tenantId) {
+        } else if (opts.name || opts.policy || opts.origins || opts.rateLimit || opts.dpopRequired !== undefined || opts.tenantId) {
           body = buildBodyFromFlags(opts);
         } else {
           body = await parseJsonInput();
@@ -178,21 +171,14 @@ export function registerApiKeysCommand(parent: Command): void {
     );
 
   addNotes(create, [
-    ...API_KEY_SCOPES_HELP_NOTES,
-    "",
-    "Valid permissions: read, write, create, update, delete",
-    "  write = create + update + delete",
-    "  Permissions auto-generate XACML policies (allowedEntityTypes respected).",
+    "Use --policy to attach an existing XACML policy to the API key.",
+    "Manage policies with `geonic admin policies` commands.",
   ]);
 
   addExamples(create, [
     {
-      description: "Create an API key with flags",
-      command: "geonic admin api-keys create --name my-key --scopes read:entities,write:entities --origins '*'",
-    },
-    {
-      description: "Create with permissions (auto-generates XACML policy)",
-      command: "geonic admin api-keys create --name my-key --permissions read,write --origins '*'",
+      description: "Create an API key with a policy",
+      command: "geonic admin api-keys create --name my-key --policy <policy-id> --origins '*'",
     },
     {
       description: "Create an API key with DPoP required",
@@ -209,24 +195,20 @@ export function registerApiKeysCommand(parent: Command): void {
     .command("update <keyId> [json]")
     .description("Update an API key")
     .option("--name <name>", "Key name")
-    .option("--scopes <scopes>", "Comma-separated scopes")
+    .option("--policy <policyId>", "Policy ID to attach")
     .option("--origins <origins>", "Comma-separated origins")
-    .option("--entity-types <types>", "Comma-separated entity types")
     .option("--rate-limit <n>", "Rate limit per minute")
     .option("--dpop-required", "Require DPoP token binding")
     .option("--no-dpop-required", "Disable DPoP token binding")
-    .option("--permissions <perms>", "Comma-separated permissions (read, write, create, update, delete)")
     .action(
       withErrorHandler(
         async (keyId: unknown, json: unknown, _opts: unknown, cmd: Command) => {
           const opts = cmd.opts() as {
             name?: string;
-            scopes?: string;
+            policy?: string;
             origins?: string;
-            entityTypes?: string;
             rateLimit?: string;
             dpopRequired?: boolean;
-            permissions?: string;
           };
 
           validateOrigins(undefined, opts);
@@ -234,7 +216,7 @@ export function registerApiKeysCommand(parent: Command): void {
           let body: unknown;
           if (json) {
             body = await parseJsonInput(json as string | undefined);
-          } else if (opts.name || opts.scopes || opts.origins || opts.entityTypes || opts.rateLimit || opts.dpopRequired !== undefined || opts.permissions) {
+          } else if (opts.name || opts.policy || opts.origins || opts.rateLimit || opts.dpopRequired !== undefined) {
             body = buildBodyFromFlags(opts);
           } else {
             body = await parseJsonInput();
@@ -256,11 +238,8 @@ export function registerApiKeysCommand(parent: Command): void {
     );
 
   addNotes(update, [
-    ...API_KEY_SCOPES_HELP_NOTES,
-    "",
-    "Valid permissions: read, write, create, update, delete",
-    "  write = create + update + delete",
-    "  Permissions auto-generate XACML policies (allowedEntityTypes respected).",
+    "Use --policy to attach an existing XACML policy to the API key.",
+    "Manage policies with `geonic admin policies` commands.",
   ]);
 
   addExamples(update, [
@@ -269,8 +248,8 @@ export function registerApiKeysCommand(parent: Command): void {
       command: "geonic admin api-keys update <key-id> --name new-name",
     },
     {
-      description: "Update permissions",
-      command: "geonic admin api-keys update <key-id> --permissions read,write",
+      description: "Attach a policy",
+      command: "geonic admin api-keys update <key-id> --policy <policy-id>",
     },
     {
       description: "Enable DPoP requirement",

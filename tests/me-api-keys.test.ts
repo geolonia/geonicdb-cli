@@ -2,20 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createMockClient, mockResponse, createTestProgram, runCommand } from "./test-helpers.js";
 import type { MockClient } from "./test-helpers.js";
 
-vi.mock("../src/helpers.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/helpers.js")>();
-  return {
-    createClient: vi.fn(),
-    getFormat: vi.fn(),
-    outputResponse: vi.fn(),
-    withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
-    SCOPES_HELP_NOTES: [],
-    API_KEY_SCOPES_HELP_NOTES: [],
-    VALID_PERMISSIONS: actual.VALID_PERMISSIONS,
-    parsePermissions: actual.parsePermissions,
-    resolveOptions: vi.fn().mockReturnValue({ profile: "default" }),
-  };
-});
+vi.mock("../src/helpers.js", () => ({
+  createClient: vi.fn(),
+  getFormat: vi.fn(),
+  outputResponse: vi.fn(),
+  withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
+  resolveOptions: vi.fn().mockReturnValue({ profile: "default" }),
+}));
 
 vi.mock("../src/input.js", () => ({
   parseJsonInput: vi.fn(),
@@ -102,7 +95,7 @@ describe("me api-keys commands", () => {
 
   describe("api-keys create", () => {
     it("posts body from JSON input and prints success", async () => {
-      const body = { name: "my-key", allowedScopes: ["read:entities"] };
+      const body = { name: "my-key", policyId: "p1" };
       vi.mocked(parseJsonInput).mockResolvedValue(body);
       client.rawRequest.mockResolvedValue(
         mockResponse({ keyId: "k2", key: "gdb_abc123" }, 201),
@@ -110,7 +103,7 @@ describe("me api-keys commands", () => {
       const program = makeProgram();
       await runCommand(program, [
         "me", "api-keys", "create",
-        '{"name":"my-key","allowedScopes":["read:entities"]}',
+        '{"name":"my-key","policyId":"p1"}',
       ]);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/api-keys", { body });
       expect(outputResponse).toHaveBeenCalled();
@@ -131,12 +124,12 @@ describe("me api-keys commands", () => {
         await runCommand(program, [
           "me", "api-keys", "create",
           "--name", "my-key",
-          "--scopes", "read:entities,write:entities",
+          "--policy", "my-policy",
         ]);
         expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/api-keys", {
           body: {
             name: "my-key",
-            allowedScopes: ["read:entities", "write:entities"],
+            policyId: "my-policy",
           },
         });
       } finally {
@@ -296,23 +289,21 @@ describe("me api-keys commands", () => {
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/api-keys", { body });
     });
 
-    it("includes permissions when --permissions flag is set", async () => {
+    it("includes policyId when --policy flag is set", async () => {
       const isTTY = process.stdin.isTTY;
       process.stdin.isTTY = true;
       try {
         client.rawRequest.mockResolvedValue(
-          mockResponse({ keyId: "k-perms", key: "gdb_perms" }, 201),
+          mockResponse({ keyId: "k-policy", key: "gdb_policy" }, 201),
         );
         const program = makeProgram();
         await runCommand(program, [
           "me", "api-keys", "create",
-          "--name", "perms-key",
-          "--permissions", "read,write",
+          "--policy", "my-policy",
         ]);
         expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/api-keys", {
           body: {
-            name: "perms-key",
-            permissions: ["read", "write"],
+            policyId: "my-policy",
           },
         });
       } finally {
@@ -320,7 +311,7 @@ describe("me api-keys commands", () => {
       }
     });
 
-    it("builds body with origins, entity-types and rate-limit flags", async () => {
+    it("builds body with origins and rate-limit flags", async () => {
       const isTTY = process.stdin.isTTY;
       process.stdin.isTTY = true;
       try {
@@ -332,14 +323,12 @@ describe("me api-keys commands", () => {
           "me", "api-keys", "create",
           "--name", "full-key",
           "--origins", "https://a.com,https://b.com",
-          "--entity-types", "Sensor,Device",
           "--rate-limit", "120",
         ]);
         expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/api-keys", {
           body: {
             name: "full-key",
             allowedOrigins: ["https://a.com", "https://b.com"],
-            allowedEntityTypes: ["Sensor", "Device"],
             rateLimit: { perMinute: 120 },
           },
         });

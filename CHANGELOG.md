@@ -7,6 +7,12 @@
 
 ## [Unreleased]
 
+### 2026-03-21
+- **Breaking**: API キー (`admin api-keys`, `me api-keys`) から `--scopes`, `--permissions`, `--entity-types` オプションを削除し、`--policy <policyId>` オプションを追加 — 認可は policyId 紐づけ方式に移行 (GeonicDB #757) (#82)
+- **Breaking**: OAuth クライアント (`admin oauth-clients`, `me oauth-clients`) から `--scopes` オプションと `allowedScopes` フィールドを削除し、`--policy <policyId>` オプションを追加 (GeonicDB #757) (#82)
+- **Breaking**: OAuth クライアントの `clientName` フィールドを `name` にリネーム (GeonicDB #757) (#82)
+- **Docs**: README を policyId 紐づけ方式に更新 — `--scopes`/`--permissions`/`--entity-types` の記述を `--policy` に置換、認可モデルセクションを整理 (#82)
+
 ## [0.7.0] - 2026-03-20
 
 ### 2026-03-20

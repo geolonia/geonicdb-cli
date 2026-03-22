@@ -59,8 +59,8 @@ export function registerOAuthClientsCommand(parent: Command): void {
       "Create a new OAuth client\n\n" +
         "JSON payload example:\n" +
         "  {\n" +
-        '    "clientName": "my-app",\n' +
-        '    "allowedScopes": ["read:entities", "write:entities"]\n' +
+        '    "name": "my-app",\n' +
+        '    "policyId": "<policy-id>"\n' +
         "  }",
     )
     .action(
@@ -79,7 +79,7 @@ export function registerOAuthClientsCommand(parent: Command): void {
   addExamples(create, [
     {
       description: "Create with inline JSON",
-      command: `geonic admin oauth-clients create '{"clientName":"my-app","allowedScopes":["read:entities","write:entities"]}'`,
+      command: `geonic admin oauth-clients create '{"name":"my-app","policyId":"<policy-id>"}'`,
     },
     {
       description: "Create from a JSON file",
