@@ -78,10 +78,11 @@ export function registerPoliciesCommand(parent: Command): void {
         "  actions    — attributeId: method (GET, POST, PATCH, DELETE)\n\n" +
         "Each element: {attributeId, matchValue, matchFunction?}\n" +
         "  matchFunction: \"string-equal\" (default) | \"string-regexp\" | \"glob\"\n\n" +
-        "Priority: higher number = higher priority (default: 0).\n" +
-        "  Custom policies (e.g. 100) override default role policies (0).\n\n" +
-        "Default role policies (priority 0):\n" +
-        "  user → GET only, api_key → all Deny, anonymous → all Deny",
+        "Priority: smaller value = higher precedence (e.g. priority 10 overrides user default at 100).\n" +
+        "  tenant_admin: minimum priority 10. user self-service (/me/policies): fixed at 100.\n\n" +
+        "Default role policies (priority 100):\n" +
+        "  user → /v2/** and /ngsi-ld/** all methods Permit; other data APIs GET only\n" +
+        "  api_key → all Deny, anonymous → all Deny",
     )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {

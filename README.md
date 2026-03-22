@@ -193,9 +193,12 @@ Displays the current authenticated user, token expiry, and active profile.
 |---|---|
 | `me oauth-clients list` | List your OAuth clients |
 | `me oauth-clients create [json]` | Create a new OAuth client |
+| `me oauth-clients update <clientId> [json]` | Update an OAuth client |
 | `me oauth-clients delete <id>` | Delete an OAuth client |
 
 `me oauth-clients create` supports flag options: `--name`, `--policy`, `--save`. Use `--save` to store client credentials in config for automatic re-authentication.
+
+`me oauth-clients update` supports: `--name`, `--description`, `--policy-id` (use `null` to unbind), `--active`, `--inactive`.
 
 ```bash
 # Create with flags
@@ -203,7 +206,15 @@ geonic me oauth-clients create --name my-ci-bot --policy <policy-id>
 
 # Create from JSON (note: field is "name", not "clientName")
 geonic me oauth-clients create '{"name":"my-bot","policyId":"<policy-id>"}'
+
+# Attach a personal policy
+geonic me oauth-clients update <client-id> --policy-id my-readonly
+
+# Unbind policy
+geonic me oauth-clients update <client-id> --policy-id null
 ```
+
+**Note**: `--policy-id` on update accepts only policies created by yourself (`/me/policies`). Policies created via `admin policies` cannot be bound here.
 
 #### me api-keys
 
@@ -211,6 +222,7 @@ geonic me oauth-clients create '{"name":"my-bot","policyId":"<policy-id>"}'
 |---|---|
 | `me api-keys list` | List your API keys |
 | `me api-keys create [json]` | Create a new API key |
+| `me api-keys update <keyId> [json]` | Update an API key |
 | `me api-keys delete <keyId>` | Delete an API key |
 
 `me api-keys create` supports flag options:
@@ -224,15 +236,54 @@ geonic me oauth-clients create '{"name":"my-bot","policyId":"<policy-id>"}'
 | `--dpop-required` | Require DPoP token binding (RFC 9449) |
 | `--save` | Save the API key to profile config |
 
+`me api-keys update` supports: `--name`, `--policy-id` (use `null` to unbind), `--origins`, `--rate-limit`, `--dpop-required` / `--no-dpop-required`, `--active`, `--inactive`.
+
 ```bash
 # Create an API key with a policy and save to config
 geonic me api-keys create --name my-app --policy <policy-id> --save
 
 # Create from JSON
 geonic me api-keys create '{"name":"my-app","policyId":"<policy-id>"}'
+
+# Attach a personal policy
+geonic me api-keys update <key-id> --policy-id my-readonly
+
+# Unbind policy
+geonic me api-keys update <key-id> --policy-id null
 ```
 
 `me api-keys list` output includes a `dpopRequired` field (boolean).
+
+**Note**: `--policy-id` on update accepts only policies created by yourself (`/me/policies`). Policies created via `admin policies` cannot be bound here.
+
+#### me policies
+
+| Subcommand | Description |
+|---|---|
+| `me policies list` | List your personal policies |
+| `me policies get <policyId>` | Get a personal policy by ID |
+| `me policies create [json]` | Create a personal policy |
+| `me policies update <policyId> [json]` | Update a personal policy |
+| `me policies delete <policyId>` | Delete a personal policy |
+
+Personal policies (`scope: personal`) are created by `user` role accounts for self-service access control. They can be bound to your own API keys and OAuth clients.
+
+**Constraints (enforced server-side)**:
+- `priority` is fixed at 100 (user role minimum — cannot escalate)
+- `scope` is always `personal` — not applied tenant-wide
+- `target` is required
+- Data API paths only (`/v2/**`, `/ngsi-ld/**` etc.) — admin/me paths are not allowed
+
+```bash
+# Create a GET-only policy
+geonic me policies create @readonly-policy.json
+
+# Bind to an API key
+geonic me api-keys update <key-id> --policy-id my-readonly
+
+# Bind to an OAuth client
+geonic me oauth-clients update <client-id> --policy-id my-readonly
+```
 
 ### entities — Manage context entities
 
@@ -401,15 +452,25 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 | `admin policies activate <id>` | Activate a policy |
 | `admin policies deactivate <id>` | Deactivate a policy |
 
-**XACML Authorization Model**: All authorization is unified under XACML policies. Default role policies (priority 0):
+**XACML Authorization Model**: All authorization is unified under XACML policies. Default role policies:
 
-| Role | Default Behavior |
-|---|---|
-| `user` | GET only (read-only) |
-| `api_key` | All Deny |
-| `anonymous` | All Deny |
+| Role | Default Behavior | Default priority |
+|---|---|---|
+| `user` | `/v2/**` and `/ngsi-ld/**` — all methods (CRUD) Permit. Other data APIs (`/catalog`, `/rules`, etc.) — GET only. | 100 |
+| `api_key` | All Deny | 100 |
+| `anonymous` | All Deny | 100 |
 
-Custom policies with higher priority (e.g. 100) override defaults. Target resource attributes include: `path`, `entityType`, `entityId`, `entityOwner`, `tenantService`, `servicePath`. The `servicePath` attribute supports glob patterns (e.g. `/opendata/**`) and regex matching.
+**Priority**: Smaller `priority` value = higher precedence (e.g. `priority: 10` overrides the user default at `priority: 100`).
+
+| priority range | Who creates | Notes |
+|---|---|---|
+| -1 | System | deny-fence (e.g. super_admin data API block) — cannot be overridden |
+| 0 | System | super_admin default — tenant_admin and below cannot override |
+| 10–99 | `tenant_admin` | Custom tenant-wide policies |
+| 100 | System | `user` / `api_key` / `anonymous` defaults |
+| 101+ | `user` (self-service via `/me/policies`) | Personal policies; minimum priority for user role is 100 |
+
+Custom `tenant_admin` policies (priority 10–99) override the user defaults. Target resource attributes include: `path`, `entityType`, `entityId`, `entityOwner`, `tenantService`, `servicePath`. The `servicePath` attribute supports glob patterns (e.g. `/opendata/**`) and regex matching.
 
 #### admin oauth-clients
 
@@ -585,9 +646,14 @@ When both a Bearer token and an API key are configured, headers are sent exclusi
 
 ### Authorization Model
 
-All authorization for API keys and OAuth clients is controlled via XACML policies. Use `--policy <policyId>` when creating API keys or OAuth clients to attach an existing policy. Manage policies with `geonic admin policies` commands.
+All authorization for API keys and OAuth clients is controlled via XACML policies. Use `--policy <policyId>` when creating API keys or OAuth clients to attach an existing policy.
+
+- **Tenant admins**: manage tenant-wide policies with `geonic admin policies` commands.
+- **Users**: manage personal policies with `geonic me policies` commands and bind them to your own API keys / OAuth clients with `--policy-id`.
 
 See the [admin policies](#admin-policies) section for details on the XACML authorization model, default role policies, and target resource attributes.
+
+**Note**: `--policy-id` on `me api-keys update` / `me oauth-clients update` accepts only policies where `createdBy` matches your own user ID (i.e. policies created via `me policies create`). Policies created via `admin policies` cannot be bound to personal resources.
 
 ## Development
 

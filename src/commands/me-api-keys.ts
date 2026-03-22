@@ -152,6 +152,89 @@ export function addMeApiKeysSubcommand(me: Command): void {
     },
   ]);
 
+  // api-keys update
+  const update = apiKeys
+    .command("update <keyId> [json]")
+    .description("Update an API key")
+    .option("--name <name>", "Key name")
+    .option("--policy-id <policyId>", "Policy ID to attach (use 'null' to unbind)")
+    .option("--origins <origins>", "Allowed origins (comma-separated)")
+    .option("--rate-limit <n>", "Rate limit (requests per minute)")
+    .option("--dpop-required", "Require DPoP token binding")
+    .option("--no-dpop-required", "Disable DPoP requirement")
+    .option("--active", "Activate the API key")
+    .option("--inactive", "Deactivate the API key")
+    .action(
+      withErrorHandler(async (keyId: unknown, json: unknown, _opts: unknown, cmd: Command) => {
+        const opts = cmd.opts() as {
+          name?: string;
+          policyId?: string;
+          origins?: string;
+          rateLimit?: string;
+          dpopRequired?: boolean;
+          active?: boolean;
+          inactive?: boolean;
+        };
+
+        let body: unknown;
+        if (json) {
+          body = await parseJsonInput(json as string | undefined);
+        } else if (opts.name || opts.policyId !== undefined || opts.origins || opts.rateLimit || opts.dpopRequired !== undefined || opts.active || opts.inactive) {
+          const payload: Record<string, unknown> = {};
+          if (opts.name) payload.name = opts.name;
+          if (opts.policyId !== undefined) payload.policyId = opts.policyId === "null" ? null : opts.policyId;
+          if (opts.origins) payload.allowedOrigins = opts.origins.split(",").map((s: string) => s.trim()).filter(Boolean);
+          if (opts.dpopRequired !== undefined) payload.dpopRequired = opts.dpopRequired;
+          if (opts.rateLimit) {
+            const raw = opts.rateLimit.trim();
+            if (!/^\d+$/.test(raw)) {
+              printError("--rate-limit must be a positive integer.");
+              process.exit(1);
+            }
+            payload.rateLimit = { perMinute: Number(raw) };
+          }
+          if (opts.active) payload.isActive = true;
+          if (opts.inactive) payload.isActive = false;
+          body = payload;
+        } else {
+          body = await parseJsonInput();
+        }
+
+        const client = createClient(cmd);
+        const format = getFormat(cmd);
+        const response = await client.rawRequest(
+          "PATCH",
+          `/me/api-keys/${encodeURIComponent(String(keyId))}`,
+          { body },
+        );
+        outputResponse(response, format);
+        console.error("API key updated.");
+      }),
+    );
+
+  addExamples(update, [
+    {
+      description: "Rename an API key",
+      command: "geonic me api-keys update <key-id> --name new-name",
+    },
+    {
+      description: "Attach a policy",
+      command: "geonic me api-keys update <key-id> --policy-id <policy-id>",
+    },
+    {
+      description: "Unbind policy",
+      command: "geonic me api-keys update <key-id> --policy-id null",
+    },
+    {
+      description: "Deactivate an API key",
+      command: "geonic me api-keys update <key-id> --inactive",
+    },
+    {
+      description: "Update from JSON",
+      command: 'geonic me api-keys update <key-id> \'{"name":"new-name","rateLimit":{"perMinute":60}}\'',
+    },
+  ]);
+
   // api-keys delete
   const del = apiKeys
     .command("delete <keyId>")

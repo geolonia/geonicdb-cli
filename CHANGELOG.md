@@ -7,6 +7,12 @@
 
 ## [Unreleased]
 
+### 2026-03-23
+- **Feat**: `me policies` コマンド群を新設 — `list`, `get`, `create`, `update`, `delete` で `/me/policies` セルフサービスポリシー管理に対応 (GeonicDB #764) (#83, #86)
+- **Feat**: `me api-keys update` コマンドを追加 — `PATCH /me/api-keys/{keyId}` 対応 (`--name`, `--policy-id`, `--origins`, `--rate-limit`, `--dpop-required`/`--no-dpop-required`, `--active`/`--inactive`) (#85)
+- **Feat**: `me oauth-clients update` コマンドを追加 — `PATCH /me/oauth-clients/{clientId}` 対応 (`--name`, `--description`, `--policy-id`, `--active`/`--inactive`) (#85)
+- **Docs**: XACML デフォルトポリシー再設計に合わせて README を更新 — `user` デフォルト動作、priority 体系表、`me policies` セクション、認可モデル説明を整理 (GeonicDB #762) (#84)
+
 ### 2026-03-21
 - **Breaking**: API キー (`admin api-keys`, `me api-keys`) から `--scopes`, `--permissions`, `--entity-types` オプションを削除し、`--policy <policyId>` オプションを追加 — 認可は policyId 紐づけ方式に移行 (GeonicDB #757) (#82)
 - **Breaking**: OAuth クライアント (`admin oauth-clients`, `me oauth-clients`) から `--scopes` オプションと `allowedScopes` フィールドを削除し、`--policy <policyId>` オプションを追加 (GeonicDB #757) (#82)
