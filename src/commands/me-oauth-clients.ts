@@ -129,6 +129,71 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
     },
   ]);
 
+  // oauth-clients update
+  const update = oauthClients
+    .command("update <clientId> [json]")
+    .description("Update an OAuth client")
+    .option("--name <name>", "Client name")
+    .option("--description <desc>", "Client description")
+    .option("--policy-id <policyId>", "Policy ID to attach (use 'null' to unbind)")
+    .option("--active", "Activate the OAuth client")
+    .option("--inactive", "Deactivate the OAuth client")
+    .action(
+      withErrorHandler(async (clientId: unknown, json: unknown, _opts: unknown, cmd: Command) => {
+        const opts = cmd.opts() as {
+          name?: string;
+          description?: string;
+          policyId?: string;
+          active?: boolean;
+          inactive?: boolean;
+        };
+
+        let body: unknown;
+        if (json) {
+          body = await parseJsonInput(json as string | undefined);
+        } else if (opts.name || opts.description || opts.policyId !== undefined || opts.active || opts.inactive) {
+          const payload: Record<string, unknown> = {};
+          if (opts.name) payload.name = opts.name;
+          if (opts.description) payload.description = opts.description;
+          if (opts.policyId !== undefined) payload.policyId = opts.policyId === "null" ? null : opts.policyId;
+          if (opts.active) payload.isActive = true;
+          if (opts.inactive) payload.isActive = false;
+          body = payload;
+        } else {
+          body = await parseJsonInput();
+        }
+
+        const client = createClient(cmd);
+        const format = getFormat(cmd);
+        const response = await client.rawRequest(
+          "PATCH",
+          `/me/oauth-clients/${encodeURIComponent(String(clientId))}`,
+          { body },
+        );
+        outputResponse(response, format);
+        printSuccess("OAuth client updated.");
+      }),
+    );
+
+  addExamples(update, [
+    {
+      description: "Rename an OAuth client",
+      command: "geonic me oauth-clients update <client-id> --name new-name",
+    },
+    {
+      description: "Attach a policy",
+      command: "geonic me oauth-clients update <client-id> --policy-id <policy-id>",
+    },
+    {
+      description: "Unbind policy",
+      command: "geonic me oauth-clients update <client-id> --policy-id null",
+    },
+    {
+      description: "Deactivate an OAuth client",
+      command: "geonic me oauth-clients update <client-id> --inactive",
+    },
+  ]);
+
   // oauth-clients delete
   const del = oauthClients
     .command("delete <id>")
@@ -148,6 +213,31 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
     {
       description: "Delete an OAuth client",
       command: "geonic me oauth-clients delete <client-id>",
+    },
+  ]);
+
+  // oauth-clients regenerate-secret
+  const regenerateSecret = oauthClients
+    .command("regenerate-secret <clientId>")
+    .description("Regenerate the client secret of an OAuth client")
+    .action(
+      withErrorHandler(async (clientId: unknown, _opts: unknown, cmd: Command) => {
+        const client = createClient(cmd);
+        const format = getFormat(cmd);
+        const response = await client.rawRequest(
+          "POST",
+          `/me/oauth-clients/${encodeURIComponent(String(clientId))}/regenerate-secret`,
+        );
+        printWarning("Save the new clientSecret now — it will not be shown again.");
+        outputResponse(response, format);
+        printSuccess("OAuth client secret regenerated.");
+      }),
+    );
+
+  addExamples(regenerateSecret, [
+    {
+      description: "Regenerate client secret",
+      command: "geonic me oauth-clients regenerate-secret <client-id>",
     },
   ]);
 }

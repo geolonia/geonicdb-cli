@@ -16,6 +16,7 @@ import { clientCredentialsGrant } from "../oauth.js";
 import { addExamples } from "./help.js";
 import { addMeOAuthClientsSubcommand } from "./me-oauth-clients.js";
 import { addMeApiKeysSubcommand } from "./me-api-keys.js";
+import { addMePoliciesSubcommand } from "./me-policies.js";
 
 function createLoginCommand(): Command {
   return new Command("login")
@@ -459,6 +460,9 @@ export function registerAuthCommands(program: Command): void {
 
   // Add me api-keys subcommands
   addMeApiKeysSubcommand(me);
+
+  // Add me policies subcommands
+  addMePoliciesSubcommand(me);
 
   // Backward-compatible hidden aliases
   program.addCommand(createLoginCommand(), { hidden: true });

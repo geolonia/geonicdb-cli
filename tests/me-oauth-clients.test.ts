@@ -183,6 +183,76 @@ describe("me oauth-clients commands", () => {
     });
   });
 
+  describe("oauth-clients update", () => {
+    it("patches with JSON input and prints success", async () => {
+      const body = { name: "renamed" };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.rawRequest.mockResolvedValue(mockResponse({ clientId: "c1", name: "renamed" }));
+      const program = makeProgram();
+      await runCommand(program, ["me", "oauth-clients", "update", "c1", '{"name":"renamed"}']);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/oauth-clients/c1", { body });
+      expect(outputResponse).toHaveBeenCalled();
+      expect(printSuccess).toHaveBeenCalledWith("OAuth client updated.");
+    });
+
+    it("builds body from --name and --description flags", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ clientId: "c1" }));
+        const program = makeProgram();
+        await runCommand(program, [
+          "me", "oauth-clients", "update", "c1",
+          "--name", "new-name", "--description", "my desc",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/oauth-clients/c1", {
+          body: { name: "new-name", description: "my desc" },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("sets policyId to null with --policy-id null", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ clientId: "c1" }));
+        const program = makeProgram();
+        await runCommand(program, ["me", "oauth-clients", "update", "c1", "--policy-id", "null"]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/oauth-clients/c1", {
+          body: { policyId: null },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("sets isActive false with --inactive", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ clientId: "c1" }));
+        const program = makeProgram();
+        await runCommand(program, ["me", "oauth-clients", "update", "c1", "--inactive"]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/oauth-clients/c1", {
+          body: { isActive: false },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("encodes special characters in clientId", async () => {
+      const body = { name: "x" };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.rawRequest.mockResolvedValue(mockResponse({ clientId: "urn:c:1" }));
+      const program = makeProgram();
+      await runCommand(program, ["me", "oauth-clients", "update", "urn:c:1", '{"name":"x"}']);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/oauth-clients/urn%3Ac%3A1", { body });
+    });
+  });
+
   describe("oauth-clients delete", () => {
     it("calls DELETE and prints success", async () => {
       client.rawRequest.mockResolvedValue(mockResponse(undefined, 204));
@@ -197,6 +267,33 @@ describe("me oauth-clients commands", () => {
       const program = makeProgram();
       await runCommand(program, ["me", "oauth-clients", "delete", "urn:c:1"]);
       expect(client.rawRequest).toHaveBeenCalledWith("DELETE", "/me/oauth-clients/urn%3Ac%3A1");
+    });
+  });
+
+  describe("oauth-clients regenerate-secret", () => {
+    it("calls POST regenerate-secret and prints warning + success", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({ clientSecret: "new-secret" }));
+      const program = makeProgram();
+      await runCommand(program, ["me", "oauth-clients", "regenerate-secret", "c1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith(
+        "POST",
+        "/me/oauth-clients/c1/regenerate-secret",
+      );
+      expect(printWarning).toHaveBeenCalledWith(
+        "Save the new clientSecret now — it will not be shown again.",
+      );
+      expect(printSuccess).toHaveBeenCalledWith("OAuth client secret regenerated.");
+      expect(outputResponse).toHaveBeenCalled();
+    });
+
+    it("encodes special characters in clientId", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({ clientSecret: "s" }));
+      const program = makeProgram();
+      await runCommand(program, ["me", "oauth-clients", "regenerate-secret", "urn:c:1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith(
+        "POST",
+        "/me/oauth-clients/urn%3Ac%3A1/regenerate-secret",
+      );
     });
   });
 });
