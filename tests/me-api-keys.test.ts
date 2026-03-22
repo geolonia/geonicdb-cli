@@ -349,6 +349,136 @@ describe("me api-keys commands", () => {
     });
   });
 
+  describe("api-keys update", () => {
+    it("patches with JSON input and prints success", async () => {
+      const body = { name: "renamed" };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.rawRequest.mockResolvedValue(mockResponse({ keyId: "k1", name: "renamed" }));
+      const program = makeProgram();
+      await runCommand(program, ["me", "api-keys", "update", "k1", '{"name":"renamed"}']);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/api-keys/k1", { body });
+      expect(outputResponse).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith("API key updated.");
+    });
+
+    it("builds body from --name flag", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ keyId: "k1" }));
+        const program = makeProgram();
+        await runCommand(program, ["me", "api-keys", "update", "k1", "--name", "new-name"]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/api-keys/k1", {
+          body: { name: "new-name" },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("sets policyId to null when --policy-id null", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ keyId: "k1" }));
+        const program = makeProgram();
+        await runCommand(program, ["me", "api-keys", "update", "k1", "--policy-id", "null"]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/api-keys/k1", {
+          body: { policyId: null },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("attaches a policy with --policy-id", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ keyId: "k1" }));
+        const program = makeProgram();
+        await runCommand(program, ["me", "api-keys", "update", "k1", "--policy-id", "my-policy"]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/api-keys/k1", {
+          body: { policyId: "my-policy" },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("sets isActive false with --inactive", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ keyId: "k1" }));
+        const program = makeProgram();
+        await runCommand(program, ["me", "api-keys", "update", "k1", "--inactive"]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/api-keys/k1", {
+          body: { isActive: false },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("sets isActive true with --active", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ keyId: "k1" }));
+        const program = makeProgram();
+        await runCommand(program, ["me", "api-keys", "update", "k1", "--active"]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/api-keys/k1", {
+          body: { isActive: true },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("builds rateLimit from --rate-limit flag", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ keyId: "k1" }));
+        const program = makeProgram();
+        await runCommand(program, ["me", "api-keys", "update", "k1", "--rate-limit", "60"]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/api-keys/k1", {
+          body: { rateLimit: { perMinute: 60 } },
+        });
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("rejects non-integer --rate-limit", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+          throw new Error("process.exit");
+        });
+        const program = makeProgram();
+        await expect(
+          runCommand(program, ["me", "api-keys", "update", "k1", "--rate-limit", "abc"])
+        ).rejects.toThrow("process.exit");
+        expect(printError).toHaveBeenCalledWith("--rate-limit must be a positive integer.");
+        exitSpy.mockRestore();
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("encodes special characters in keyId", async () => {
+      const body = { name: "x" };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.rawRequest.mockResolvedValue(mockResponse({ keyId: "urn:k:1" }));
+      const program = makeProgram();
+      await runCommand(program, ["me", "api-keys", "update", "urn:k:1", '{"name":"x"}']);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/api-keys/urn%3Ak%3A1", { body });
+    });
+  });
+
   describe("api-keys delete", () => {
     it("calls DELETE and prints success", async () => {
       client.rawRequest.mockResolvedValue(mockResponse(undefined, 204));
