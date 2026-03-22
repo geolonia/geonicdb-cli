@@ -469,6 +469,44 @@ describe("me api-keys commands", () => {
       }
     });
 
+    it("rejects --rate-limit 0", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+          throw new Error("process.exit");
+        });
+        const program = makeProgram();
+        await expect(
+          runCommand(program, ["me", "api-keys", "update", "k1", "--rate-limit", "0"])
+        ).rejects.toThrow("process.exit");
+        expect(printError).toHaveBeenCalledWith("--rate-limit must be a positive integer.");
+        exitSpy.mockRestore();
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    it("rejects empty --origins", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+          throw new Error("process.exit");
+        });
+        const program = makeProgram();
+        await expect(
+          runCommand(program, ["me", "api-keys", "update", "k1", "--origins", ""])
+        ).rejects.toThrow("process.exit");
+        expect(printError).toHaveBeenCalledWith(
+          "allowedOrigins must contain at least 1 item. Use '*' to allow all origins.",
+        );
+        exitSpy.mockRestore();
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
     it("encodes special characters in keyId", async () => {
       const body = { name: "x" };
       vi.mocked(parseJsonInput).mockResolvedValue(body);

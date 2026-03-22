@@ -468,8 +468,7 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 | -1 | System | deny-fence (e.g. super_admin data API block) — cannot be overridden |
 | 0 | System | super_admin default — tenant_admin and below cannot override |
 | 10–99 | `tenant_admin` | Custom tenant-wide policies |
-| 100 | System | `user` / `api_key` / `anonymous` defaults |
-| 101+ | `user` (self-service via `/me/policies`) | Personal policies; minimum priority for user role is 100 |
+| 100 | System / `user` (self-service via `/me/policies`) | `user` / `api_key` / `anonymous` defaults and personal policies — server fixes personal policy priority at 100 |
 
 Custom `tenant_admin` policies (priority 10–99) override the user defaults. Target resource attributes include: `path`, `entityType`, `entityId`, `entityOwner`, `tenantService`, `servicePath`. The `servicePath` attribute supports glob patterns (e.g. `/opendata/**`) and regex matching.
 

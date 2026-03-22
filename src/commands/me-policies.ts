@@ -74,9 +74,24 @@ export function addMePoliciesSubcommand(me: Command): void {
         "    ]\n" +
         "  }",
     )
+    .option("--policy-id <id>", "Policy ID (auto-generated UUID if omitted)")
+    .option("--description <text>", "Policy description")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-        const body = await parseJsonInput(json as string | undefined);
+        const opts = cmd.opts() as { policyId?: string; description?: string };
+
+        let body: unknown;
+        if (json) {
+          body = await parseJsonInput(json as string | undefined);
+        } else if (opts.policyId || opts.description) {
+          const payload: Record<string, unknown> = {};
+          if (opts.policyId) payload.policyId = opts.policyId;
+          if (opts.description) payload.description = opts.description;
+          body = payload;
+        } else {
+          body = await parseJsonInput();
+        }
+
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const response = await client.rawRequest("POST", "/me/policies", { body });
@@ -109,9 +124,20 @@ export function addMePoliciesSubcommand(me: Command): void {
   const update = policies
     .command("update <policyId> [json]")
     .description("Update a personal policy (partial update)")
+    .option("--description <text>", "Policy description")
     .action(
       withErrorHandler(async (policyId: unknown, json: unknown, _opts: unknown, cmd: Command) => {
-        const body = await parseJsonInput(json as string | undefined);
+        const opts = cmd.opts() as { description?: string };
+
+        let body: unknown;
+        if (json) {
+          body = await parseJsonInput(json as string | undefined);
+        } else if (opts.description) {
+          body = { description: opts.description };
+        } else {
+          body = await parseJsonInput();
+        }
+
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const response = await client.rawRequest(

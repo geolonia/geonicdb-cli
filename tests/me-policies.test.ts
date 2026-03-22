@@ -108,14 +108,34 @@ describe("me policies commands", () => {
       expect(printSuccess).toHaveBeenCalledWith("Policy created.");
     });
 
-    it("reads from stdin when no json arg", async () => {
+    it("reads from stdin when no json arg and no flags", async () => {
       const body = { rules: [{ ruleId: "r1", effect: "Permit" }] };
       vi.mocked(parseJsonInput).mockResolvedValue(body);
       client.rawRequest.mockResolvedValue(mockResponse({ policyId: "stdin-policy" }, 201));
       const program = makeProgram();
       await runCommand(program, ["me", "policies", "create"]);
-      expect(parseJsonInput).toHaveBeenCalledWith(undefined);
+      expect(parseJsonInput).toHaveBeenCalledWith();
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/policies", { body });
+    });
+
+    it("builds body from --policy-id and --description flags", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ policyId: "my-policy" }, 201));
+        const program = makeProgram();
+        await runCommand(program, [
+          "me", "policies", "create",
+          "--policy-id", "my-policy",
+          "--description", "Read-only policy",
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/policies", {
+          body: { policyId: "my-policy", description: "Read-only policy" },
+        });
+        expect(printSuccess).toHaveBeenCalledWith("Policy created.");
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
     });
   });
 
@@ -129,6 +149,22 @@ describe("me policies commands", () => {
       expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/policies/p1", { body });
       expect(outputResponse).toHaveBeenCalled();
       expect(printSuccess).toHaveBeenCalledWith("Policy updated.");
+    });
+
+    it("builds body from --description flag", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        client.rawRequest.mockResolvedValue(mockResponse({ policyId: "p1" }));
+        const program = makeProgram();
+        await runCommand(program, ["me", "policies", "update", "p1", "--description", "new desc"]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/policies/p1", {
+          body: { description: "new desc" },
+        });
+        expect(printSuccess).toHaveBeenCalledWith("Policy updated.");
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
     });
 
     it("encodes special characters in policyId", async () => {

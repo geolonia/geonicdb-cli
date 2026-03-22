@@ -176,14 +176,23 @@ export function addMeApiKeysSubcommand(me: Command): void {
           inactive?: boolean;
         };
 
+        // Validate --origins flag early
+        if (opts.origins !== undefined) {
+          const parsed = opts.origins.split(",").map((s: string) => s.trim()).filter(Boolean);
+          if (parsed.length === 0) {
+            printError("allowedOrigins must contain at least 1 item. Use '*' to allow all origins.");
+            process.exit(1);
+          }
+        }
+
         let body: unknown;
         if (json) {
           body = await parseJsonInput(json as string | undefined);
-        } else if (opts.name || opts.policyId !== undefined || opts.origins || opts.rateLimit || opts.dpopRequired !== undefined || opts.active || opts.inactive) {
+        } else if (opts.name || opts.policyId !== undefined || opts.origins !== undefined || opts.rateLimit || opts.dpopRequired !== undefined || opts.active || opts.inactive) {
           const payload: Record<string, unknown> = {};
           if (opts.name) payload.name = opts.name;
           if (opts.policyId !== undefined) payload.policyId = opts.policyId === "null" ? null : opts.policyId;
-          if (opts.origins) payload.allowedOrigins = opts.origins.split(",").map((s: string) => s.trim()).filter(Boolean);
+          if (opts.origins !== undefined) payload.allowedOrigins = opts.origins.split(",").map((s: string) => s.trim()).filter(Boolean);
           if (opts.dpopRequired !== undefined) payload.dpopRequired = opts.dpopRequired;
           if (opts.rateLimit) {
             const raw = opts.rateLimit.trim();
@@ -191,7 +200,12 @@ export function addMeApiKeysSubcommand(me: Command): void {
               printError("--rate-limit must be a positive integer.");
               process.exit(1);
             }
-            payload.rateLimit = { perMinute: Number(raw) };
+            const perMinute = Number(raw);
+            if (perMinute <= 0) {
+              printError("--rate-limit must be a positive integer.");
+              process.exit(1);
+            }
+            payload.rateLimit = { perMinute };
           }
           if (opts.active) payload.isActive = true;
           if (opts.inactive) payload.isActive = false;
