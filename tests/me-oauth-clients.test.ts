@@ -269,4 +269,31 @@ describe("me oauth-clients commands", () => {
       expect(client.rawRequest).toHaveBeenCalledWith("DELETE", "/me/oauth-clients/urn%3Ac%3A1");
     });
   });
+
+  describe("oauth-clients regenerate-secret", () => {
+    it("calls POST regenerate-secret and prints warning + success", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({ clientSecret: "new-secret" }));
+      const program = makeProgram();
+      await runCommand(program, ["me", "oauth-clients", "regenerate-secret", "c1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith(
+        "POST",
+        "/me/oauth-clients/c1/regenerate-secret",
+      );
+      expect(printWarning).toHaveBeenCalledWith(
+        "Save the new clientSecret now — it will not be shown again.",
+      );
+      expect(printSuccess).toHaveBeenCalledWith("OAuth client secret regenerated.");
+      expect(outputResponse).toHaveBeenCalled();
+    });
+
+    it("encodes special characters in clientId", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({ clientSecret: "s" }));
+      const program = makeProgram();
+      await runCommand(program, ["me", "oauth-clients", "regenerate-secret", "urn:c:1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith(
+        "POST",
+        "/me/oauth-clients/urn%3Ac%3A1/regenerate-secret",
+      );
+    });
+  });
 });

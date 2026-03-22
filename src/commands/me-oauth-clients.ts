@@ -215,4 +215,29 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
       command: "geonic me oauth-clients delete <client-id>",
     },
   ]);
+
+  // oauth-clients regenerate-secret
+  const regenerateSecret = oauthClients
+    .command("regenerate-secret <clientId>")
+    .description("Regenerate the client secret of an OAuth client")
+    .action(
+      withErrorHandler(async (clientId: unknown, _opts: unknown, cmd: Command) => {
+        const client = createClient(cmd);
+        const format = getFormat(cmd);
+        const response = await client.rawRequest(
+          "POST",
+          `/me/oauth-clients/${encodeURIComponent(String(clientId))}/regenerate-secret`,
+        );
+        printWarning("Save the new clientSecret now — it will not be shown again.");
+        outputResponse(response, format);
+        printSuccess("OAuth client secret regenerated.");
+      }),
+    );
+
+  addExamples(regenerateSecret, [
+    {
+      description: "Regenerate client secret",
+      command: "geonic me oauth-clients regenerate-secret <client-id>",
+    },
+  ]);
 }

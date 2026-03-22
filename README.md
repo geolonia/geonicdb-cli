@@ -194,6 +194,7 @@ Displays the current authenticated user, token expiry, and active profile.
 | `me oauth-clients list` | List your OAuth clients |
 | `me oauth-clients create [json]` | Create a new OAuth client |
 | `me oauth-clients update <clientId> [json]` | Update an OAuth client |
+| `me oauth-clients regenerate-secret <clientId>` | Regenerate client secret |
 | `me oauth-clients delete <id>` | Delete an OAuth client |
 
 `me oauth-clients create` supports flag options: `--name`, `--policy`, `--save`. Use `--save` to store client credentials in config for automatic re-authentication.
