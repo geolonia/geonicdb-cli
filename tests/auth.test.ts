@@ -348,6 +348,20 @@ describe("auth commands", () => {
       expect(savedConfig).not.toHaveProperty("service");
     });
 
+    it("removes existing service when tenantId is absent from login response", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass123");
+      vi.mocked(loadConfig).mockReturnValue({ service: "old-tenant" } as never);
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok" }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      const savedConfig = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(savedConfig).not.toHaveProperty("service");
+    });
+
     it("reads token from data.token when accessToken is not present", async () => {
       vi.mocked(isInteractive).mockReturnValue(true);
       vi.mocked(promptEmail).mockResolvedValue("user@example.com");

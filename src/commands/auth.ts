@@ -146,6 +146,8 @@ function createLoginCommand(): Command {
         }
         if (finalTenantId) {
           config.service = finalTenantId;
+        } else {
+          delete config.service;
         }
         saveConfig(config, globalOpts.profile);
 
