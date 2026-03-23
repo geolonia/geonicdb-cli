@@ -320,6 +320,34 @@ describe("auth commands", () => {
       expect(saveConfig).toHaveBeenCalled();
     });
 
+    it("saves tenantId as service when present in login response", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass123");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok", tenantId: "ed945710-fb96-4d17-811b-425abcb9b70e" }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "tok", service: "ed945710-fb96-4d17-811b-425abcb9b70e" }),
+        "default",
+      );
+    });
+
+    it("does not set service when tenantId is absent from login response", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass123");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok" }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      const savedConfig = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(savedConfig).not.toHaveProperty("service");
+    });
+
     it("reads token from data.token when accessToken is not present", async () => {
       vi.mocked(isInteractive).mockReturnValue(true);
       vi.mocked(promptEmail).mockResolvedValue("user@example.com");
@@ -356,7 +384,7 @@ describe("auth commands", () => {
       await runCommand(program, ["auth", "login"]);
       expect(promptTenantSelection).toHaveBeenCalledWith(tenants, "city_a");
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "tok" }),
+        expect.objectContaining({ token: "tok", service: "city_a" }),
         "default",
       );
     });
@@ -382,7 +410,7 @@ describe("auth commands", () => {
         skipTenantHeader: true,
       });
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "tok-b", refreshToken: "ref-b" }),
+        expect.objectContaining({ token: "tok-b", refreshToken: "ref-b", service: "city_b" }),
         "default",
       );
     });
@@ -445,7 +473,7 @@ describe("auth commands", () => {
       // Should not re-login since selectedTenantId === currentTenantId
       expect(client.rawRequest).toHaveBeenCalledTimes(1);
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "tok-a" }),
+        expect.objectContaining({ token: "tok-a", service: "city_a" }),
         "default",
       );
     });

@@ -115,11 +115,11 @@ function createLoginCommand(): Command {
 
         // Handle multi-tenant: show available tenants and prompt for selection
         const availableTenants = data.availableTenants as TenantChoice[] | undefined;
-        const currentTenantId = data.tenantId as string | undefined;
+        let finalTenantId = data.tenantId as string | undefined;
 
         if (availableTenants && availableTenants.length > 1 && !loginOpts.tenantId) {
-          const selectedTenantId = await promptTenantSelection(availableTenants, currentTenantId);
-          if (selectedTenantId && selectedTenantId !== currentTenantId) {
+          const selectedTenantId = await promptTenantSelection(availableTenants, finalTenantId);
+          if (selectedTenantId && selectedTenantId !== finalTenantId) {
             // Re-login with selected tenant
             const reloginResponse = await client.rawRequest("POST", "/auth/login", {
               body: { email, password, tenantId: selectedTenantId },
@@ -133,6 +133,7 @@ function createLoginCommand(): Command {
             }
             token = newToken;
             refreshToken = reloginData.refreshToken as string | undefined;
+            finalTenantId = selectedTenantId;
           }
         }
 
@@ -142,6 +143,9 @@ function createLoginCommand(): Command {
           config.refreshToken = refreshToken;
         } else {
           delete config.refreshToken;
+        }
+        if (finalTenantId) {
+          config.service = finalTenantId;
         }
         saveConfig(config, globalOpts.profile);
 
