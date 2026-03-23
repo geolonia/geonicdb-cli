@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-03-24
-- **Fix**: `auth login` 後に `NGSILD-Tenant` ヘッダーが付与されない問題を修正 — ログインレスポンスの `tenantId` を `service` として config に保存するようにした (#PR)
+- **Fix**: `auth login` 後に `NGSILD-Tenant` ヘッダーが付与されない問題を修正 — ログインレスポンスの `tenantId` を `service` として config に保存するようにした (#89)
 
 ## [0.8.0] - 2026-03-23
 
