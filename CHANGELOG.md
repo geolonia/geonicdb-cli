@@ -7,6 +7,11 @@
 
 ## [Unreleased]
 
+### 2026-03-25
+- **Feat**: `me api-keys refresh` / `admin api-keys refresh` コマンドを追加 — `POST /me/api-keys/{keyId}/refresh` / `POST /admin/api-keys/{keyId}/refresh` でキーローテーションに対応 (`--save` オプション付き) (GeonicDB #799) (#92)
+- **Feat**: `me api-keys create` / `admin api-keys create` で API キー値をボックス囲みで強調表示し、保存を促す警告メッセージを改善 (#92)
+- **Feat**: `me api-keys list` / `admin api-keys list` の出力末尾に注釈を追加 — API キー値は作成時またはリフレッシュ時にのみ表示される旨を明示 (#92)
+
 ### 2026-03-24
 - **Fix**: `auth login` 後に `NGSILD-Tenant` ヘッダーが付与されない問題を修正 — ログインレスポンスの `tenantId` を `service` として config に保存するようにした (#89)
 

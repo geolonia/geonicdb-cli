@@ -21,6 +21,7 @@ vi.mock("../src/output.js", () => ({
   printWarning: vi.fn(),
   printOutput: vi.fn(),
   printCount: vi.fn(),
+  printApiKeyBox: vi.fn(),
 }));
 
 vi.mock("../src/commands/help.js", () => ({
@@ -46,7 +47,7 @@ vi.mock("../src/oauth.js", () => ({
 
 import { createClient, getFormat, outputResponse, resolveOptions } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
-import { printError, printWarning } from "../src/output.js";
+import { printApiKeyBox, printError, printWarning } from "../src/output.js";
 import { saveConfig } from "../src/config.js";
 import { registerAuthCommands } from "../src/commands/auth.js";
 
@@ -76,6 +77,9 @@ describe("me api-keys commands", () => {
       await runCommand(program, ["me", "api-keys", "list"]);
       expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/api-keys");
       expect(outputResponse).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("API キー値は作成時"),
+      );
     });
 
     it("outputs dpopRequired field in list response", async () => {
@@ -107,9 +111,7 @@ describe("me api-keys commands", () => {
       ]);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/api-keys", { body });
       expect(outputResponse).toHaveBeenCalled();
-      expect(printWarning).toHaveBeenCalledWith(
-        "Save the API key now — it will not be shown again. Use --save to store it automatically.",
-      );
+      expect(printApiKeyBox).toHaveBeenCalledWith("gdb_abc123");
       expect(consoleSpy).toHaveBeenCalledWith("API key created.");
     });
 
@@ -514,6 +516,79 @@ describe("me api-keys commands", () => {
       const program = makeProgram();
       await runCommand(program, ["me", "api-keys", "update", "urn:k:1", '{"name":"x"}']);
       expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/api-keys/urn%3Ak%3A1", { body });
+    });
+  });
+
+  describe("api-keys refresh", () => {
+    it("calls POST /me/api-keys/{keyId}/refresh", async () => {
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ keyId: "k1", key: "gdb_newkey123" }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["me", "api-keys", "refresh", "k1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith(
+        "POST",
+        "/me/api-keys/k1/refresh",
+      );
+      expect(printApiKeyBox).toHaveBeenCalledWith("gdb_newkey123");
+      expect(outputResponse).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith("API key refreshed.");
+    });
+
+    it("saves refreshed key to config with --save", async () => {
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "https://example.com/",
+        profile: "default",
+      });
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ keyId: "k1", key: "gdb_refreshed" }),
+      );
+
+      const program = makeProgram();
+      await runCommand(program, [
+        "me", "api-keys", "refresh", "k1", "--save",
+      ]);
+
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: "gdb_refreshed" }),
+        "default",
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "API key saved to config. X-Api-Key header will be sent automatically.",
+      );
+    });
+
+    it("encodes special characters in keyId", async () => {
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ keyId: "urn:k:1", key: "gdb_enc" }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["me", "api-keys", "refresh", "urn:k:1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith(
+        "POST",
+        "/me/api-keys/urn%3Ak%3A1/refresh",
+      );
+    });
+
+    it("handles --save when response is missing key field", async () => {
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "https://example.com/",
+        profile: "default",
+      });
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ keyId: "k1" }),
+      );
+
+      const program = makeProgram();
+      await runCommand(program, [
+        "me", "api-keys", "refresh", "k1", "--save",
+      ]);
+
+      expect(printError).toHaveBeenCalledWith(
+        "Response missing key. API key was created, but it could not be saved.",
+      );
+      expect(saveConfig).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(1);
     });
   });
 

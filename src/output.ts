@@ -34,6 +34,19 @@ export function printWarning(message: string): void {
   console.error(chalk.yellow(message));
 }
 
+/**
+ * Print an API key value in a highlighted box so it stands out.
+ */
+export function printApiKeyBox(key: string): void {
+  const border = "─".repeat(key.length + 4);
+  console.error("");
+  console.error(chalk.green(`  ┌${border}┐`));
+  console.error(chalk.green(`  │  ${chalk.bold(key)}  │`));
+  console.error(chalk.green(`  └${border}┘`));
+  console.error("");
+  console.error(chalk.yellow("⚠ この API キー値を安全に保存してください。二度と表示されません。"));
+}
+
 export function printCount(count: number): void {
   console.log(chalk.dim(`Count: ${count}`));
 }

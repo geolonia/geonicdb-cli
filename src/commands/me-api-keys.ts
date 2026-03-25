@@ -2,8 +2,45 @@ import type { Command } from "commander";
 import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse } from "../helpers.js";
 import { loadConfig, saveConfig } from "../config.js";
 import { parseJsonInput } from "../input.js";
-import { printError, printWarning } from "../output.js";
+import { printApiKeyBox, printError, printWarning } from "../output.js";
 import { addExamples, addNotes } from "./help.js";
+
+/** Save API key to profile config and print confirmation. Returns false if key missing. */
+function handleSaveKey(
+  data: Record<string, unknown>,
+  cmd: Command,
+): boolean {
+  const globalOpts = resolveOptions(cmd);
+  const key = data.key as string | undefined;
+  if (!key) {
+    printError("Response missing key. API key was created, but it could not be saved.");
+    process.exitCode = 1;
+    return false;
+  }
+  const config = loadConfig(globalOpts.profile);
+  config.apiKey = key;
+  saveConfig(config, globalOpts.profile);
+  console.error("API key saved to config. X-Api-Key header will be sent automatically.");
+  return true;
+}
+
+/** Show API key value prominently, or warning if not saving. */
+function showKeyResult(
+  data: Record<string, unknown>,
+  save: boolean,
+  cmd: Command,
+): void {
+  if (save) {
+    handleSaveKey(data, cmd);
+  } else {
+    const key = data.key as string | undefined;
+    if (key) {
+      printApiKeyBox(key);
+    } else {
+      printWarning("Save the API key now — it will not be shown again. Use --save to store it automatically.");
+    }
+  }
+}
 
 export function addMeApiKeysSubcommand(me: Command): void {
   const apiKeys = me
@@ -20,6 +57,7 @@ export function addMeApiKeysSubcommand(me: Command): void {
         const format = getFormat(cmd);
         const response = await client.rawRequest("GET", "/me/api-keys");
         outputResponse(response, format);
+        console.error("※ API キー値は作成時 (create) またはリフレッシュ時 (refresh) にのみ表示されます。");
       }),
     );
 
@@ -101,23 +139,7 @@ export function addMeApiKeysSubcommand(me: Command): void {
         const response = await client.rawRequest("POST", "/me/api-keys", { body });
 
         const data = response.data as Record<string, unknown>;
-
-        if (opts.save) {
-          const globalOpts = resolveOptions(cmd);
-          const key = data.key as string | undefined;
-          if (!key) {
-            printError("Response missing key. API key was created, but it could not be saved.");
-            outputResponse(response, format);
-            process.exitCode = 1;
-            return;
-          }
-          const config = loadConfig(globalOpts.profile);
-          config.apiKey = key;
-          saveConfig(config, globalOpts.profile);
-          console.error("API key saved to config. X-Api-Key header will be sent automatically.");
-        } else {
-          printWarning("Save the API key now — it will not be shown again. Use --save to store it automatically.");
-        }
+        showKeyResult(data, !!opts.save, cmd);
 
         outputResponse(response, format);
         console.error("API key created.");
@@ -149,6 +171,45 @@ export function addMeApiKeysSubcommand(me: Command): void {
     {
       description: "Create an API key with DPoP required",
       command: "geonic me api-keys create --name my-app --dpop-required",
+    },
+  ]);
+
+  // api-keys refresh
+  const refresh = apiKeys
+    .command("refresh <keyId>")
+    .description("Refresh (rotate) an API key — generates a new key value")
+    .option("--save", "Save the new API key to config for automatic use")
+    .action(
+      withErrorHandler(async (keyId: unknown, _opts: unknown, cmd: Command) => {
+        const opts = cmd.opts() as { save?: boolean };
+        const client = createClient(cmd);
+        const format = getFormat(cmd);
+        const response = await client.rawRequest(
+          "POST",
+          `/me/api-keys/${encodeURIComponent(String(keyId))}/refresh`,
+        );
+
+        const data = response.data as Record<string, unknown>;
+        showKeyResult(data, !!opts.save, cmd);
+
+        outputResponse(response, format);
+        console.error("API key refreshed.");
+      }),
+    );
+
+  addNotes(refresh, [
+    "Refreshing generates a new key value while keeping keyId, name, and policy settings.",
+    "The previous key value is immediately invalidated.",
+  ]);
+
+  addExamples(refresh, [
+    {
+      description: "Refresh an API key",
+      command: "geonic me api-keys refresh <key-id>",
+    },
+    {
+      description: "Refresh and save new key to config",
+      command: "geonic me api-keys refresh <key-id> --save",
     },
   ]);
 
