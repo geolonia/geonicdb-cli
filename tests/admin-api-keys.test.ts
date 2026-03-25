@@ -327,7 +327,7 @@ describe("admin api-keys commands", () => {
           "--save",
         ]);
 
-        expect(printError).toHaveBeenCalledWith("Response missing key. API key was created, but it could not be saved.");
+        expect(printError).toHaveBeenCalledWith("Response missing key. The new API key value was not returned.");
         expect(saveConfig).not.toHaveBeenCalled();
         expect(process.exitCode).toBe(1);
       } finally {
@@ -595,7 +595,7 @@ describe("admin api-keys commands", () => {
       ]);
 
       expect(printError).toHaveBeenCalledWith(
-        "Response missing key. API key was created, but it could not be saved.",
+        "Response missing key. The new API key value was not returned.",
       );
       expect(saveConfig).not.toHaveBeenCalled();
       expect(process.exitCode).toBe(1);

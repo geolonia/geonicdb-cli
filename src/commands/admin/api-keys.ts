@@ -2,7 +2,7 @@ import type { Command } from "commander";
 import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse } from "../../helpers.js";
 import { loadConfig, saveConfig } from "../../config.js";
 import { parseJsonInput } from "../../input.js";
-import { printApiKeyBox, printError, printWarning } from "../../output.js";
+import { printApiKeyBox, printError } from "../../output.js";
 import { addExamples, addNotes } from "../help.js";
 
 /** Strip deprecated/masked fields from API key response for cleaner display. */
@@ -57,7 +57,7 @@ function buildBodyFromFlags(opts: Record<string, unknown>): Record<string, unkno
   return payload;
 }
 
-/** Save API key to profile config and print confirmation. Returns false if key missing. */
+/** Save API key to profile config and print confirmation. Returns false if key missing or save fails. */
 function handleSaveKey(
   data: Record<string, unknown>,
   cmd: Command,
@@ -69,29 +69,35 @@ function handleSaveKey(
     process.exitCode = 1;
     return false;
   }
-  const config = loadConfig(globalOpts.profile);
-  config.apiKey = key;
-  saveConfig(config, globalOpts.profile);
-  console.error("API key saved to config. X-Api-Key header will be sent automatically.");
-  return true;
+  try {
+    const config = loadConfig(globalOpts.profile);
+    config.apiKey = key;
+    saveConfig(config, globalOpts.profile);
+    console.error("API key saved to config. X-Api-Key header will be sent automatically.");
+    return true;
+  } catch (err) {
+    printError(`Failed to save API key to config: ${err instanceof Error ? err.message : String(err)}`);
+    printApiKeyBox(key);
+    process.exitCode = 1;
+    return false;
+  }
 }
 
-/** Show API key value prominently, or warning if not saving. */
+/** Show API key value prominently. Returns false if key is missing (treated as error). */
 function showKeyResult(
   data: Record<string, unknown>,
   save: boolean,
   cmd: Command,
-): void {
-  if (save) {
-    handleSaveKey(data, cmd);
-  } else {
-    const key = data.key as string | undefined;
-    if (key) {
-      printApiKeyBox(key);
-    } else {
-      printWarning("Save the API key now — it will not be shown again. Use --save to store it automatically.");
-    }
+): boolean {
+  const key = data.key as string | undefined;
+  if (!key) {
+    printError("Response missing key. The new API key value was not returned.");
+    process.exitCode = 1;
+    return false;
   }
+  if (save) return handleSaveKey(data, cmd);
+  printApiKeyBox(key);
+  return true;
 }
 
 export function registerApiKeysCommand(parent: Command): void {
@@ -197,10 +203,10 @@ export function registerApiKeysCommand(parent: Command): void {
           body,
         });
         const data = response.data as Record<string, unknown>;
-        showKeyResult(data, !!opts.save, cmd);
+        const ok = showKeyResult(data, !!opts.save, cmd);
 
         outputResponse(response, format);
-        console.error("API key created.");
+        if (ok) console.error("API key created.");
       }),
     );
 
@@ -240,10 +246,10 @@ export function registerApiKeysCommand(parent: Command): void {
         );
 
         const data = response.data as Record<string, unknown>;
-        showKeyResult(data, !!opts.save, cmd);
+        const ok = showKeyResult(data, !!opts.save, cmd);
 
         outputResponse(response, format);
-        console.error("API key refreshed.");
+        if (ok) console.error("API key refreshed.");
       }),
     );
 
