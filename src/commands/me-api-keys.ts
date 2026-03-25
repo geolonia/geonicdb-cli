@@ -5,6 +5,16 @@ import { parseJsonInput } from "../input.js";
 import { printApiKeyBox, printError, printWarning } from "../output.js";
 import { addExamples, addNotes } from "./help.js";
 
+/** Strip deprecated/masked fields from API key response for cleaner display. */
+function cleanApiKeyData(data: unknown): unknown {
+  if (Array.isArray(data)) return data.map(cleanApiKeyData);
+  if (typeof data !== "object" || data === null) return data;
+  const obj = { ...(data as Record<string, unknown>) };
+  delete obj.keyPrefix;
+  if (obj.key === "******") delete obj.key;
+  return obj;
+}
+
 /** Save API key to profile config and print confirmation. Returns false if key missing. */
 function handleSaveKey(
   data: Record<string, unknown>,
@@ -56,6 +66,7 @@ export function addMeApiKeysSubcommand(me: Command): void {
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const response = await client.rawRequest("GET", "/me/api-keys");
+        response.data = cleanApiKeyData(response.data);
         outputResponse(response, format);
         console.error("※ API キー値は作成時 (create) またはリフレッシュ時 (refresh) にのみ表示されます。");
       }),

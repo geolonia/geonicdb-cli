@@ -97,6 +97,21 @@ describe("admin api-keys commands", () => {
         params: { tenantId: "t1" },
       });
     });
+
+    it("strips keyPrefix and masked key from list response", async () => {
+      const response = mockResponse([
+        { keyId: "k1", name: "key1", key: "******", keyPrefix: "gdb_abc" },
+        { keyId: "k2", name: "key2", key: "******", keyPrefix: "gdb_def" },
+      ]);
+      client.rawRequest.mockResolvedValue(response);
+      const program = makeProgram();
+      await runCommand(program, ["admin", "api-keys", "list"]);
+      const outputData = (outputResponse as ReturnType<typeof vi.fn>).mock.calls[0][0].data;
+      expect(outputData[0]).not.toHaveProperty("keyPrefix");
+      expect(outputData[0]).not.toHaveProperty("key");
+      expect(outputData[1]).not.toHaveProperty("keyPrefix");
+      expect(outputData[1]).not.toHaveProperty("key");
+    });
   });
 
   describe("api-keys get", () => {
@@ -116,6 +131,16 @@ describe("admin api-keys commands", () => {
       expect(outputResponse).toHaveBeenCalledWith(response, "json");
       const outputData = (outputResponse as ReturnType<typeof vi.fn>).mock.calls[0][0].data;
       expect(outputData.dpopRequired).toBe(true);
+    });
+
+    it("strips keyPrefix and masked key from get response", async () => {
+      const response = mockResponse({ keyId: "k1", name: "key1", key: "******", keyPrefix: "gdb_abc" });
+      client.rawRequest.mockResolvedValue(response);
+      const program = makeProgram();
+      await runCommand(program, ["admin", "api-keys", "get", "k1"]);
+      const outputData = (outputResponse as ReturnType<typeof vi.fn>).mock.calls[0][0].data;
+      expect(outputData).not.toHaveProperty("keyPrefix");
+      expect(outputData).not.toHaveProperty("key");
     });
 
     it("encodes special characters in keyId", async () => {
