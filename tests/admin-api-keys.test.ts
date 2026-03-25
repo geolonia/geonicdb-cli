@@ -21,6 +21,7 @@ vi.mock("../src/output.js", () => ({
   printWarning: vi.fn(),
   printOutput: vi.fn(),
   printCount: vi.fn(),
+  printApiKeyBox: vi.fn(),
 }));
 
 vi.mock("../src/commands/help.js", () => ({
@@ -35,7 +36,7 @@ vi.mock("../src/config.js", () => ({
 
 import { createClient, getFormat, outputResponse, resolveOptions } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
-import { printError, printWarning } from "../src/output.js";
+import { printApiKeyBox, printError } from "../src/output.js";
 import { saveConfig } from "../src/config.js";
 import { registerApiKeysCommand } from "../src/commands/admin/api-keys.js";
 
@@ -69,6 +70,9 @@ describe("admin api-keys commands", () => {
         params: {},
       });
       expect(outputResponse).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("API キー値は作成時"),
+      );
     });
 
     it("outputs dpopRequired field in list response", async () => {
@@ -93,6 +97,21 @@ describe("admin api-keys commands", () => {
         params: { tenantId: "t1" },
       });
     });
+
+    it("strips masked key from list response", async () => {
+      const response = mockResponse([
+        { keyId: "k1", name: "key1", key: "******", keyPrefix: "gdb_abc" },
+        { keyId: "k2", name: "key2", key: "******", keyPrefix: "gdb_def" },
+      ]);
+      client.rawRequest.mockResolvedValue(response);
+      const program = makeProgram();
+      await runCommand(program, ["admin", "api-keys", "list"]);
+      const outputData = (outputResponse as ReturnType<typeof vi.fn>).mock.calls[0][0].data;
+      expect(outputData[0]).not.toHaveProperty("key");
+      expect(outputData[0]).toHaveProperty("keyPrefix", "gdb_abc");
+      expect(outputData[1]).not.toHaveProperty("key");
+      expect(outputData[1]).toHaveProperty("keyPrefix", "gdb_def");
+    });
   });
 
   describe("api-keys get", () => {
@@ -114,6 +133,16 @@ describe("admin api-keys commands", () => {
       expect(outputData.dpopRequired).toBe(true);
     });
 
+    it("strips masked key from get response", async () => {
+      const response = mockResponse({ keyId: "k1", name: "key1", key: "******", keyPrefix: "gdb_abc" });
+      client.rawRequest.mockResolvedValue(response);
+      const program = makeProgram();
+      await runCommand(program, ["admin", "api-keys", "get", "k1"]);
+      const outputData = (outputResponse as ReturnType<typeof vi.fn>).mock.calls[0][0].data;
+      expect(outputData).not.toHaveProperty("key");
+      expect(outputData).toHaveProperty("keyPrefix", "gdb_abc");
+    });
+
     it("encodes special characters in keyId", async () => {
       client.rawRequest.mockResolvedValue(mockResponse({ keyId: "urn:k:1" }));
       const program = makeProgram();
@@ -133,9 +162,7 @@ describe("admin api-keys commands", () => {
       await runCommand(program, ["admin", "api-keys", "create", '{"name":"my-key"}']);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/api-keys", { body });
       expect(outputResponse).toHaveBeenCalled();
-      expect(printWarning).toHaveBeenCalledWith(
-        "Save the API key now — it will not be shown again. Use --save to store it automatically.",
-      );
+      expect(printApiKeyBox).toHaveBeenCalledWith("gdb_abc123");
       expect(consoleSpy).toHaveBeenCalledWith("API key created.");
     });
 
@@ -300,7 +327,7 @@ describe("admin api-keys commands", () => {
           "--save",
         ]);
 
-        expect(printError).toHaveBeenCalledWith("Response missing key. API key was created, but it could not be saved.");
+        expect(printError).toHaveBeenCalledWith("Response missing key. The new API key value was not returned.");
         expect(saveConfig).not.toHaveBeenCalled();
         expect(process.exitCode).toBe(1);
       } finally {
@@ -499,6 +526,79 @@ describe("admin api-keys commands", () => {
       const program = makeProgram();
       await runCommand(program, ["admin", "api-keys", "update", "urn:k:1", '{"name":"x"}']);
       expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/api-keys/urn%3Ak%3A1", { body });
+    });
+  });
+
+  describe("api-keys refresh", () => {
+    it("calls POST /admin/api-keys/{keyId}/refresh", async () => {
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ keyId: "k1", key: "gdb_newkey123" }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["admin", "api-keys", "refresh", "k1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith(
+        "POST",
+        "/admin/api-keys/k1/refresh",
+      );
+      expect(printApiKeyBox).toHaveBeenCalledWith("gdb_newkey123");
+      expect(outputResponse).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalledWith("API key refreshed.");
+    });
+
+    it("saves refreshed key to config with --save", async () => {
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "https://example.com/",
+        profile: "default",
+      });
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ keyId: "k1", key: "gdb_refreshed" }),
+      );
+
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin", "api-keys", "refresh", "k1", "--save",
+      ]);
+
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ apiKey: "gdb_refreshed" }),
+        "default",
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "API key saved to config. X-Api-Key header will be sent automatically.",
+      );
+    });
+
+    it("encodes special characters in keyId", async () => {
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ keyId: "urn:k:1", key: "gdb_enc" }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["admin", "api-keys", "refresh", "urn:k:1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith(
+        "POST",
+        "/admin/api-keys/urn%3Ak%3A1/refresh",
+      );
+    });
+
+    it("handles --save when response is missing key field", async () => {
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "https://example.com/",
+        profile: "default",
+      });
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ keyId: "k1" }),
+      );
+
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin", "api-keys", "refresh", "k1", "--save",
+      ]);
+
+      expect(printError).toHaveBeenCalledWith(
+        "Response missing key. The new API key value was not returned.",
+      );
+      expect(saveConfig).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(1);
     });
   });
 

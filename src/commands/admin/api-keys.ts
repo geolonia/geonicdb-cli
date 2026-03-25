@@ -2,8 +2,17 @@ import type { Command } from "commander";
 import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse } from "../../helpers.js";
 import { loadConfig, saveConfig } from "../../config.js";
 import { parseJsonInput } from "../../input.js";
-import { printError, printWarning } from "../../output.js";
+import { printApiKeyBox, printError } from "../../output.js";
 import { addExamples, addNotes } from "../help.js";
+
+/** Strip masked key placeholder from API key response for cleaner display. */
+function cleanApiKeyData(data: unknown): unknown {
+  if (Array.isArray(data)) return data.map(cleanApiKeyData);
+  if (typeof data !== "object" || data === null) return data;
+  const obj = { ...(data as Record<string, unknown>) };
+  if (obj.key === "******") delete obj.key;
+  return obj;
+}
 
 function validateOrigins(body: unknown, opts: Record<string, unknown>): void {
   // Validate origins if provided via flags
@@ -47,6 +56,49 @@ function buildBodyFromFlags(opts: Record<string, unknown>): Record<string, unkno
   return payload;
 }
 
+/** Save API key to profile config and print confirmation. Returns false if key missing or save fails. */
+function handleSaveKey(
+  data: Record<string, unknown>,
+  cmd: Command,
+): boolean {
+  const globalOpts = resolveOptions(cmd);
+  const key = data.key as string | undefined;
+  if (!key) {
+    printError("Response missing key. API key was created, but it could not be saved.");
+    process.exitCode = 1;
+    return false;
+  }
+  try {
+    const config = loadConfig(globalOpts.profile);
+    config.apiKey = key;
+    saveConfig(config, globalOpts.profile);
+    console.error("API key saved to config. X-Api-Key header will be sent automatically.");
+    return true;
+  } catch (err) {
+    printError(`Failed to save API key to config: ${err instanceof Error ? err.message : String(err)}`);
+    printApiKeyBox(key);
+    process.exitCode = 1;
+    return false;
+  }
+}
+
+/** Show API key value prominently. Returns false if key is missing (treated as error). */
+function showKeyResult(
+  data: Record<string, unknown>,
+  save: boolean,
+  cmd: Command,
+): boolean {
+  const key = data.key as string | undefined;
+  if (!key) {
+    printError("Response missing key. The new API key value was not returned.");
+    process.exitCode = 1;
+    return false;
+  }
+  if (save) return handleSaveKey(data, cmd);
+  printApiKeyBox(key);
+  return true;
+}
+
 export function registerApiKeysCommand(parent: Command): void {
   const apiKeys = parent
     .command("api-keys")
@@ -67,7 +119,9 @@ export function registerApiKeysCommand(parent: Command): void {
         const response = await client.rawRequest("GET", "/admin/api-keys", {
           params,
         });
+        response.data = cleanApiKeyData(response.data);
         outputResponse(response, format);
+        console.error("※ API キー値は作成時 (create) またはリフレッシュ時 (refresh) にのみ表示されます。");
       }),
     );
 
@@ -94,6 +148,7 @@ export function registerApiKeysCommand(parent: Command): void {
           "GET",
           `/admin/api-keys/${encodeURIComponent(String(keyId))}`,
         );
+        response.data = cleanApiKeyData(response.data);
         outputResponse(response, format);
       }),
     );
@@ -147,26 +202,10 @@ export function registerApiKeysCommand(parent: Command): void {
           body,
         });
         const data = response.data as Record<string, unknown>;
-
-        if (opts.save) {
-          const globalOpts = resolveOptions(cmd);
-          const key = data.key as string | undefined;
-          if (!key) {
-            printError("Response missing key. API key was created, but it could not be saved.");
-            outputResponse(response, format);
-            process.exitCode = 1;
-            return;
-          }
-          const config = loadConfig(globalOpts.profile);
-          config.apiKey = key;
-          saveConfig(config, globalOpts.profile);
-          console.error("API key saved to config. X-Api-Key header will be sent automatically.");
-        } else {
-          printWarning("Save the API key now — it will not be shown again. Use --save to store it automatically.");
-        }
+        const ok = showKeyResult(data, !!opts.save, cmd);
 
         outputResponse(response, format);
-        console.error("API key created.");
+        if (ok) console.error("API key created.");
       }),
     );
 
@@ -187,6 +226,45 @@ export function registerApiKeysCommand(parent: Command): void {
     {
       description: "Create an API key from JSON and save to config",
       command: "geonic admin api-keys create @key.json --save",
+    },
+  ]);
+
+  // api-keys refresh
+  const refresh = apiKeys
+    .command("refresh <keyId>")
+    .description("Refresh (rotate) an API key — generates a new key value")
+    .option("--save", "Save the new API key to profile config")
+    .action(
+      withErrorHandler(async (keyId: unknown, _opts: unknown, cmd: Command) => {
+        const opts = cmd.opts() as { save?: boolean };
+        const client = createClient(cmd);
+        const format = getFormat(cmd);
+        const response = await client.rawRequest(
+          "POST",
+          `/admin/api-keys/${encodeURIComponent(String(keyId))}/refresh`,
+        );
+
+        const data = response.data as Record<string, unknown>;
+        const ok = showKeyResult(data, !!opts.save, cmd);
+
+        outputResponse(response, format);
+        if (ok) console.error("API key refreshed.");
+      }),
+    );
+
+  addNotes(refresh, [
+    "Refreshing generates a new key value while keeping keyId, name, and policy settings.",
+    "The previous key value is immediately invalidated.",
+  ]);
+
+  addExamples(refresh, [
+    {
+      description: "Refresh an API key",
+      command: "geonic admin api-keys refresh <key-id>",
+    },
+    {
+      description: "Refresh and save new key to config",
+      command: "geonic admin api-keys refresh <key-id> --save",
     },
   ]);
 
