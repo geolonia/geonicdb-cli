@@ -5,12 +5,11 @@ import { parseJsonInput } from "../../input.js";
 import { printApiKeyBox, printError } from "../../output.js";
 import { addExamples, addNotes } from "../help.js";
 
-/** Strip deprecated/masked fields from API key response for cleaner display. */
+/** Strip masked key placeholder from API key response for cleaner display. */
 function cleanApiKeyData(data: unknown): unknown {
   if (Array.isArray(data)) return data.map(cleanApiKeyData);
   if (typeof data !== "object" || data === null) return data;
   const obj = { ...(data as Record<string, unknown>) };
-  delete obj.keyPrefix;
   if (obj.key === "******") delete obj.key;
   return obj;
 }

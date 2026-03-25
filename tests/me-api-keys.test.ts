@@ -96,7 +96,7 @@ describe("me api-keys commands", () => {
       expect(outputData[1].dpopRequired).toBe(false);
     });
 
-    it("strips keyPrefix and masked key from list response", async () => {
+    it("strips masked key from list response", async () => {
       const response = mockResponse([
         { keyId: "k1", name: "key1", key: "******", keyPrefix: "gdb_abc" },
         { keyId: "k2", name: "key2", key: "******", keyPrefix: "gdb_def" },
@@ -105,10 +105,10 @@ describe("me api-keys commands", () => {
       const program = makeProgram();
       await runCommand(program, ["me", "api-keys", "list"]);
       const outputData = (outputResponse as ReturnType<typeof vi.fn>).mock.calls[0][0].data;
-      expect(outputData[0]).not.toHaveProperty("keyPrefix");
       expect(outputData[0]).not.toHaveProperty("key");
-      expect(outputData[1]).not.toHaveProperty("keyPrefix");
+      expect(outputData[0]).toHaveProperty("keyPrefix", "gdb_abc");
       expect(outputData[1]).not.toHaveProperty("key");
+      expect(outputData[1]).toHaveProperty("keyPrefix", "gdb_def");
     });
   });
 
