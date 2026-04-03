@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-04-03
+
 ### 2026-04-03
 - **Docs**: 全コマンドの help 内容を充実 — description の具体化、examples の追加（テーブル形式、プロフィルスコープ、ユースケース別の例）、24 ファイル改善 (#96)
 - **Feat**: マルチテナント対応 — ログイン時のテナント名指定 (`-s <テナント名>`)、`tenantId` / `availableTenants` の config 保存、`profile use` 時のトークン自動リフレッシュ (#90)
@@ -174,7 +176,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.6.4...v0.7.0
