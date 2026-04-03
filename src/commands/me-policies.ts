@@ -27,12 +27,16 @@ export function addMePoliciesSubcommand(me: Command): void {
       description: "List your personal policies",
       command: "geonic me policies list",
     },
+    {
+      description: "List in table format for a quick overview",
+      command: "geonic me policies list --format table",
+    },
   ]);
 
   // policies get
   const get = policies
     .command("get <policyId>")
-    .description("Get a personal policy by ID")
+    .description("Get a personal policy by ID to inspect its XACML rules and target resources")
     .action(
       withErrorHandler(async (policyId: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -50,11 +54,16 @@ export function addMePoliciesSubcommand(me: Command): void {
       description: "Get a personal policy by ID",
       command: "geonic me policies get <policy-id>",
     },
+    {
+      description: "Inspect policy rules and permitted actions",
+      command: "geonic me policies get my-readonly --format table",
+    },
   ]);
 
   // policies create
   const create = policies
     .command("create [json]")
+    .summary("Create a personal XACML policy")
     .description(
       "Create a personal XACML policy\n\n" +
         "Constraints (enforced server-side):\n" +
@@ -164,7 +173,7 @@ export function addMePoliciesSubcommand(me: Command): void {
   // policies delete
   const del = policies
     .command("delete <policyId>")
-    .description("Delete a personal policy")
+    .description("Delete a personal policy — any API key or OAuth client bound to it loses access granted by this policy")
     .action(
       withErrorHandler(async (policyId: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -178,8 +187,12 @@ export function addMePoliciesSubcommand(me: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete a personal policy",
+      description: "Delete a personal policy by ID",
       command: "geonic me policies delete <policy-id>",
+    },
+    {
+      description: "Remove a policy (unbind from API keys/OAuth clients first)",
+      command: "geonic me policies delete my-readonly",
     },
   ]);
 }

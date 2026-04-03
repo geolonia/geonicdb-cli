@@ -7,12 +7,12 @@ import { addExamples } from "./help.js";
 export function registerRulesCommand(program: Command): void {
   const rules = program
     .command("rules")
-    .description("Manage rule engine");
+    .description("Manage ReactiveCore rules that trigger actions based on entity changes");
 
   // rules list
   const list = rules
     .command("list")
-    .description("List all rules")
+    .description("List all configured rules and their current status")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -24,15 +24,19 @@ export function registerRulesCommand(program: Command): void {
 
   addExamples(list, [
     {
-      description: "List all rules",
+      description: "List all rules as JSON",
       command: "geonic rules list",
+    },
+    {
+      description: "List rules in table format to review status at a glance",
+      command: "geonic rules list --format table",
     },
   ]);
 
   // rules get
   const get = rules
     .command("get <id>")
-    .description("Get a rule by ID")
+    .description("Get a rule's full definition including conditions, actions, and status")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -47,14 +51,19 @@ export function registerRulesCommand(program: Command): void {
 
   addExamples(get, [
     {
-      description: "Get a specific rule",
+      description: "Inspect a rule's conditions and actions",
       command: "geonic rules get <rule-id>",
+    },
+    {
+      description: "Get a rule and check if it is active",
+      command: "geonic rules get urn:ngsi-ld:Rule:high-temp-alert",
     },
   ]);
 
   // rules create
   const create = rules
     .command("create [json]")
+    .summary("Create a new rule")
     .description(
       "Create a new rule\n\n" +
         "JSON payload example:\n" +
@@ -94,6 +103,7 @@ export function registerRulesCommand(program: Command): void {
   // rules update
   const update = rules
     .command("update <id> [json]")
+    .summary("Update a rule")
     .description(
       "Update a rule\n\n" +
         "JSON payload: only specified fields are updated.\n" +
@@ -134,7 +144,7 @@ export function registerRulesCommand(program: Command): void {
   // rules delete
   const del = rules
     .command("delete <id>")
-    .description("Delete a rule")
+    .description("Permanently delete a rule and stop its processing")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -148,15 +158,19 @@ export function registerRulesCommand(program: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete a rule",
+      description: "Delete a rule by ID",
       command: "geonic rules delete <rule-id>",
+    },
+    {
+      description: "Remove an obsolete alert rule",
+      command: "geonic rules delete urn:ngsi-ld:Rule:old-alert",
     },
   ]);
 
   // rules activate
   const activate = rules
     .command("activate <id>")
-    .description("Activate a rule")
+    .description("Enable a rule so it begins evaluating conditions and firing actions")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -170,15 +184,19 @@ export function registerRulesCommand(program: Command): void {
 
   addExamples(activate, [
     {
-      description: "Activate a rule",
+      description: "Start processing a rule",
       command: "geonic rules activate <rule-id>",
+    },
+    {
+      description: "Re-enable a previously deactivated rule",
+      command: "geonic rules activate urn:ngsi-ld:Rule:high-temp-alert",
     },
   ]);
 
   // rules deactivate
   const deactivate = rules
     .command("deactivate <id>")
-    .description("Deactivate a rule")
+    .description("Disable a rule without deleting it, pausing condition evaluation and actions")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -192,8 +210,12 @@ export function registerRulesCommand(program: Command): void {
 
   addExamples(deactivate, [
     {
-      description: "Deactivate a rule",
+      description: "Temporarily pause a rule during maintenance",
       command: "geonic rules deactivate <rule-id>",
+    },
+    {
+      description: "Disable a noisy alert rule without removing it",
+      command: "geonic rules deactivate urn:ngsi-ld:Rule:high-temp-alert",
     },
   ]);
 }

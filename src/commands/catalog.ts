@@ -5,12 +5,12 @@ import { addExamples } from "./help.js";
 export function registerCatalogCommand(program: Command): void {
   const catalog = program
     .command("catalog")
-    .description("Browse DCAT-AP catalog");
+    .description("Browse the DCAT-AP data catalog for discovering and previewing datasets");
 
   // catalog get
   const get = catalog
     .command("get")
-    .description("Get the catalog")
+    .description("Get the DCAT-AP catalog metadata including title, publisher, and dataset count")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -22,20 +22,24 @@ export function registerCatalogCommand(program: Command): void {
 
   addExamples(get, [
     {
-      description: "Get the DCAT-AP catalog",
+      description: "View catalog metadata (title, publisher, datasets summary)",
       command: "geonic catalog get",
+    },
+    {
+      description: "Get catalog metadata in table format",
+      command: "geonic catalog get --format table",
     },
   ]);
 
   // catalog datasets
   const datasets = catalog
     .command("datasets")
-    .description("Manage catalog datasets");
+    .description("List, inspect, and preview datasets published in the catalog");
 
   // catalog datasets list
   const datasetsList = datasets
     .command("list")
-    .description("List all datasets")
+    .description("List all datasets published in the catalog")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -47,15 +51,19 @@ export function registerCatalogCommand(program: Command): void {
 
   addExamples(datasetsList, [
     {
-      description: "List all catalog datasets",
+      description: "List all catalog datasets as JSON",
       command: "geonic catalog datasets list",
+    },
+    {
+      description: "Browse datasets in table format",
+      command: "geonic catalog datasets list --format table",
     },
   ]);
 
   // catalog datasets get
   const datasetsGet = datasets
     .command("get <id>")
-    .description("Get a dataset by ID")
+    .description("Get a dataset's metadata including description, distributions, and license")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -70,15 +78,19 @@ export function registerCatalogCommand(program: Command): void {
 
   addExamples(datasetsGet, [
     {
-      description: "Get a specific dataset",
+      description: "Inspect a dataset's metadata and distributions",
       command: "geonic catalog datasets get <dataset-id>",
+    },
+    {
+      description: "View dataset details including license and publisher",
+      command: "geonic catalog datasets get urn:ngsi-ld:Dataset:weather-stations",
     },
   ]);
 
   // catalog datasets sample
   const datasetsSample = datasets
     .command("sample <id>")
-    .description("Get sample data for a dataset")
+    .description("Preview sample entities from a dataset to understand its structure and content")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -93,8 +105,12 @@ export function registerCatalogCommand(program: Command): void {
 
   addExamples(datasetsSample, [
     {
-      description: "Get sample data for a dataset",
+      description: "Preview sample entities from a dataset",
       command: "geonic catalog datasets sample <dataset-id>",
+    },
+    {
+      description: "Preview data in table format to quickly assess content",
+      command: "geonic catalog datasets sample <dataset-id> --format table",
     },
   ]);
 }

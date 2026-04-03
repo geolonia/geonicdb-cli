@@ -7,12 +7,12 @@ import { addExamples } from "../help.js";
 export function registerPoliciesCommand(parent: Command): void {
   const policies = parent
     .command("policies")
-    .description("Manage policies");
+    .description("Manage XACML access control policies");
 
   // policies list
   const list = policies
     .command("list")
-    .description("List all policies")
+    .description("List all access control policies, showing their status and priority")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -27,12 +27,16 @@ export function registerPoliciesCommand(parent: Command): void {
       description: "List all policies",
       command: "geonic admin policies list",
     },
+    {
+      description: "List policies in table format for an overview",
+      command: "geonic admin policies list --format table",
+    },
   ]);
 
   // policies get
   const get = policies
     .command("get <id>")
-    .description("Get a policy by ID")
+    .description("Get a policy's full details — target rules, effect, priority, and status")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -47,7 +51,7 @@ export function registerPoliciesCommand(parent: Command): void {
 
   addExamples(get, [
     {
-      description: "Get a policy by ID",
+      description: "Inspect a policy's rules and target configuration",
       command: "geonic admin policies get <policy-id>",
     },
   ]);
@@ -55,6 +59,7 @@ export function registerPoliciesCommand(parent: Command): void {
   // policies create
   const create = policies
     .command("create [json]")
+    .summary("Create a new policy")
     .description(
       "Create a new policy\n\n" +
         "JSON payload examples:\n\n" +
@@ -127,6 +132,7 @@ export function registerPoliciesCommand(parent: Command): void {
   // policies update
   const update = policies
     .command("update <id> [json]")
+    .summary("Update a policy")
     .description(
       "Update a policy\n\n" +
         "JSON payload: only specified fields are updated.\n" +
@@ -167,7 +173,7 @@ export function registerPoliciesCommand(parent: Command): void {
   // policies delete
   const del = policies
     .command("delete <id>")
-    .description("Delete a policy")
+    .description("Delete a policy. Users or API keys referencing this policy will lose the access it granted")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -181,7 +187,7 @@ export function registerPoliciesCommand(parent: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete a policy",
+      description: "Delete a policy by ID",
       command: "geonic admin policies delete <policy-id>",
     },
   ]);
@@ -189,7 +195,7 @@ export function registerPoliciesCommand(parent: Command): void {
   // policies activate
   const activate = policies
     .command("activate <id>")
-    .description("Activate a policy")
+    .description("Activate a policy so its access control rules are enforced")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -203,7 +209,7 @@ export function registerPoliciesCommand(parent: Command): void {
 
   addExamples(activate, [
     {
-      description: "Activate a policy",
+      description: "Enable a policy to start enforcing its rules",
       command: "geonic admin policies activate <policy-id>",
     },
   ]);
@@ -211,7 +217,7 @@ export function registerPoliciesCommand(parent: Command): void {
   // policies deactivate
   const deactivate = policies
     .command("deactivate <id>")
-    .description("Deactivate a policy")
+    .description("Deactivate a policy, suspending its rules without deleting it")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -225,7 +231,7 @@ export function registerPoliciesCommand(parent: Command): void {
 
   addExamples(deactivate, [
     {
-      description: "Deactivate a policy",
+      description: "Temporarily disable a policy without deleting it",
       command: "geonic admin policies deactivate <policy-id>",
     },
   ]);

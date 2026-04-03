@@ -29,6 +29,10 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
       description: "List your OAuth clients",
       command: "geonic me oauth-clients list",
     },
+    {
+      description: "List in table format for a quick overview",
+      command: "geonic me oauth-clients list --format table",
+    },
   ]);
 
   // oauth-clients create
@@ -197,7 +201,7 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
   // oauth-clients delete
   const del = oauthClients
     .command("delete <id>")
-    .description("Delete an OAuth client")
+    .description("Delete an OAuth client and revoke its credentials")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -211,15 +215,19 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete an OAuth client",
+      description: "Delete an OAuth client by ID",
       command: "geonic me oauth-clients delete <client-id>",
+    },
+    {
+      description: "Revoke a compromised client",
+      command: "geonic me oauth-clients delete abc123-def456",
     },
   ]);
 
   // oauth-clients regenerate-secret
   const regenerateSecret = oauthClients
     .command("regenerate-secret <clientId>")
-    .description("Regenerate the client secret of an OAuth client")
+    .description("Regenerate the client secret — the old secret is immediately invalidated")
     .action(
       withErrorHandler(async (clientId: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -238,6 +246,10 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
     {
       description: "Regenerate client secret",
       command: "geonic me oauth-clients regenerate-secret <client-id>",
+    },
+    {
+      description: "Rotate secret after a security incident",
+      command: "geonic me oauth-clients regenerate-secret abc123-def456",
     },
   ]);
 }

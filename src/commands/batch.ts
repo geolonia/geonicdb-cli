@@ -17,6 +17,7 @@ export function registerBatchCommand(program: Command): void {
   // batch create
   const create = batch
     .command("create [json]")
+    .summary("Batch create entities")
     .description(
       "Batch create entities\n\n" +
         "JSON payload: an array of NGSI-LD entities.\n" +
@@ -51,6 +52,7 @@ export function registerBatchCommand(program: Command): void {
   // batch upsert
   const upsert = batch
     .command("upsert [json]")
+    .summary("Batch upsert entities")
     .description(
       "Batch upsert entities\n\n" +
         "JSON payload: an array of NGSI-LD entities.\n" +
@@ -85,6 +87,7 @@ export function registerBatchCommand(program: Command): void {
   // batch update
   const update = batch
     .command("update [json]")
+    .summary("Batch update entity attributes")
     .description(
       "Batch update entity attributes\n\n" +
         "JSON payload: an array of NGSI-LD entities with attributes to update.\n" +
@@ -115,6 +118,7 @@ export function registerBatchCommand(program: Command): void {
   // batch delete
   const del = batch
     .command("delete [json]")
+    .summary("Batch delete entities by ID")
     .description(
       "Batch delete entities by ID\n\n" +
         'JSON payload: an array of entity ID strings.\n' +
@@ -149,6 +153,7 @@ export function registerBatchCommand(program: Command): void {
   // batch query
   const query = batch
     .command("query [json]")
+    .summary("Query entities by posting a query payload")
     .description(
       "Query entities by posting a query payload\n\n" +
         "JSON payload example:\n" +
@@ -187,6 +192,7 @@ export function registerBatchCommand(program: Command): void {
   // batch merge
   const merge = batch
     .command("merge [json]")
+    .summary("Batch merge-patch entities")
     .description(
       "Batch merge-patch entities\n\n" +
         "JSON payload: an array of NGSI-LD entities.\n" +

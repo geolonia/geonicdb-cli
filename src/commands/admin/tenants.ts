@@ -12,7 +12,7 @@ export function registerTenantsCommand(parent: Command): void {
   // tenants list
   const list = tenants
     .command("list")
-    .description("List all tenants")
+    .description("List all tenants in the system, including their status and configuration")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -27,12 +27,16 @@ export function registerTenantsCommand(parent: Command): void {
       description: "List all tenants",
       command: "geonic admin tenants list",
     },
+    {
+      description: "List tenants in table format",
+      command: "geonic admin tenants list --format table",
+    },
   ]);
 
   // tenants get
   const get = tenants
     .command("get <id>")
-    .description("Get a tenant by ID")
+    .description("Get a tenant's details — name, description, status, and creation date")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -47,14 +51,19 @@ export function registerTenantsCommand(parent: Command): void {
 
   addExamples(get, [
     {
-      description: "Get a tenant by ID",
+      description: "Get tenant details by ID",
       command: "geonic admin tenants get <tenant-id>",
+    },
+    {
+      description: "Get tenant details in table format",
+      command: "geonic admin tenants get <tenant-id> --format table",
     },
   ]);
 
   // tenants create
   const create = tenants
     .command("create [json]")
+    .summary("Create a new tenant")
     .description(
       "Create a new tenant\n\n" +
         "JSON payload example:\n" +
@@ -102,6 +111,7 @@ export function registerTenantsCommand(parent: Command): void {
   // tenants update
   const update = tenants
     .command("update <id> [json]")
+    .summary("Update a tenant")
     .description(
       "Update a tenant\n\n" +
         "JSON payload: only specified fields are updated.\n" +
@@ -150,7 +160,7 @@ export function registerTenantsCommand(parent: Command): void {
   // tenants delete
   const del = tenants
     .command("delete <id>")
-    .description("Delete a tenant")
+    .description("Permanently delete a tenant and all its associated data. This action cannot be undone")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -164,15 +174,19 @@ export function registerTenantsCommand(parent: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete a tenant",
+      description: "Delete a tenant by ID",
       command: "geonic admin tenants delete <tenant-id>",
+    },
+    {
+      description: "Delete with verbose output to confirm",
+      command: "geonic admin tenants delete <tenant-id> --verbose",
     },
   ]);
 
   // tenants activate
   const activate = tenants
     .command("activate <id>")
-    .description("Activate a tenant")
+    .description("Activate a tenant, restoring API access for all its users")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -186,7 +200,7 @@ export function registerTenantsCommand(parent: Command): void {
 
   addExamples(activate, [
     {
-      description: "Activate a tenant",
+      description: "Activate a deactivated tenant",
       command: "geonic admin tenants activate <tenant-id>",
     },
   ]);
@@ -194,7 +208,7 @@ export function registerTenantsCommand(parent: Command): void {
   // tenants deactivate
   const deactivate = tenants
     .command("deactivate <id>")
-    .description("Deactivate a tenant")
+    .description("Deactivate a tenant, blocking API access for all its users until reactivated")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -208,7 +222,7 @@ export function registerTenantsCommand(parent: Command): void {
 
   addExamples(deactivate, [
     {
-      description: "Deactivate a tenant",
+      description: "Deactivate a tenant to temporarily suspend access",
       command: "geonic admin tenants deactivate <tenant-id>",
     },
   ]);

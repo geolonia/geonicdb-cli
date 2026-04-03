@@ -12,7 +12,7 @@ export function registerUsersCommand(parent: Command): void {
   // users list
   const list = users
     .command("list")
-    .description("List all users")
+    .description("List all users across tenants, showing email, role, and status")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -27,12 +27,20 @@ export function registerUsersCommand(parent: Command): void {
       description: "List all users",
       command: "geonic admin users list",
     },
+    {
+      description: "List users in table format",
+      command: "geonic admin users list --format table",
+    },
+    {
+      description: "List users for a specific tenant",
+      command: "geonic admin users list --service <tenant-id>",
+    },
   ]);
 
   // users get
   const get = users
     .command("get <id>")
-    .description("Get a user by ID")
+    .description("Get a user's details — email, role, tenant, status, and login history")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -47,14 +55,19 @@ export function registerUsersCommand(parent: Command): void {
 
   addExamples(get, [
     {
-      description: "Get a user by ID",
+      description: "Inspect a user's account details",
       command: "geonic admin users get <user-id>",
+    },
+    {
+      description: "Get user details in table format",
+      command: "geonic admin users get <user-id> --format table",
     },
   ]);
 
   // users create
   const create = users
     .command("create [json]")
+    .summary("Create a new user")
     .description(
       "Create a new user\n\n" +
         "JSON payload example:\n" +
@@ -102,6 +115,7 @@ export function registerUsersCommand(parent: Command): void {
   // users update
   const update = users
     .command("update <id> [json]")
+    .summary("Update a user")
     .description(
       "Update a user\n\n" +
         "JSON payload: only specified fields are updated.\n" +
@@ -142,7 +156,7 @@ export function registerUsersCommand(parent: Command): void {
   // users delete
   const del = users
     .command("delete <id>")
-    .description("Delete a user")
+    .description("Permanently delete a user account. This revokes all access and cannot be undone")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -156,15 +170,19 @@ export function registerUsersCommand(parent: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete a user",
+      description: "Delete a user by ID",
       command: "geonic admin users delete <user-id>",
+    },
+    {
+      description: "Delete with verbose output",
+      command: "geonic admin users delete <user-id> --verbose",
     },
   ]);
 
   // users activate
   const activate = users
     .command("activate <id>")
-    .description("Activate a user")
+    .description("Activate a user account, allowing them to log in and access the API")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -178,7 +196,7 @@ export function registerUsersCommand(parent: Command): void {
 
   addExamples(activate, [
     {
-      description: "Activate a user",
+      description: "Activate a deactivated user",
       command: "geonic admin users activate <user-id>",
     },
   ]);
@@ -186,7 +204,7 @@ export function registerUsersCommand(parent: Command): void {
   // users deactivate
   const deactivate = users
     .command("deactivate <id>")
-    .description("Deactivate a user")
+    .description("Deactivate a user account, preventing login until reactivated")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -200,7 +218,7 @@ export function registerUsersCommand(parent: Command): void {
 
   addExamples(deactivate, [
     {
-      description: "Deactivate a user",
+      description: "Deactivate a user to suspend their access",
       command: "geonic admin users deactivate <user-id>",
     },
   ]);
@@ -208,7 +226,7 @@ export function registerUsersCommand(parent: Command): void {
   // users unlock
   const unlock = users
     .command("unlock <id>")
-    .description("Unlock a user")
+    .description("Unlock a user account that was locked due to repeated failed login attempts")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);

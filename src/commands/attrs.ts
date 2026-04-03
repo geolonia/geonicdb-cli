@@ -13,7 +13,7 @@ export function addAttrsSubcommands(attrs: Command): void {
   // attrs list
   const list = attrs
     .command("list")
-    .description("List all attributes of an entity")
+    .description("List all attributes of an entity, returning each attribute's type, value, and metadata")
     .argument("<entityId>", "Entity ID")
     .action(
       withErrorHandler(
@@ -34,12 +34,21 @@ export function addAttrsSubcommands(attrs: Command): void {
       description: "List all attributes of an entity",
       command: "geonic entities attrs list urn:ngsi-ld:Sensor:001",
     },
+    {
+      description: "List attributes in table format",
+      command: "geonic entities attrs list urn:ngsi-ld:Sensor:001 --format table",
+    },
+    {
+      description: "List attributes with keyValues output",
+      command:
+        "geonic entities attrs list urn:ngsi-ld:Building:store01 --format json",
+    },
   ]);
 
   // attrs get
   const get = attrs
     .command("get")
-    .description("Get a specific attribute of an entity")
+    .description("Get the value and metadata of a single attribute on an entity")
     .argument("<entityId>", "Entity ID")
     .argument("<attrName>", "Attribute name")
     .action(
@@ -63,14 +72,24 @@ export function addAttrsSubcommands(attrs: Command): void {
 
   addExamples(get, [
     {
-      description: "Get a specific attribute",
+      description: "Get the temperature attribute of a sensor",
       command: "geonic entities attrs get urn:ngsi-ld:Sensor:001 temperature",
+    },
+    {
+      description: "Get a Relationship attribute to see what it links to",
+      command: "geonic entities attrs get urn:ngsi-ld:Building:store01 owner",
+    },
+    {
+      description: "Get an attribute in table format",
+      command:
+        "geonic entities attrs get urn:ngsi-ld:Sensor:001 location --format table",
     },
   ]);
 
   // attrs add
   const add = attrs
     .command("add")
+    .summary("Add attributes to an entity")
     .description(
       "Add attributes to an entity\n\n" +
         "JSON payload example:\n" +
@@ -116,6 +135,7 @@ export function addAttrsSubcommands(attrs: Command): void {
   // attrs update
   const attrUpdate = attrs
     .command("update")
+    .summary("Update a specific attribute of an entity")
     .description(
       "Update a specific attribute of an entity\n\n" +
         "JSON payload example:\n" +
@@ -159,7 +179,7 @@ export function addAttrsSubcommands(attrs: Command): void {
   // attrs delete
   const del = attrs
     .command("delete")
-    .description("Delete a specific attribute from an entity")
+    .description("Remove an attribute from an entity permanently")
     .argument("<entityId>", "Entity ID")
     .argument("<attrName>", "Attribute name")
     .action(
@@ -182,9 +202,14 @@ export function addAttrsSubcommands(attrs: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete a specific attribute",
+      description: "Remove the temperature attribute from a sensor",
       command:
         "geonic entities attrs delete urn:ngsi-ld:Sensor:001 temperature",
+    },
+    {
+      description: "Remove a deprecated attribute from a building entity",
+      command:
+        "geonic entities attrs delete urn:ngsi-ld:Building:store01 legacyCode",
     },
   ]);
 }

@@ -82,6 +82,10 @@ export function addMeApiKeysSubcommand(me: Command): void {
       description: "List your API keys",
       command: "geonic me api-keys list",
     },
+    {
+      description: "List in table format for a quick overview",
+      command: "geonic me api-keys list --format table",
+    },
   ]);
 
   // api-keys create
@@ -329,7 +333,7 @@ export function addMeApiKeysSubcommand(me: Command): void {
   // api-keys delete
   const del = apiKeys
     .command("delete <keyId>")
-    .description("Delete an API key")
+    .description("Delete an API key — immediately revokes access for any client using it")
     .action(
       withErrorHandler(async (keyId: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -343,8 +347,12 @@ export function addMeApiKeysSubcommand(me: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete an API key",
+      description: "Delete an API key by ID",
       command: "geonic me api-keys delete <key-id>",
+    },
+    {
+      description: "Revoke a leaked or unused key",
+      command: "geonic me api-keys delete abc123-def456",
     },
   ]);
 }

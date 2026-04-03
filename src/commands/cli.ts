@@ -265,7 +265,7 @@ export function registerCliCommand(program: Command): void {
 
   const version = cli
     .command("version")
-    .description("Display the CLI version")
+    .description("Display the currently installed CLI version")
     .action(() => {
       const require = createRequire(import.meta.url);
       const pkg = require("../package.json") as { version: string };
@@ -274,14 +274,18 @@ export function registerCliCommand(program: Command): void {
 
   addExamples(version, [
     {
-      description: "Show CLI version",
+      description: "Show the installed version",
       command: "geonic cli version",
+    },
+    {
+      description: "Use in scripts to check the installed version",
+      command: 'echo "geonic $(geonic cli version)"',
     },
   ]);
 
   const update = cli
     .command("update")
-    .description("Update the CLI to the latest version")
+    .description("Update the CLI to the latest version via npm (requires global install)")
     .action(
       withErrorHandler(async (...args: unknown[]) => {
         const cmd = args[args.length - 1] as Command;
@@ -301,6 +305,10 @@ export function registerCliCommand(program: Command): void {
     {
       description: "Update CLI to the latest version",
       command: "geonic cli update",
+    },
+    {
+      description: "Preview the update command without executing it",
+      command: "geonic cli update --dry-run",
     },
   ]);
 }

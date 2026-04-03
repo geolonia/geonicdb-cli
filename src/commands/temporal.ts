@@ -189,6 +189,7 @@ export function registerTemporalCommand(program: Command): void {
   // temporal entities create
   const create = entities
     .command("create [json]")
+    .summary("Create a temporal entity")
     .description(
       "Create a temporal entity\n\n" +
         "JSON payload: an NGSI-LD entity with temporal attribute instances.\n" +
@@ -214,13 +215,17 @@ export function registerTemporalCommand(program: Command): void {
   // temporal entities delete
   const del = entities
     .command("delete <id>")
-    .description("Delete a temporal entity by ID")
+    .description("Delete a temporal entity and all its historical attribute data")
     .action(createDeleteAction());
 
   addExamples(del, [
     {
       description: "Delete temporal data for an entity",
       command: "geonic temporal entities delete urn:ngsi-ld:Sensor:001",
+    },
+    {
+      description: "Remove all historical records for a specific entity",
+      command: "geonic temporal entities delete urn:ngsi-ld:WeatherStation:tokyo-01",
     },
   ]);
 

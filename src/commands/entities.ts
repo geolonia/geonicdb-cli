@@ -167,6 +167,7 @@ export function registerEntitiesCommand(program: Command): void {
   // entities create
   const create = entities
     .command("create")
+    .summary("Create a new entity")
     .description(
       "Create a new entity\n\n" +
         "JSON payload example:\n" +
@@ -213,6 +214,7 @@ export function registerEntitiesCommand(program: Command): void {
   // entities update
   const update = entities
     .command("update")
+    .summary("Update attributes of an entity (PATCH)")
     .description(
       "Update attributes of an entity (PATCH)\n\n" +
         "JSON payload: only specified attributes are modified.\n" +
@@ -254,6 +256,7 @@ export function registerEntitiesCommand(program: Command): void {
   // entities replace
   const replace = entities
     .command("replace")
+    .summary("Replace all attributes of an entity (PUT)")
     .description(
       "Replace all attributes of an entity (PUT)\n\n" +
         "JSON payload: all existing attributes are replaced.\n" +
@@ -320,7 +323,7 @@ export function registerEntitiesCommand(program: Command): void {
   // entities delete
   const del = entities
     .command("delete")
-    .description("Delete an entity by ID")
+    .description("Permanently delete an entity and all its attributes")
     .argument("<id>", "Entity ID")
     .action(
       withErrorHandler(async (id: string, _opts: unknown, cmd: Command) => {
@@ -335,6 +338,10 @@ export function registerEntitiesCommand(program: Command): void {
     {
       description: "Delete an entity by ID",
       command: "geonic entities delete urn:ngsi-ld:Sensor:001",
+    },
+    {
+      description: "Delete with explicit service tenant",
+      command: "geonic entities delete urn:ngsi-ld:Sensor:001 --service my-tenant",
     },
   ]);
 

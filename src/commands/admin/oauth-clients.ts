@@ -12,7 +12,7 @@ export function registerOAuthClientsCommand(parent: Command): void {
   // oauth-clients list
   const list = oauthClients
     .command("list")
-    .description("List all OAuth clients")
+    .description("List all registered OAuth clients and their configurations")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -27,12 +27,16 @@ export function registerOAuthClientsCommand(parent: Command): void {
       description: "List all OAuth clients",
       command: "geonic admin oauth-clients list",
     },
+    {
+      description: "List OAuth clients in table format",
+      command: "geonic admin oauth-clients list --format table",
+    },
   ]);
 
   // oauth-clients get
   const get = oauthClients
     .command("get <id>")
-    .description("Get an OAuth client by ID")
+    .description("Get an OAuth client's details — name, client ID, policy, and redirect URIs")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -47,7 +51,7 @@ export function registerOAuthClientsCommand(parent: Command): void {
 
   addExamples(get, [
     {
-      description: "Get an OAuth client by ID",
+      description: "Inspect an OAuth client's configuration",
       command: "geonic admin oauth-clients get <client-id>",
     },
   ]);
@@ -55,6 +59,7 @@ export function registerOAuthClientsCommand(parent: Command): void {
   // oauth-clients create
   const create = oauthClients
     .command("create [json]")
+    .summary("Create a new OAuth client")
     .description(
       "Create a new OAuth client\n\n" +
         "JSON payload example:\n" +
@@ -94,6 +99,7 @@ export function registerOAuthClientsCommand(parent: Command): void {
   // oauth-clients update
   const update = oauthClients
     .command("update <id> [json]")
+    .summary("Update an OAuth client")
     .description(
       "Update an OAuth client\n\n" +
         "JSON payload: only specified fields are updated.\n" +
@@ -134,7 +140,7 @@ export function registerOAuthClientsCommand(parent: Command): void {
   // oauth-clients delete
   const del = oauthClients
     .command("delete <id>")
-    .description("Delete an OAuth client")
+    .description("Delete an OAuth client. Existing tokens issued by this client will be invalidated")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -148,7 +154,7 @@ export function registerOAuthClientsCommand(parent: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete an OAuth client",
+      description: "Delete an OAuth client by ID",
       command: "geonic admin oauth-clients delete <client-id>",
     },
   ]);
@@ -157,12 +163,12 @@ export function registerOAuthClientsCommand(parent: Command): void {
 export function registerCaddeCommand(parent: Command): void {
   const cadde = parent
     .command("cadde")
-    .description("Manage CADDE configuration");
+    .description("Manage CADDE (data exchange) configuration for cross-platform data sharing");
 
   // cadde get
   const caddeGet = cadde
     .command("get")
-    .description("Get CADDE configuration")
+    .description("Get the current CADDE data exchange configuration (provider, endpoint, etc.)")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -174,14 +180,19 @@ export function registerCaddeCommand(parent: Command): void {
 
   addExamples(caddeGet, [
     {
-      description: "Get CADDE configuration",
+      description: "View current CADDE configuration",
       command: "geonic admin cadde get",
+    },
+    {
+      description: "View CADDE configuration in table format",
+      command: "geonic admin cadde get --format table",
     },
   ]);
 
   // cadde set
   const caddeSet = cadde
     .command("set [json]")
+    .summary("Set CADDE configuration")
     .description(
       "Set CADDE configuration\n\n" +
         "JSON payload example:\n" +
@@ -221,7 +232,7 @@ export function registerCaddeCommand(parent: Command): void {
   // cadde delete
   const caddeDelete = cadde
     .command("delete")
-    .description("Delete CADDE configuration")
+    .description("Remove the CADDE data exchange configuration, disabling cross-platform data sharing")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -232,7 +243,7 @@ export function registerCaddeCommand(parent: Command): void {
 
   addExamples(caddeDelete, [
     {
-      description: "Delete CADDE configuration",
+      description: "Remove CADDE configuration",
       command: "geonic admin cadde delete",
     },
   ]);
