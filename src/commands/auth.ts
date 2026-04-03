@@ -196,7 +196,7 @@ function createLoginCommand(): Command {
 
 function createLogoutCommand(): Command {
   return new Command("logout")
-    .description("Clear saved authentication token")
+    .description("Clear saved authentication token and notify the server")
     .action(
       withErrorHandler(async (...args: unknown[]) => {
         const cmd = args[args.length - 1] as Command;
@@ -291,7 +291,7 @@ async function fetchNonce(
 
 function createNonceCommand(): Command {
   return new Command("nonce")
-    .description("Get a nonce and PoW challenge for API key authentication")
+    .description("Request a nonce and Proof-of-Work challenge (step 1 of API key to JWT exchange)")
     .option("--api-key <key>", "API key to get nonce for")
     .action(
       withErrorHandler(async (...args: unknown[]) => {
@@ -344,7 +344,7 @@ function solvePoW(challenge: string, difficulty: number): number {
 
 function createTokenExchangeCommand(): Command {
   return new Command("token-exchange")
-    .description("Exchange API key for a session JWT via nonce + PoW")
+    .description("Exchange an API key for a session JWT (fetches nonce, solves PoW, returns token)")
     .option("--api-key <key>", "API key to exchange")
     .option("--save", "Save the obtained token to profile config")
     .action(
@@ -449,6 +449,10 @@ export function registerAuthCommands(program: Command): void {
       description: "Clear saved authentication token",
       command: "geonic auth logout",
     },
+    {
+      description: "Logout from a specific profile",
+      command: "geonic auth logout --profile staging",
+    },
   ]);
   auth.addCommand(logout);
 
@@ -458,14 +462,26 @@ export function registerAuthCommands(program: Command): void {
       description: "Get a nonce for API key authentication",
       command: "geonic auth nonce --api-key gdb_abcdef...",
     },
+    {
+      description: "Use a pre-configured API key",
+      command: "geonic auth nonce",
+    },
   ]);
   auth.addCommand(nonce);
 
   const tokenExchange = createTokenExchangeCommand();
   addExamples(tokenExchange, [
     {
-      description: "Exchange API key for a JWT and save it",
+      description: "Exchange API key for a JWT and save it to the active profile",
       command: "geonic auth token-exchange --api-key gdb_abcdef... --save",
+    },
+    {
+      description: "Exchange and print the JWT without saving",
+      command: "geonic auth token-exchange --api-key gdb_abcdef...",
+    },
+    {
+      description: "Use a pre-configured API key and save the resulting token",
+      command: "geonic auth token-exchange --save",
     },
   ]);
   auth.addCommand(tokenExchange);

@@ -14,11 +14,11 @@ import { getTokenStatus } from "../token.js";
 import { addExamples } from "./help.js";
 
 export function registerProfileCommands(program: Command): void {
-  const profile = program.command("profile").description("Manage connection profiles");
+  const profile = program.command("profile").description("Manage connection profiles (each profile stores its own URL, token, and tenant)");
 
   const list = profile
     .command("list")
-    .description("List all profiles")
+    .description("List all profiles (active profile marked with *)")
     .action(() => {
       const profiles = listProfiles();
       for (const p of profiles) {
@@ -89,11 +89,15 @@ export function registerProfileCommands(program: Command): void {
       description: "Switch to staging profile",
       command: "geonic profile use staging",
     },
+    {
+      description: "Switch to production profile",
+      command: "geonic profile use production",
+    },
   ]);
 
   const profileCreate = profile
     .command("create <name>")
-    .description("Create a new profile")
+    .description("Create a new named profile for a separate environment or tenant")
     .action((name: string) => {
       try {
         createProfile(name);
@@ -109,11 +113,15 @@ export function registerProfileCommands(program: Command): void {
       description: "Create a new profile for staging",
       command: "geonic profile create staging",
     },
+    {
+      description: "Create a profile for a different tenant",
+      command: "geonic profile create tenant-b",
+    },
   ]);
 
   const del = profile
     .command("delete <name>")
-    .description("Delete a profile")
+    .description("Delete a profile and its stored configuration")
     .action((name: string) => {
       try {
         deleteProfile(name);
@@ -126,14 +134,14 @@ export function registerProfileCommands(program: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete a profile",
+      description: "Delete the staging profile",
       command: "geonic profile delete staging",
     },
   ]);
 
   const show = profile
     .command("show [name]")
-    .description("Show profile settings")
+    .description("Show profile settings (URL, tenant, token status, etc.)")
     .action((name?: string) => {
       const profileName = name ?? getCurrentProfile();
       const config = loadConfig(profileName);

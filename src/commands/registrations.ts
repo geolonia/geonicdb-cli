@@ -52,7 +52,7 @@ export function registerRegistrationsCommand(program: Command): void {
   // registrations get
   const get = registrations
     .command("get <id>")
-    .description("Get a registration by ID")
+    .description("Get a registration by ID to inspect its federation endpoint and entity routing")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -67,9 +67,14 @@ export function registerRegistrationsCommand(program: Command): void {
 
   addExamples(get, [
     {
-      description: "Get registration by ID",
+      description: "Get registration details by ID",
       command:
         "geonic registrations get urn:ngsi-ld:ContextSourceRegistration:001",
+    },
+    {
+      description: "Inspect federation config in table format",
+      command:
+        "geonic registrations get urn:ngsi-ld:ContextSourceRegistration:001 --format table",
     },
   ]);
 
@@ -151,7 +156,7 @@ export function registerRegistrationsCommand(program: Command): void {
   // registrations delete
   const del = registrations
     .command("delete <id>")
-    .description("Delete a registration")
+    .description("Delete a registration and remove its forwarding rule")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -165,9 +170,14 @@ export function registerRegistrationsCommand(program: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete a registration",
+      description: "Delete a registration by ID",
       command:
         "geonic registrations delete urn:ngsi-ld:ContextSourceRegistration:001",
+    },
+    {
+      description: "Remove forwarding rule (using alias)",
+      command:
+        "geonic reg delete urn:ngsi-ld:ContextSourceRegistration:001",
     },
   ]);
 }

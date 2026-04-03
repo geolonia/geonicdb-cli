@@ -56,7 +56,7 @@ export function registerSubscriptionsCommand(program: Command): void {
   // subscriptions get
   const get = subscriptions
     .command("get <id>")
-    .description("Get a subscription by ID")
+    .description("Get a subscription by ID to inspect its notification config, watched attributes, and status")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -71,8 +71,12 @@ export function registerSubscriptionsCommand(program: Command): void {
 
   addExamples(get, [
     {
-      description: "Get subscription by ID",
+      description: "Get subscription details by ID",
       command: "geonic subscriptions get urn:ngsi-ld:Subscription:001",
+    },
+    {
+      description: "Inspect notification endpoint and status in table format",
+      command: "geonic subscriptions get urn:ngsi-ld:Subscription:001 --format table",
     },
   ]);
 
@@ -163,7 +167,7 @@ export function registerSubscriptionsCommand(program: Command): void {
   // subscriptions delete
   const del = subscriptions
     .command("delete <id>")
-    .description("Delete a subscription")
+    .description("Delete a subscription and stop its notifications")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -177,8 +181,12 @@ export function registerSubscriptionsCommand(program: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete a subscription",
+      description: "Delete a subscription by ID",
       command: "geonic subscriptions delete urn:ngsi-ld:Subscription:001",
+    },
+    {
+      description: "Stop notifications by removing the subscription (using alias)",
+      command: "geonic sub delete urn:ngsi-ld:Subscription:001",
     },
   ]);
 }

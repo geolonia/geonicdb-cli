@@ -320,7 +320,7 @@ export function registerEntitiesCommand(program: Command): void {
   // entities delete
   const del = entities
     .command("delete")
-    .description("Delete an entity by ID")
+    .description("Permanently delete an entity and all its attributes")
     .argument("<id>", "Entity ID")
     .action(
       withErrorHandler(async (id: string, _opts: unknown, cmd: Command) => {
@@ -335,6 +335,10 @@ export function registerEntitiesCommand(program: Command): void {
     {
       description: "Delete an entity by ID",
       command: "geonic entities delete urn:ngsi-ld:Sensor:001",
+    },
+    {
+      description: "Delete with explicit service tenant",
+      command: "geonic entities delete urn:ngsi-ld:Sensor:001 --service my-tenant",
     },
   ]);
 

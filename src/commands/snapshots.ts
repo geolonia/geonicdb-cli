@@ -11,12 +11,12 @@ import { addExamples } from "./help.js";
 export function registerSnapshotsCommand(program: Command): void {
   const snapshots = program
     .command("snapshots")
-    .description("Manage snapshots");
+    .description("Manage point-in-time snapshots of entity data for backup and cloning");
 
   // snapshots list
   const list = snapshots
     .command("list")
-    .description("List snapshots")
+    .description("List all available snapshots with their IDs, timestamps, and status")
     .option("--limit <n>", "Maximum number of snapshots to return", parseInt)
     .option("--offset <n>", "Skip first N snapshots", parseInt)
     .action(
@@ -41,15 +41,23 @@ export function registerSnapshotsCommand(program: Command): void {
       command: "geonic snapshots list",
     },
     {
-      description: "List with a limit",
+      description: "List the 10 most recent snapshots",
       command: "geonic snapshots list --limit 10",
+    },
+    {
+      description: "Paginate through snapshots",
+      command: "geonic snapshots list --limit 5 --offset 10",
+    },
+    {
+      description: "List snapshots in table format",
+      command: "geonic snapshots list --format table",
     },
   ]);
 
   // snapshots get
   const get = snapshots
     .command("get <id>")
-    .description("Get a snapshot by ID")
+    .description("Retrieve details of a specific snapshot including its status and metadata")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -64,15 +72,19 @@ export function registerSnapshotsCommand(program: Command): void {
 
   addExamples(get, [
     {
-      description: "Get a specific snapshot",
-      command: "geonic snapshots get <snapshot-id>",
+      description: "Get details of a snapshot by its ID",
+      command: "geonic snapshots get abc123",
+    },
+    {
+      description: "Get snapshot details in table format",
+      command: "geonic snapshots get abc123 --format table",
     },
   ]);
 
   // snapshots create
   const create = snapshots
     .command("create")
-    .description("Create a new snapshot")
+    .description("Create a point-in-time snapshot of all current entity data")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -84,15 +96,19 @@ export function registerSnapshotsCommand(program: Command): void {
 
   addExamples(create, [
     {
-      description: "Create a new snapshot",
+      description: "Create a snapshot of the current entity data",
       command: "geonic snapshots create",
+    },
+    {
+      description: "Create a snapshot before performing a bulk update",
+      command: "geonic snapshots create && geonic batch upsert @bulk-update.json",
     },
   ]);
 
   // snapshots delete
   const del = snapshots
     .command("delete <id>")
-    .description("Delete a snapshot by ID")
+    .description("Permanently delete a snapshot to free storage")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -106,15 +122,19 @@ export function registerSnapshotsCommand(program: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete a snapshot",
-      command: "geonic snapshots delete <snapshot-id>",
+      description: "Delete a snapshot by its ID",
+      command: "geonic snapshots delete abc123",
+    },
+    {
+      description: "Delete an old snapshot to reclaim storage",
+      command: "geonic snapshots delete old-backup-id",
     },
   ]);
 
   // snapshots clone
   const clone = snapshots
     .command("clone <id>")
-    .description("Clone a snapshot by ID")
+    .description("Clone a snapshot to create a duplicate for testing or migration")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -133,8 +153,12 @@ export function registerSnapshotsCommand(program: Command): void {
 
   addExamples(clone, [
     {
-      description: "Clone a snapshot",
-      command: "geonic snapshots clone <snapshot-id>",
+      description: "Clone a snapshot for use in a test environment",
+      command: "geonic snapshots clone abc123",
+    },
+    {
+      description: "Clone a production snapshot to a staging profile",
+      command: "geonic snapshots clone abc123 --profile staging",
     },
   ]);
 }

@@ -91,7 +91,7 @@ export function registerConfigCommand(program: Command): void {
 
   const list = config
     .command("list")
-    .description("List all config values")
+    .description("List all config values for the active (or specified) profile")
     .action((...args: unknown[]) => {
       const cmd = args[args.length - 1] as Command;
       const profile = (cmd.optsWithGlobals() as { profile?: string }).profile;
@@ -108,11 +108,15 @@ export function registerConfigCommand(program: Command): void {
       description: "List all configuration values",
       command: "geonic config list",
     },
+    {
+      description: "List config for a specific profile",
+      command: "geonic config list --profile staging",
+    },
   ]);
 
   const del = config
     .command("delete")
-    .description("Delete a config value")
+    .description("Remove a config key from the active (or specified) profile")
     .argument("<key>", "Configuration key")
     .action((...args: unknown[]) => {
       const cmd = args[args.length - 1] as Command;
@@ -124,8 +128,16 @@ export function registerConfigCommand(program: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete a config value",
+      description: "Remove the saved server URL",
       command: "geonic config delete url",
+    },
+    {
+      description: "Clear the saved authentication token",
+      command: "geonic config delete token",
+    },
+    {
+      description: "Remove API key from a specific profile",
+      command: "geonic config delete apiKey --profile staging",
     },
   ]);
 }

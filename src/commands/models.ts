@@ -8,12 +8,12 @@ export function registerModelsCommand(program: Command): void {
   const models = program
     .command("custom-data-models")
     .alias("models")
-    .description("Manage custom data models");
+    .description("Manage custom data models that define entity type schemas and property constraints");
 
   // models list
   const list = models
     .command("list")
-    .description("List all models")
+    .description("List all registered data models for the current tenant")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -25,15 +25,19 @@ export function registerModelsCommand(program: Command): void {
 
   addExamples(list, [
     {
-      description: "List all models",
+      description: "List all data models as JSON",
       command: "geonic models list",
+    },
+    {
+      description: "Browse available data models in table format",
+      command: "geonic models list --format table",
     },
   ]);
 
   // models get
   const get = models
     .command("get <id>")
-    .description("Get a model by ID")
+    .description("Get a data model's full schema including property definitions and constraints")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -48,8 +52,12 @@ export function registerModelsCommand(program: Command): void {
 
   addExamples(get, [
     {
-      description: "Get a specific model",
+      description: "Inspect a model's property definitions",
       command: "geonic models get <model-id>",
+    },
+    {
+      description: "View the schema for a Sensor data model",
+      command: "geonic models get urn:ngsi-ld:DataModel:Sensor",
     },
   ]);
 
@@ -137,7 +145,7 @@ export function registerModelsCommand(program: Command): void {
   // models delete
   const del = models
     .command("delete <id>")
-    .description("Delete a model")
+    .description("Delete a data model definition (does not affect existing entities)")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -151,8 +159,12 @@ export function registerModelsCommand(program: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete a model",
+      description: "Delete a data model by ID",
       command: "geonic models delete <model-id>",
+    },
+    {
+      description: "Remove a deprecated model definition",
+      command: "geonic models delete urn:ngsi-ld:DataModel:LegacySensor",
     },
   ]);
 }

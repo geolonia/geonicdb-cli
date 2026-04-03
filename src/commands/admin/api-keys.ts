@@ -107,7 +107,7 @@ export function registerApiKeysCommand(parent: Command): void {
   // api-keys list
   const list = apiKeys
     .command("list")
-    .description("List all API keys")
+    .description("List all API keys, showing name, tenant, policy, and status (key values are masked)")
     .option("--tenant-id <id>", "Filter by tenant ID")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
@@ -131,6 +131,10 @@ export function registerApiKeysCommand(parent: Command): void {
       command: "geonic admin api-keys list",
     },
     {
+      description: "List API keys in table format",
+      command: "geonic admin api-keys list --format table",
+    },
+    {
       description: "List API keys for a specific tenant",
       command: "geonic admin api-keys list --tenant-id <tenant-id>",
     },
@@ -139,7 +143,7 @@ export function registerApiKeysCommand(parent: Command): void {
   // api-keys get
   const get = apiKeys
     .command("get <keyId>")
-    .description("Get an API key by ID")
+    .description("Get an API key's metadata — name, policy, allowed origins, and rate limit (key value is masked)")
     .action(
       withErrorHandler(async (keyId: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -155,7 +159,7 @@ export function registerApiKeysCommand(parent: Command): void {
 
   addExamples(get, [
     {
-      description: "Get an API key by ID",
+      description: "Inspect an API key's configuration",
       command: "geonic admin api-keys get <key-id>",
     },
   ]);
@@ -346,7 +350,7 @@ export function registerApiKeysCommand(parent: Command): void {
   // api-keys delete
   const del = apiKeys
     .command("delete <keyId>")
-    .description("Delete an API key")
+    .description("Delete an API key. Any requests using this key will be immediately rejected")
     .action(
       withErrorHandler(async (keyId: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -360,7 +364,7 @@ export function registerApiKeysCommand(parent: Command): void {
 
   addExamples(del, [
     {
-      description: "Delete an API key",
+      description: "Delete an API key by ID",
       command: "geonic admin api-keys delete <key-id>",
     },
   ]);
