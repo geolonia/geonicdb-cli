@@ -1,5 +1,8 @@
+import { execSync } from "node:child_process";
 import { createRequire } from "node:module";
 import type { Command, Option } from "commander";
+import { printInfo, printSuccess } from "../output.js";
+import { withErrorHandler, resolveOptions } from "../helpers.js";
 import { addExamples } from "./help.js";
 
 function findOption(
@@ -273,6 +276,31 @@ export function registerCliCommand(program: Command): void {
     {
       description: "Show CLI version",
       command: "geonic cli version",
+    },
+  ]);
+
+  const update = cli
+    .command("update")
+    .description("Update the CLI to the latest version")
+    .action(
+      withErrorHandler(async (...args: unknown[]) => {
+        const cmd = args[args.length - 1] as Command;
+        const opts = resolveOptions(cmd);
+        const updateCommand = "npm update -g @geolonia/geonicdb-cli";
+        if (opts.dryRun) {
+          printInfo(`[dry-run] ${updateCommand}`);
+          return;
+        }
+        printInfo("Updating @geolonia/geonicdb-cli...");
+        execSync(updateCommand, { stdio: "inherit" });
+        printSuccess("Update complete.");
+      }),
+    );
+
+  addExamples(update, [
+    {
+      description: "Update CLI to the latest version",
+      command: "geonic cli update",
     },
   ]);
 }
