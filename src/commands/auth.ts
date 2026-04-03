@@ -95,8 +95,13 @@ function createLoginCommand(): Command {
 
         const client = createClient(cmd);
         const body: Record<string, string> = { email, password };
-        if (loginOpts.tenantId) {
-          body.tenantId = loginOpts.tenantId;
+
+        // --tenant-id takes priority
+        const requestTenantId = loginOpts.tenantId;
+        const serviceFlag = globalOpts.service;
+
+        if (requestTenantId) {
+          body.tenantId = requestTenantId;
         }
 
         const response = await client.rawRequest("POST", "/auth/login", {
@@ -117,12 +122,31 @@ function createLoginCommand(): Command {
         const availableTenants = data.availableTenants as TenantChoice[] | undefined;
         let finalTenantId = data.tenantId as string | undefined;
 
-        if (availableTenants && availableTenants.length > 1 && !loginOpts.tenantId) {
-          const selectedTenantId = await promptTenantSelection(availableTenants, finalTenantId);
-          if (selectedTenantId && selectedTenantId !== finalTenantId) {
+        if (availableTenants && availableTenants.length > 1 && !requestTenantId) {
+          // If --service was provided, resolve tenant by name or ID match
+          let resolvedTenantId: string | undefined;
+          if (serviceFlag) {
+            const match = availableTenants.find(
+              (t) => t.name === serviceFlag || t.tenantId === serviceFlag,
+            );
+            if (match) {
+              resolvedTenantId = match.tenantId;
+            } else {
+              printError(
+                `Tenant "${serviceFlag}" not found. Available: ${availableTenants.map((t) => t.name ?? t.tenantId).join(", ")}`,
+              );
+              process.exit(1);
+            }
+          }
+
+          if (!resolvedTenantId) {
+            resolvedTenantId = await promptTenantSelection(availableTenants, finalTenantId);
+          }
+
+          if (resolvedTenantId && resolvedTenantId !== finalTenantId) {
             // Re-login with selected tenant
             const reloginResponse = await client.rawRequest("POST", "/auth/login", {
-              body: { email, password, tenantId: selectedTenantId },
+              body: { email, password, tenantId: resolvedTenantId },
               skipTenantHeader: true,
             });
             const reloginData = reloginResponse.data as Record<string, unknown>;
@@ -133,7 +157,7 @@ function createLoginCommand(): Command {
             }
             token = newToken;
             refreshToken = reloginData.refreshToken as string | undefined;
-            finalTenantId = selectedTenantId;
+            finalTenantId = resolvedTenantId;
           }
         }
 
@@ -146,12 +170,26 @@ function createLoginCommand(): Command {
         }
         if (finalTenantId) {
           config.service = finalTenantId;
+          config.tenantId = finalTenantId;
         } else {
           delete config.service;
+          delete config.tenantId;
+        }
+        if (availableTenants && availableTenants.length > 0) {
+          config.availableTenants = availableTenants.map((t) => ({
+            tenantId: t.tenantId,
+            ...(t.name ? { name: t.name } : {}),
+            role: t.role,
+          }));
+        } else {
+          delete config.availableTenants;
         }
         saveConfig(config, globalOpts.profile);
 
-        printSuccess("Login successful. Token saved to config.");
+        const tenantLabel = finalTenantId
+          ? ` (tenant: ${availableTenants?.find((t) => t.tenantId === finalTenantId)?.name ?? finalTenantId})`
+          : "";
+        printSuccess(`Login successful${tenantLabel}. Token saved to config.`);
       }),
     );
 }
@@ -395,8 +433,12 @@ export function registerAuthCommands(program: Command): void {
         "geonic auth login --client-credentials --client-id MY_ID --client-secret MY_SECRET",
     },
     {
-      description: "Login to a specific tenant",
+      description: "Login to a specific tenant by ID",
       command: "geonic auth login --tenant-id my-tenant",
+    },
+    {
+      description: "Login to a tenant by name",
+      command: "geonic auth login -s demo_smartcity",
     },
   ]);
   auth.addCommand(login);
