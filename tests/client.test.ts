@@ -966,6 +966,83 @@ describe("GdbClient", () => {
     });
   });
 
+  describe("onBeforeRefresh", () => {
+    it("uses token from config when another process already refreshed", async () => {
+      const onRefresh = vi.fn();
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: "expired-token",
+        refreshToken: "old-refresh",
+        onTokenRefresh: onRefresh,
+        onBeforeRefresh: () => ({
+          token: "fresh-token-from-config",
+          refreshToken: "fresh-refresh-from-config",
+        }),
+      });
+
+      let callCount = 0;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        callCount++;
+        if (callCount === 1) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        return new Response(JSON.stringify([{ id: "Room:001" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+      const result = await client.get("/entities");
+      expect(result.data).toEqual([{ id: "Room:001" }]);
+      // Should NOT have called /auth/refresh — used config token directly
+      expect(onRefresh).not.toHaveBeenCalled();
+      // Only 2 calls: original 401 + retry with fresh token
+      expect(callCount).toBe(2);
+    });
+
+    it("uses latest refreshToken from config when token is the same", async () => {
+      const onRefresh = vi.fn();
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: "expired-token",
+        refreshToken: "stale-refresh",
+        onTokenRefresh: onRefresh,
+        onBeforeRefresh: () => ({
+          token: "expired-token",
+          refreshToken: "latest-refresh-from-config",
+        }),
+      });
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/refresh")) {
+          return new Response(
+            JSON.stringify({ accessToken: "new-token", refreshToken: "new-refresh" }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+      // Will fail because retry also returns 401, but we can verify the refresh used latest token
+      await expect(client.get("/entities")).rejects.toThrow(GdbClientError);
+      expect(onRefresh).toHaveBeenCalledWith("new-token", "new-refresh");
+      // Verify /auth/refresh was called with the latest refreshToken
+      const refreshCall = vi.mocked(fetch).mock.calls.find(
+        (call) => (typeof call[0] === "string" ? call[0] : call[0].toString()).includes("/auth/refresh"),
+      );
+      expect(refreshCall).toBeDefined();
+      const body = JSON.parse(refreshCall![1]!.body as string);
+      expect(body.refreshToken).toBe("latest-refresh-from-config");
+    });
+  });
+
   describe("concurrent refresh deduplication", () => {
     it("reuses the same refresh promise for concurrent 401 retries", async () => {
       const onRefresh = vi.fn();

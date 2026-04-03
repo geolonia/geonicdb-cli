@@ -52,6 +52,12 @@ export function createClient(cmd: Command): GdbClient {
           if (refreshToken) cfg.refreshToken = refreshToken;
           saveConfig(cfg, opts.profile);
         },
+    onBeforeRefresh: usingCliToken
+      ? undefined
+      : () => {
+          const cfg = loadConfig(opts.profile);
+          return { token: cfg.token, refreshToken: cfg.refreshToken };
+        },
     verbose: opts.verbose,
     dryRun: opts.dryRun,
   });
