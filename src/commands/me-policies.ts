@@ -173,7 +173,7 @@ export function addMePoliciesSubcommand(me: Command): void {
   // policies delete
   const del = policies
     .command("delete <policyId>")
-    .description("Delete a personal policy — any API key or OAuth client bound to it loses its access restrictions")
+    .description("Delete a personal policy — any API key or OAuth client bound to it loses access granted by this policy")
     .action(
       withErrorHandler(async (policyId: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);

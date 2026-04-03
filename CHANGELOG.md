@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-04-03
-- **Docs**: 全コマンドの help 内容を充実 — description の具体化、examples の追加（テーブル形式、プロフィルスコープ、ユースケース別の例）、24 ファイル改善
+- **Docs**: 全コマンドの help 内容を充実 — description の具体化、examples の追加（テーブル形式、プロフィルスコープ、ユースケース別の例）、24 ファイル改善 (#96)
 - **Feat**: マルチテナント対応 — ログイン時のテナント名指定 (`-s <テナント名>`)、`tenantId` / `availableTenants` の config 保存、`profile use` 時のトークン自動リフレッシュ (#90)
 - **Feat**: `geonic cli update` コマンドを追加 — `npm update -g` のエイリアスとして CLI を最新版に更新可能に (#94)
 - **Fix**: 複数ターミナルで同一プロファイルを使用時、refresh token rotation によりセッションが無効化される問題を修正 — トークンリフレッシュ前に config を再読み込みし、別プロセスが既にリフレッシュ済みならそのトークンを使用する (#93)
