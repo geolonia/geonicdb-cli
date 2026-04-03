@@ -491,6 +491,129 @@ describe("auth commands", () => {
         "default",
       );
     });
+
+    it("saves tenantId and availableTenants to config", async () => {
+      const tenants = [
+        { tenantId: "city_a", name: "Smart City A", role: "tenant_admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok", tenantId: "city_a", availableTenants: tenants }),
+      );
+      vi.mocked(promptTenantSelection).mockResolvedValue(undefined);
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "city_a",
+          availableTenants: [
+            { tenantId: "city_a", name: "Smart City A", role: "tenant_admin" },
+            { tenantId: "city_b", role: "user" },
+          ],
+        }),
+        "default",
+      );
+    });
+
+    it("resolves tenant by name via --service flag", async () => {
+      const tenants = [
+        { tenantId: "tid-aaa", name: "demo_smartcity", role: "tenant_admin" },
+        { tenantId: "tid-bbb", name: "demo_bousai", role: "user" },
+      ];
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "http://localhost:3000",
+        profile: "default",
+        token: "test-token",
+        format: "json",
+        service: "demo_bousai",
+      } as never);
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-a", tenantId: "tid-aaa", availableTenants: tenants }),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-b", refreshToken: "ref-b", tenantId: "tid-bbb" }),
+        );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      // Should NOT prompt — resolved by --service name
+      expect(promptTenantSelection).not.toHaveBeenCalled();
+      // Should re-login with resolved tenantId
+      expect(client.rawRequest).toHaveBeenLastCalledWith("POST", "/auth/login", {
+        body: { email: "user@example.com", password: "pass123", tenantId: "tid-bbb" },
+        skipTenantHeader: true,
+      });
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "tok-b", service: "tid-bbb", tenantId: "tid-bbb" }),
+        "default",
+      );
+    });
+
+    it("resolves tenant by tenantId via --service flag", async () => {
+      const tenants = [
+        { tenantId: "city_a", role: "tenant_admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "http://localhost:3000",
+        profile: "default",
+        token: "test-token",
+        format: "json",
+        service: "city_b",
+      } as never);
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-a", tenantId: "city_a", availableTenants: tenants }),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-b", tenantId: "city_b" }),
+        );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      expect(promptTenantSelection).not.toHaveBeenCalled();
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "tok-b", service: "city_b" }),
+        "default",
+      );
+    });
+
+    it("prints error when --service tenant name not found", async () => {
+      const tenants = [
+        { tenantId: "city_a", name: "Smart City A", role: "tenant_admin" },
+        { tenantId: "city_b", role: "user" },
+      ];
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "http://localhost:3000",
+        profile: "default",
+        token: "test-token",
+        format: "json",
+        service: "nonexistent",
+      } as never);
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok", tenantId: "city_a", availableTenants: tenants }),
+      );
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining('Tenant "nonexistent" not found'),
+      );
+    });
+
+    it("includes tenant label in success message", async () => {
+      const tenants = [
+        { tenantId: "city_a", name: "Smart City A", role: "tenant_admin" },
+      ];
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok", tenantId: "city_a", availableTenants: tenants }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      expect(printSuccess).toHaveBeenCalledWith(
+        "Login successful (tenant: Smart City A). Token saved to config.",
+      );
+    });
   });
 
   describe("auth logout", () => {

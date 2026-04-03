@@ -106,6 +106,7 @@ export async function promptPassword(): Promise<string> {
 
 export interface TenantChoice {
   tenantId: string;
+  name?: string;
   role: string;
 }
 
@@ -120,7 +121,8 @@ export async function promptTenantSelection(
       const t = tenants[i];
       const current = t.tenantId === currentTenantId ? " ← current" : "";
       const marker = t.tenantId === currentTenantId ? "  *" : "   ";
-      console.log(`${marker} ${i + 1}) ${t.tenantId} (${t.role})${current}`);
+      const label = t.name ? `${t.name} (${t.tenantId})` : t.tenantId;
+      console.log(`${marker} ${i + 1}) ${label} [${t.role}]${current}`);
     }
     for (;;) {
       const answer = await rl.question("\nSelect tenant number (Enter to keep current): ");

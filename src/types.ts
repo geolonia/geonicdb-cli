@@ -1,8 +1,16 @@
 export type OutputFormat = "json" | "table" | "geojson";
 
+export interface TenantInfo {
+  tenantId: string;
+  name?: string;
+  role: string;
+}
+
 export interface GdbConfig {
   url?: string;
   service?: string;
+  tenantId?: string;
+  availableTenants?: TenantInfo[];
   token?: string;
   refreshToken?: string;
   format?: OutputFormat;

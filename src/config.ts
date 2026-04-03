@@ -23,6 +23,7 @@ function migrateV1ToV2(data: Record<string, unknown>): GdbConfigFile {
   const knownKeys = [
     "url",
     "service",
+    "tenantId",
     "token",
     "refreshToken",
     "format",

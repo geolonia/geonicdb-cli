@@ -6,8 +6,11 @@ import {
   createProfile,
   deleteProfile,
   loadConfig,
+  saveConfig,
+  validateUrl,
 } from "../config.js";
-import { printSuccess, printInfo, printError } from "../output.js";
+import { printSuccess, printInfo, printError, printWarning } from "../output.js";
+import { getTokenStatus } from "../token.js";
 import { addExamples } from "./help.js";
 
 export function registerProfileCommands(program: Command): void {
@@ -33,15 +36,52 @@ export function registerProfileCommands(program: Command): void {
 
   const use = profile
     .command("use <name>")
-    .description("Switch active profile")
-    .action((name: string) => {
+    .description("Switch active profile (auto-refreshes expired tokens)")
+    .action(async (name: string) => {
       try {
         setCurrentProfile(name);
-        printSuccess(`Switched to profile "${name}".`);
       } catch (err) {
         printError((err as Error).message);
         process.exit(1);
       }
+
+      const config = loadConfig(name);
+      const tenantLabel = config.tenantId
+        ? ` (tenant: ${config.availableTenants?.find((t) => t.tenantId === config.tenantId)?.name ?? config.tenantId})`
+        : "";
+
+      // Auto-refresh expired token if refreshToken is available
+      if (config.token && config.refreshToken && config.url) {
+        const status = getTokenStatus(config.token);
+        if (status.isExpired || status.isExpiringSoon) {
+          try {
+            const baseUrl = validateUrl(config.url);
+            const url = new URL("/auth/refresh", baseUrl).toString();
+            const response = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ refreshToken: config.refreshToken }),
+            });
+            if (response.ok) {
+              const data = (await response.json()) as Record<string, unknown>;
+              const newToken = (data.accessToken ?? data.token) as string | undefined;
+              const newRefreshToken = data.refreshToken as string | undefined;
+              if (newToken) {
+                config.token = newToken;
+                if (newRefreshToken) config.refreshToken = newRefreshToken;
+                saveConfig(config, name);
+                printSuccess(`Switched to profile "${name}"${tenantLabel}. Token refreshed.`);
+                return;
+              }
+            }
+            printWarning("Token refresh failed. You may need to re-login.");
+          } catch {
+            printWarning("Token refresh failed. You may need to re-login.");
+          }
+        }
+      }
+
+      printSuccess(`Switched to profile "${name}"${tenantLabel}.`);
     });
 
   addExamples(use, [
@@ -108,6 +148,13 @@ export function registerProfileCommands(program: Command): void {
           typeof value === "string"
         ) {
           console.log(`${key}: ***`);
+        } else if (key === "availableTenants" && Array.isArray(value)) {
+          console.log(`${key}:`);
+          for (const t of value as { tenantId: string; name?: string; role: string }[]) {
+            const label = t.name ? `${t.name} (${t.tenantId})` : t.tenantId;
+            const current = t.tenantId === config.tenantId ? " ← current" : "";
+            console.log(`  - ${label} [${t.role}]${current}`);
+          }
         } else {
           console.log(`${key}: ${value}`);
         }
