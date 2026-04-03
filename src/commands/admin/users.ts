@@ -67,6 +67,7 @@ export function registerUsersCommand(parent: Command): void {
   // users create
   const create = users
     .command("create [json]")
+    .summary("Create a new user")
     .description(
       "Create a new user\n\n" +
         "JSON payload example:\n" +
@@ -114,6 +115,7 @@ export function registerUsersCommand(parent: Command): void {
   // users update
   const update = users
     .command("update <id> [json]")
+    .summary("Update a user")
     .description(
       "Update a user\n\n" +
         "JSON payload: only specified fields are updated.\n" +

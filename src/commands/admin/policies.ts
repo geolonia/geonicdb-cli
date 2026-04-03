@@ -59,6 +59,7 @@ export function registerPoliciesCommand(parent: Command): void {
   // policies create
   const create = policies
     .command("create [json]")
+    .summary("Create a new policy")
     .description(
       "Create a new policy\n\n" +
         "JSON payload examples:\n\n" +
@@ -131,6 +132,7 @@ export function registerPoliciesCommand(parent: Command): void {
   // policies update
   const update = policies
     .command("update <id> [json]")
+    .summary("Update a policy")
     .description(
       "Update a policy\n\n" +
         "JSON payload: only specified fields are updated.\n" +

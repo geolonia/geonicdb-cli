@@ -59,6 +59,7 @@ export function registerOAuthClientsCommand(parent: Command): void {
   // oauth-clients create
   const create = oauthClients
     .command("create [json]")
+    .summary("Create a new OAuth client")
     .description(
       "Create a new OAuth client\n\n" +
         "JSON payload example:\n" +
@@ -98,6 +99,7 @@ export function registerOAuthClientsCommand(parent: Command): void {
   // oauth-clients update
   const update = oauthClients
     .command("update <id> [json]")
+    .summary("Update an OAuth client")
     .description(
       "Update an OAuth client\n\n" +
         "JSON payload: only specified fields are updated.\n" +
@@ -190,6 +192,7 @@ export function registerCaddeCommand(parent: Command): void {
   // cadde set
   const caddeSet = cadde
     .command("set [json]")
+    .summary("Set CADDE configuration")
     .description(
       "Set CADDE configuration\n\n" +
         "JSON payload example:\n" +

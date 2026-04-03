@@ -83,6 +83,7 @@ export function registerSubscriptionsCommand(program: Command): void {
   // subscriptions create
   const create = subscriptions
     .command("create [json]")
+    .summary("Create a subscription")
     .description(
       "Create a subscription\n\n" +
         "JSON payload example:\n" +
@@ -127,6 +128,7 @@ export function registerSubscriptionsCommand(program: Command): void {
   // subscriptions update
   const update = subscriptions
     .command("update <id> [json]")
+    .summary("Update a subscription")
     .description(
       "Update a subscription\n\n" +
         "JSON payload: only specified fields are updated.\n" +

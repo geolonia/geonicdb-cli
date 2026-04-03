@@ -63,6 +63,7 @@ export function addMePoliciesSubcommand(me: Command): void {
   // policies create
   const create = policies
     .command("create [json]")
+    .summary("Create a personal XACML policy")
     .description(
       "Create a personal XACML policy\n\n" +
         "Constraints (enforced server-side):\n" +

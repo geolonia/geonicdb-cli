@@ -89,6 +89,7 @@ export function addAttrsSubcommands(attrs: Command): void {
   // attrs add
   const add = attrs
     .command("add")
+    .summary("Add attributes to an entity")
     .description(
       "Add attributes to an entity\n\n" +
         "JSON payload example:\n" +
@@ -134,6 +135,7 @@ export function addAttrsSubcommands(attrs: Command): void {
   // attrs update
   const attrUpdate = attrs
     .command("update")
+    .summary("Update a specific attribute of an entity")
     .description(
       "Update a specific attribute of an entity\n\n" +
         "JSON payload example:\n" +

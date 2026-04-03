@@ -81,6 +81,7 @@ export function registerRegistrationsCommand(program: Command): void {
   // registrations create
   const create = registrations
     .command("create [json]")
+    .summary("Create a registration")
     .description(
       "Create a registration\n\n" +
         "JSON payload example:\n" +

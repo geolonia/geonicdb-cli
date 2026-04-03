@@ -63,6 +63,7 @@ export function registerRulesCommand(program: Command): void {
   // rules create
   const create = rules
     .command("create [json]")
+    .summary("Create a new rule")
     .description(
       "Create a new rule\n\n" +
         "JSON payload example:\n" +
@@ -102,6 +103,7 @@ export function registerRulesCommand(program: Command): void {
   // rules update
   const update = rules
     .command("update <id> [json]")
+    .summary("Update a rule")
     .description(
       "Update a rule\n\n" +
         "JSON payload: only specified fields are updated.\n" +

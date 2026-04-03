@@ -189,6 +189,7 @@ export function registerTemporalCommand(program: Command): void {
   // temporal entities create
   const create = entities
     .command("create [json]")
+    .summary("Create a temporal entity")
     .description(
       "Create a temporal entity\n\n" +
         "JSON payload: an NGSI-LD entity with temporal attribute instances.\n" +

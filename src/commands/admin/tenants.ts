@@ -63,6 +63,7 @@ export function registerTenantsCommand(parent: Command): void {
   // tenants create
   const create = tenants
     .command("create [json]")
+    .summary("Create a new tenant")
     .description(
       "Create a new tenant\n\n" +
         "JSON payload example:\n" +
@@ -110,6 +111,7 @@ export function registerTenantsCommand(parent: Command): void {
   // tenants update
   const update = tenants
     .command("update <id> [json]")
+    .summary("Update a tenant")
     .description(
       "Update a tenant\n\n" +
         "JSON payload: only specified fields are updated.\n" +

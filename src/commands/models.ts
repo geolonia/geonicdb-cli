@@ -64,6 +64,7 @@ export function registerModelsCommand(program: Command): void {
   // models create
   const create = models
     .command("create [json]")
+    .summary("Create a new model")
     .description(
       "Create a new model\n\n" +
         "JSON payload example:\n" +
@@ -105,6 +106,7 @@ export function registerModelsCommand(program: Command): void {
   // models update
   const update = models
     .command("update <id> [json]")
+    .summary("Update a model")
     .description(
       "Update a model\n\n" +
         "JSON payload: only specified fields are updated.\n" +
