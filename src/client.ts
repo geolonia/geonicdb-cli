@@ -17,6 +17,7 @@ export class GdbClient {
   private clientId?: string;
   private clientSecret?: string;
   private onTokenRefresh?: (token: string, refreshToken?: string) => void;
+  private onBeforeRefresh?: () => { token?: string; refreshToken?: string };
   private verbose: boolean;
   private dryRun: boolean;
   private refreshPromise?: Promise<boolean>;
@@ -30,6 +31,7 @@ export class GdbClient {
     this.clientId = options.clientId;
     this.clientSecret = options.clientSecret;
     this.onTokenRefresh = options.onTokenRefresh;
+    this.onBeforeRefresh = options.onBeforeRefresh;
     this.verbose = options.verbose ?? false;
     this.dryRun = options.dryRun ?? false;
   }
@@ -187,6 +189,20 @@ export class GdbClient {
   }
 
   private async doRefresh(): Promise<boolean> {
+    // Re-read config to pick up tokens saved by another process
+    if (this.onBeforeRefresh) {
+      const latest = this.onBeforeRefresh();
+      if (latest.token && latest.token !== this.token) {
+        // Another process already refreshed — use the new token
+        this.token = latest.token;
+        if (latest.refreshToken) this.refreshToken = latest.refreshToken;
+        return true;
+      }
+      if (latest.refreshToken) {
+        this.refreshToken = latest.refreshToken;
+      }
+    }
+
     // Try refreshToken first
     if (this.refreshToken) {
       try {

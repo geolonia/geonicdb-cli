@@ -38,6 +38,7 @@ export interface ClientOptions {
   clientId?: string;
   clientSecret?: string;
   onTokenRefresh?: (token: string, refreshToken?: string) => void;
+  onBeforeRefresh?: () => { token?: string; refreshToken?: string };
   verbose?: boolean;
   dryRun?: boolean;
 }
