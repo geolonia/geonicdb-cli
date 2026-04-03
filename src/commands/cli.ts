@@ -1,5 +1,8 @@
+import { execSync } from "node:child_process";
 import { createRequire } from "node:module";
 import type { Command, Option } from "commander";
+import { printInfo, printSuccess } from "../output.js";
+import { withErrorHandler } from "../helpers.js";
 import { addExamples } from "./help.js";
 
 function findOption(
@@ -273,6 +276,24 @@ export function registerCliCommand(program: Command): void {
     {
       description: "Show CLI version",
       command: "geonic cli version",
+    },
+  ]);
+
+  const update = cli
+    .command("update")
+    .description("Update the CLI to the latest version")
+    .action(
+      withErrorHandler(async () => {
+        printInfo("Updating @geolonia/geonicdb-cli...");
+        execSync("npm update -g @geolonia/geonicdb-cli", { stdio: "inherit" });
+        printSuccess("Update complete.");
+      }),
+    );
+
+  addExamples(update, [
+    {
+      description: "Update CLI to the latest version",
+      command: "geonic cli update",
     },
   ]);
 }
