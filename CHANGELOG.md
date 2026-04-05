@@ -7,9 +7,11 @@
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-04-05
+
 ### 2026-04-05
-- **Fix**: token と apiKey が config に共存する場合、`canRefresh()` が apiKey の存在でリフレッシュをブロックし、JWT 期限切れ後にセッションが復旧不能になる問題を修正
-- **Feat**: リクエスト前に JWT の `exp` を確認し、期限切れ/期限間近なら事前にリフレッシュするプロアクティブ・トークンリフレッシュを追加
+- **Fix**: token と apiKey が config に共存する場合、`canRefresh()` が apiKey の存在でリフレッシュをブロックし、JWT 期限切れ後にセッションが復旧不能になる問題を修正 (#98)
+- **Feat**: リクエスト前に JWT の `exp` を確認し、期限切れ/期限間近なら事前にリフレッシュするプロアクティブ・トークンリフレッシュを追加 (#98)
 
 ## [0.10.0] - 2026-04-03
 
@@ -180,7 +182,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.7.0...v0.8.0
