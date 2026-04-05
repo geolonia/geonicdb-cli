@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { DryRunSignal, GdbClient, GdbClientError } from "../src/client.js";
 
+function createJwt(payload: Record<string, unknown>): string {
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  return `${header}.${body}.fake-signature`;
+}
+
 describe("GdbClient", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -238,7 +244,7 @@ describe("GdbClient", () => {
       await expect(client.get("/entities")).rejects.toThrow(GdbClientError);
     });
 
-    it("does not refresh when using apiKey", async () => {
+    it("does not refresh when using apiKey only (no token)", async () => {
       const onRefresh = vi.fn();
       const client = new GdbClient({
         baseUrl: "http://localhost:3000",
@@ -256,6 +262,45 @@ describe("GdbClient", () => {
 
       await expect(client.get("/entities")).rejects.toThrow(GdbClientError);
       expect(onRefresh).not.toHaveBeenCalled();
+    });
+
+    it("refreshes token on 401 when both token and apiKey are set", async () => {
+      // Root cause scenario: user has both token (from auth login) and apiKey in config.
+      // buildHeaders uses token (Bearer), but canRefresh() must not block refresh due to apiKey.
+      const onRefresh = vi.fn();
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: "expired-token",
+        apiKey: "sk-test",
+        refreshToken: "valid-refresh",
+        onTokenRefresh: onRefresh,
+      });
+
+      let callCount = 0;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/refresh")) {
+          return new Response(
+            JSON.stringify({ accessToken: "new-token", refreshToken: "new-refresh" }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        callCount++;
+        if (callCount === 1) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        return new Response(JSON.stringify([{ id: "Room:001" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+      const result = await client.get("/entities");
+      expect(result.data).toEqual([{ id: "Room:001" }]);
+      expect(onRefresh).toHaveBeenCalledWith("new-token", "new-refresh");
     });
 
     it("refreshes token on 401 for rawRequest", async () => {
@@ -1092,6 +1137,323 @@ describe("GdbClient", () => {
       // Refresh should only be called once (deduplication via refreshPromise)
       expect(refreshCallCount).toBe(1);
       expect(onRefresh).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("proactive token refresh", () => {
+    it("refreshes expired JWT before request and sends new token in Authorization header", async () => {
+      // Simulate: user logged in 2 hours ago, accessToken (1h) expired, refreshToken (7d) valid
+      const expiredToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) - 3600 });
+      const freshToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) + 3600 });
+      const onRefresh = vi.fn();
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: expiredToken,
+        refreshToken: "valid-refresh",
+        onTokenRefresh: onRefresh,
+      });
+
+      const fetchCalls: string[] = [];
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        fetchCalls.push(urlStr);
+        if (urlStr.includes("/auth/refresh")) {
+          return new Response(
+            JSON.stringify({ accessToken: freshToken, refreshToken: "new-refresh" }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        // Verify the API request uses the NEW token
+        const authHeader = (init as RequestInit).headers as Record<string, string>;
+        expect(authHeader["Authorization"]).toBe(`Bearer ${freshToken}`);
+        return new Response(JSON.stringify([{ id: "Room:001" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+      const result = await client.get("/entities");
+      expect(result.data).toEqual([{ id: "Room:001" }]);
+      expect(onRefresh).toHaveBeenCalledWith(freshToken, "new-refresh");
+      // Verify order: refresh FIRST, then API call
+      expect(fetchCalls).toHaveLength(2);
+      expect(fetchCalls[0]).toContain("/auth/refresh");
+      expect(fetchCalls[1]).toContain("/ngsi-ld/v1/entities");
+    });
+
+    it("avoids 401/403 round-trip when server rejects expired JWT with non-standard error", async () => {
+      // This is the key scenario: server returns 403 with a message that isTokenError() does NOT match
+      // Without proactive refresh, the reactive path would NOT trigger refresh for this error
+      const expiredToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) - 3600 });
+      const freshToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) + 3600 });
+      const onRefresh = vi.fn();
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: expiredToken,
+        refreshToken: "valid-refresh",
+        onTokenRefresh: onRefresh,
+      });
+
+      const fetchCalls: string[] = [];
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        fetchCalls.push(urlStr);
+        if (urlStr.includes("/auth/refresh")) {
+          return new Response(
+            JSON.stringify({ accessToken: freshToken, refreshToken: "new-refresh" }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify([{ id: "Room:001" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+      // With proactive refresh, the server never sees the expired token
+      const result = await client.get("/entities");
+      expect(result.data).toEqual([{ id: "Room:001" }]);
+      // Only 2 calls: refresh + API (no failed 401/403 request)
+      expect(fetchCalls).toHaveLength(2);
+      expect(fetchCalls[0]).toContain("/auth/refresh");
+    });
+
+    it("without proactive refresh, 403 with unexpected message would fail (regression proof)", async () => {
+      // Prove: if proactive refresh did NOT exist, a 403 with "Token expired" would not trigger
+      // reactive refresh because isTokenError only matches "not assigned to any tenant" / "invalid token"
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: "non-jwt-expired-token", // Not a JWT, so proactive refresh won't fire
+        refreshToken: "valid-refresh",
+      });
+
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ error: "Forbidden", description: "Token expired" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+      // This FAILS because isTokenError() doesn't match "Token expired"
+      // → refresh is never attempted → user gets an error
+      const err = await client.get("/entities").catch((e) => e);
+      expect(err).toBeInstanceOf(GdbClientError);
+      expect(err.status).toBe(403);
+      // Confirm refresh was NOT called (only 1 fetch = the failed API request)
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("with proactive refresh, expired JWT avoids 403 entirely", async () => {
+      // Same scenario as above but with a proper JWT — proactive refresh kicks in
+      const expiredToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) - 3600 });
+      const freshToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) + 3600 });
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: expiredToken,
+        refreshToken: "valid-refresh",
+        onTokenRefresh: vi.fn(),
+      });
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/refresh")) {
+          return new Response(
+            JSON.stringify({ accessToken: freshToken, refreshToken: "new-refresh" }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify([{ id: "Room:001" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+      // Succeeds because proactive refresh runs before the server ever sees the expired token
+      const result = await client.get("/entities");
+      expect(result.data).toEqual([{ id: "Room:001" }]);
+    });
+
+    it("refreshes token proactively when JWT is expiring within 5 minutes", async () => {
+      const soonToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) + 120 });
+      const freshToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) + 3600 });
+      const onRefresh = vi.fn();
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: soonToken,
+        refreshToken: "valid-refresh",
+        onTokenRefresh: onRefresh,
+      });
+
+      const fetchCalls: string[] = [];
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        fetchCalls.push(urlStr);
+        if (urlStr.includes("/auth/refresh")) {
+          return new Response(
+            JSON.stringify({ accessToken: freshToken, refreshToken: "new-refresh" }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify([{ id: "Room:001" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+      const result = await client.get("/entities");
+      expect(result.data).toEqual([{ id: "Room:001" }]);
+      expect(onRefresh).toHaveBeenCalledWith(freshToken, "new-refresh");
+      expect(fetchCalls[0]).toContain("/auth/refresh");
+    });
+
+    it("does not proactively refresh when token has plenty of time remaining", async () => {
+      const validToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) + 3600 });
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: validToken,
+        refreshToken: "valid-refresh",
+      });
+
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify([{ id: "Room:001" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+      const result = await client.get("/entities");
+      expect(result.data).toEqual([{ id: "Room:001" }]);
+      // Only 1 fetch call — no refresh
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("proactive refresh works for rawRequest and sends new token", async () => {
+      const expiredToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) - 3600 });
+      const freshToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) + 3600 });
+      const onRefresh = vi.fn();
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: expiredToken,
+        refreshToken: "valid-refresh",
+        onTokenRefresh: onRefresh,
+      });
+
+      const fetchCalls: string[] = [];
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        fetchCalls.push(urlStr);
+        if (urlStr.includes("/auth/refresh")) {
+          return new Response(
+            JSON.stringify({ accessToken: freshToken, refreshToken: "new-refresh" }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        const authHeader = (init as RequestInit).headers as Record<string, string>;
+        expect(authHeader["Authorization"]).toBe(`Bearer ${freshToken}`);
+        return new Response(JSON.stringify({ email: "user@test.com" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+      const result = await client.rawRequest("GET", "/me");
+      expect(result.data).toEqual({ email: "user@test.com" });
+      expect(fetchCalls[0]).toContain("/auth/refresh");
+      expect(fetchCalls[1]).toContain("/me");
+    });
+
+    it("falls back to reactive refresh when proactive refresh fails", async () => {
+      const expiredToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) - 60 });
+      const freshToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) + 3600 });
+      const onRefresh = vi.fn();
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: expiredToken,
+        refreshToken: "valid-refresh",
+        onTokenRefresh: onRefresh,
+      });
+
+      let refreshCallCount = 0;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/refresh")) {
+          refreshCallCount++;
+          if (refreshCallCount === 1) {
+            // Proactive refresh fails (e.g., network glitch)
+            return new Response("", { status: 500 });
+          }
+          // Reactive refresh succeeds
+          return new Response(
+            JSON.stringify({ accessToken: freshToken, refreshToken: "new-refresh" }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        if (refreshCallCount < 2) {
+          // API request with expired token → 401
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        return new Response(JSON.stringify([{ id: "Room:001" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+      const result = await client.get("/entities");
+      expect(result.data).toEqual([{ id: "Room:001" }]);
+      expect(refreshCallCount).toBe(2);
+    });
+
+    it("skips proactive refresh when token has no exp claim", async () => {
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: "opaque-token-without-exp",
+        refreshToken: "valid-refresh",
+      });
+
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify([{ id: "Room:001" }]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+      const result = await client.get("/entities");
+      expect(result.data).toEqual([{ id: "Room:001" }]);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("saves refreshed tokens to config via onTokenRefresh callback", async () => {
+      const expiredToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) - 3600 });
+      const freshToken = createJwt({ sub: "user", exp: Math.floor(Date.now() / 1000) + 3600 });
+      const savedTokens: { token: string; refreshToken?: string }[] = [];
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: expiredToken,
+        refreshToken: "valid-refresh",
+        onTokenRefresh: (token, refreshToken) => {
+          savedTokens.push({ token, refreshToken });
+        },
+      });
+
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        const urlStr = typeof url === "string" ? url : url.toString();
+        if (urlStr.includes("/auth/refresh")) {
+          return new Response(
+            JSON.stringify({ accessToken: freshToken, refreshToken: "rotated-refresh" }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+      await client.get("/entities");
+      expect(savedTokens).toEqual([{ token: freshToken, refreshToken: "rotated-refresh" }]);
     });
   });
 });
