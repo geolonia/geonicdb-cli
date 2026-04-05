@@ -64,6 +64,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          registry-url: "https://registry.npmjs.org"
       - name: Remove local-only dependencies
         run: node -e "const p=require('./package.json'); delete p.devDependencies.geonicdb; delete p.devDependencies.mongodb; require('fs').writeFileSync('package.json', JSON.stringify(p, null, 2)+'\n')"
       - run: npm install
@@ -76,5 +77,7 @@ jobs:
             exit 1
           fi
       - run: npm run build
+      - name: Upgrade npm for OIDC Trusted Publishing
+        run: npm install -g npm@11
       - name: Publish to npm (OIDC Trusted Publishing)
         run: npm publish --provenance
