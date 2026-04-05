@@ -10,6 +10,7 @@
 ## [0.10.1] - 2026-04-06
 
 ### 2026-04-06
+- **CI**: npm publish を OIDC Trusted Publishing に移行 — レガシートークン認証を廃止 (#100)
 - **CI**: publish ワークフローから `npm install -g npm@latest` を削除 — Node.js 22.22.2 ランナーとの依存関係競合によるリリース失敗を修正 (#99)
 
 ### 2026-04-05
