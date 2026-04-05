@@ -1,5 +1,6 @@
 import type { ClientOptions, ClientResponse, NgsiError } from "./types.js";
 import { clientCredentialsGrant } from "./oauth.js";
+import { getTokenStatus } from "./token.js";
 
 export class DryRunSignal extends Error {
   constructor() {
@@ -163,7 +164,19 @@ export class GdbClient {
   }
 
   private canRefresh(): boolean {
-    return (!!this.refreshToken || (!!this.clientId && !!this.clientSecret)) && !this.apiKey;
+    if (!this.refreshToken && !(this.clientId && this.clientSecret)) return false;
+    // When authenticating solely via apiKey (no token), token refresh is unnecessary
+    if (!this.token && this.apiKey) return false;
+    return true;
+  }
+
+  /** Proactively refresh the token before making a request if it is expired or about to expire. */
+  private async proactiveRefresh(): Promise<void> {
+    if (!this.token || !this.canRefresh()) return;
+    const status = getTokenStatus(this.token);
+    if (status.isExpired || status.isExpiringSoon) {
+      await this.performTokenRefresh();
+    }
   }
 
   /** Check whether an error indicates an authentication/token problem that may be resolved by refreshing. */
@@ -341,6 +354,7 @@ export class GdbClient {
       headers?: Record<string, string>;
     },
   ): Promise<ClientResponse<T>> {
+    await this.proactiveRefresh();
     try {
       return await this.executeRequest<T>(method, path, options);
     } catch (err) {
@@ -404,6 +418,7 @@ export class GdbClient {
       skipTenantHeader?: boolean;
     },
   ): Promise<ClientResponse<T>> {
+    await this.proactiveRefresh();
     try {
       return await this.executeRawRequest<T>(method, path, options);
     } catch (err) {
