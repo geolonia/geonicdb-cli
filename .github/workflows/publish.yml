@@ -77,4 +77,7 @@ jobs:
             exit 1
           fi
       - run: npm run build
-      - run: npm publish --provenance
+      - name: Publish to npm (OIDC Trusted Publishing)
+        run: npm publish --provenance
+        env:
+          NODE_AUTH_TOKEN: ""
