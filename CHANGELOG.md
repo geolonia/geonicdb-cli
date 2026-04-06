@@ -7,8 +7,10 @@
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-04-06
+
 ### 2026-04-06
-- **Feat**: エンティティ取得コマンド (`entities list`, `entities get`) に `--sys-attrs` フラグを追加 — `options=sysAttrs` を付与し `createdAt` / `modifiedAt` を取得可能に (#104)
+- **Feat**: エンティティ取得コマンド (`entities list`, `entities get`) に `--sys-attrs` フラグを追加 — `options=sysAttrs` を付与し `createdAt` / `modifiedAt` を取得可能に (#105)
 
 ## [0.10.1] - 2026-04-06
 
@@ -189,7 +191,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.8.0...v0.9.0
