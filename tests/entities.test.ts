@@ -160,6 +160,20 @@ describe("entities command", () => {
 
       expect(mockClient.get).toHaveBeenCalledWith("/entities", expect.objectContaining({ options: "keyValues" }));
     });
+
+    it("passes sysAttrs option as options=sysAttrs", async () => {
+      mockClient.get.mockResolvedValue(mockResponse([]));
+      await runCommand(program, ["entities", "list", "--sys-attrs"]);
+
+      expect(mockClient.get).toHaveBeenCalledWith("/entities", expect.objectContaining({ options: "sysAttrs" }));
+    });
+
+    it("combines keyValues and sysAttrs options", async () => {
+      mockClient.get.mockResolvedValue(mockResponse([]));
+      await runCommand(program, ["entities", "list", "--key-values", "--sys-attrs"]);
+
+      expect(mockClient.get).toHaveBeenCalledWith("/entities", expect.objectContaining({ options: "keyValues,sysAttrs" }));
+    });
   });
 
   describe("get", () => {
@@ -181,6 +195,26 @@ describe("entities command", () => {
       expect(mockClient.get).toHaveBeenCalledWith(
         `/entities/${encodeURIComponent("e1")}`,
         { options: "keyValues" },
+      );
+    });
+
+    it("passes sysAttrs option", async () => {
+      mockClient.get.mockResolvedValue(mockResponse({ id: "e1" }));
+      await runCommand(program, ["entities", "get", "e1", "--sys-attrs"]);
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        `/entities/${encodeURIComponent("e1")}`,
+        { options: "sysAttrs" },
+      );
+    });
+
+    it("combines keyValues and sysAttrs options", async () => {
+      mockClient.get.mockResolvedValue(mockResponse({ id: "e1" }));
+      await runCommand(program, ["entities", "get", "e1", "--key-values", "--sys-attrs"]);
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        `/entities/${encodeURIComponent("e1")}`,
+        { options: "keyValues,sysAttrs" },
       );
     });
   });
