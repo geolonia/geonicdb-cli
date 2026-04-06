@@ -33,6 +33,7 @@ export function registerEntitiesCommand(program: Command): void {
     .option("--count", "Include total count in response")
     .option("--count-only", "Only show the total count without listing entities")
     .option("--key-values", "Request simplified key-value format")
+    .option("--sys-attrs", "Include system attributes (createdAt, modifiedAt)")
     .action(
       withErrorHandler(async (opts: Record<string, unknown>, cmd: Command) => {
         const client = createClient(cmd);
@@ -53,7 +54,11 @@ export function registerEntitiesCommand(program: Command): void {
         if (opts.orderBy) params.orderBy = String(opts.orderBy);
         if (opts.count || opts.countOnly) params.count = "true";
         if (opts.countOnly) params.limit = "0";
-        if (opts.keyValues) params.options = "keyValues";
+
+        const optionsList: string[] = [];
+        if (opts.keyValues) optionsList.push("keyValues");
+        if (opts.sysAttrs) optionsList.push("sysAttrs");
+        if (optionsList.length > 0) params.options = optionsList.join(",");
 
         const response = await client.get("/entities", params);
         if (opts.countOnly) {
@@ -127,6 +132,10 @@ export function registerEntitiesCommand(program: Command): void {
       description: "Get only the total count (no entity data)",
       command: "geonic entities list --type Sensor --count-only",
     },
+    {
+      description: "Include system attributes (createdAt, modifiedAt)",
+      command: "geonic entities list --type Sensor --sys-attrs",
+    },
   ]);
 
   // entities get
@@ -135,15 +144,17 @@ export function registerEntitiesCommand(program: Command): void {
     .description("Get a single entity by ID")
     .argument("<id>", "Entity ID")
     .option("--key-values", "Request simplified key-value format")
+    .option("--sys-attrs", "Include system attributes (createdAt, modifiedAt)")
     .action(
       withErrorHandler(async (id: string, opts: Record<string, unknown>, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
 
         const params: Record<string, string> = {};
-        if (opts.keyValues) {
-          params.options = "keyValues";
-        }
+        const optionsList: string[] = [];
+        if (opts.keyValues) optionsList.push("keyValues");
+        if (opts.sysAttrs) optionsList.push("sysAttrs");
+        if (optionsList.length > 0) params.options = optionsList.join(",");
 
         const response = await client.get(
           `/entities/${encodeURIComponent(id)}`,
@@ -161,6 +172,10 @@ export function registerEntitiesCommand(program: Command): void {
     {
       description: "Get entity in keyValues format",
       command: "geonic entities get urn:ngsi-ld:Sensor:001 --key-values",
+    },
+    {
+      description: "Get entity with system attributes",
+      command: "geonic entities get urn:ngsi-ld:Sensor:001 --sys-attrs",
     },
   ]);
 

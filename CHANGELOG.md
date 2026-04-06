@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-04-06
+- **Feat**: エンティティ取得コマンド (`entities list`, `entities get`) に `--sys-attrs` フラグを追加 — `options=sysAttrs` を付与し `createdAt` / `modifiedAt` を取得可能に (#104)
+
 ## [0.10.1] - 2026-04-06
 
 ### 2026-04-06
