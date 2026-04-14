@@ -20,18 +20,20 @@ Given("I am logged in as password test user", async function (this: GdbWorld) {
   const superConfig = this.readProfileConfig();
   const superToken = superConfig.token as string;
 
-  // Check if user already exists (ignore errors)
+  // Check if user already exists
   const listRes = await fetch(new URL("/admin/users", this.serverUrl).toString(), {
     headers: { Authorization: `Bearer ${superToken}` },
   });
+  assert.ok(listRes.ok, `Failed to list users: HTTP ${listRes.status}`);
   const users = (await listRes.json()) as Record<string, unknown>[];
   const existing = users.find((u) => u.email === PW_TEST_EMAIL);
 
   if (!existing) {
-    // Get tenant ID from super admin's available info
+    // Get tenant ID for user creation
     const tenantsRes = await fetch(new URL("/admin/tenants", this.serverUrl).toString(), {
       headers: { Authorization: `Bearer ${superToken}` },
     });
+    assert.ok(tenantsRes.ok, `Failed to list tenants: HTTP ${tenantsRes.status}`);
     const tenants = (await tenantsRes.json()) as Record<string, unknown>[];
     const tenant = tenants.find((t) => t.name === "e2e_test");
     assert.ok(tenant, "e2e_test tenant not found");

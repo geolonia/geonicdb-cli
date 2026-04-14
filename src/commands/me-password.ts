@@ -55,15 +55,16 @@ export function addMePasswordSubcommand(me: Command): void {
   addNotes(password, [
     "Passwords must be at least 12 characters long.",
     "After changing your password, all existing sessions are invalidated.",
+    "Prefer interactive prompts over --current-password/--new-password flags. Flags may expose passwords in shell history and process listings.",
   ]);
 
   addExamples(password, [
     {
-      description: "Change password (interactive prompt)",
+      description: "Change password (interactive prompt — recommended)",
       command: "geonic me password",
     },
     {
-      description: "Change password non-interactively",
+      description: "Change password non-interactively (CI/scripts only)",
       command: "geonic me password --current-password oldpass --new-password newpass123456",
     },
   ]);
