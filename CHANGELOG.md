@@ -7,6 +7,11 @@
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-04-14
+
+### 2026-04-14
+- **Fix**: パスワード入力時、ペーストなどで複数文字が一度に入力された場合に `*` が1個しか表示されない問題を修正 (#108)
+
 ## [0.12.0] - 2026-04-14
 
 ### 2026-04-14
@@ -196,7 +201,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.12.1...HEAD
+[0.12.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.10.0...v0.10.1
