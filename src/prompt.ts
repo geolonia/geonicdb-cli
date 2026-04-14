@@ -14,12 +14,12 @@ export async function promptEmail(): Promise<string> {
   }
 }
 
-export async function promptPassword(): Promise<string> {
+export async function promptPassword(label = "Password"): Promise<string> {
   return new Promise((resolve, reject) => {
     const stdin = process.stdin;
     const stdout = process.stdout;
 
-    stdout.write("Password: ");
+    stdout.write(`${label}: `);
 
     if (!stdin.isTTY) {
       let data = "";

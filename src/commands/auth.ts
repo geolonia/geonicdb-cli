@@ -16,6 +16,7 @@ import { clientCredentialsGrant } from "../oauth.js";
 import { addExamples } from "./help.js";
 import { addMeOAuthClientsSubcommand } from "./me-oauth-clients.js";
 import { addMeApiKeysSubcommand } from "./me-api-keys.js";
+import { addMePasswordSubcommand } from "./me-password.js";
 import { addMePoliciesSubcommand } from "./me-policies.js";
 
 function createLoginCommand(): Command {
@@ -510,6 +511,10 @@ export function registerAuthCommands(program: Command): void {
       description: "List your API keys",
       command: "geonic me api-keys list",
     },
+    {
+      description: "Change your password",
+      command: "geonic me password",
+    },
   ]);
 
   addExamples(meInfo, [
@@ -524,6 +529,9 @@ export function registerAuthCommands(program: Command): void {
 
   // Add me api-keys subcommands
   addMeApiKeysSubcommand(me);
+
+  // Add me password subcommand
+  addMePasswordSubcommand(me);
 
   // Add me policies subcommands
   addMePoliciesSubcommand(me);

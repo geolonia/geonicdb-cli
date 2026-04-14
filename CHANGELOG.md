@@ -7,6 +7,11 @@
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-04-14
+
+### 2026-04-14
+- **Feat**: `geonic me password` コマンドを追加 — パスワード変更 (`POST /me/password`) に対応、インタラクティブプロンプトおよびフラグ指定の両方をサポート (#106)
+
 ## [0.11.0] - 2026-04-06
 
 ### 2026-04-06
@@ -191,7 +196,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.10.1...v0.11.0
 [0.10.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.10.0...v0.10.1
 [0.10.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.9.0...v0.10.0
