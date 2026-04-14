@@ -1,6 +1,6 @@
 {
   "name": "@geolonia/geonicdb-cli",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "description": "A CLI client for the GeonicDB",
   "type": "module",
   "bin": {
