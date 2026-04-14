@@ -70,6 +70,7 @@ export async function promptPassword(label = "Password"): Promise<string> {
     input: stdin,
     output: muted,
     terminal: true,
+    historySize: 0,
   });
 
   let maskedLen = 0;
