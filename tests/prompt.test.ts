@@ -2,10 +2,12 @@ import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 
 const mockQuestion = vi.fn();
 const mockClose = vi.fn();
+let mockLine = "";
 vi.mock("node:readline/promises", () => ({
   createInterface: vi.fn(() => ({
     question: mockQuestion,
     close: mockClose,
+    get line() { return mockLine; },
   })),
 }));
 
@@ -21,6 +23,7 @@ describe("prompt", () => {
     vi.restoreAllMocks();
     mockQuestion.mockReset();
     mockClose.mockReset();
+    mockLine = "";
   });
 
   describe("isInteractive", () => {
@@ -83,12 +86,6 @@ describe("prompt", () => {
     describe("TTY mode", () => {
       beforeEach(() => {
         Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
-        // Mock setRawMode, resume, pause, setEncoding, on, removeListener
-        (process.stdin as never as Record<string, unknown>).setRawMode = vi.fn();
-        (process.stdin as never as Record<string, unknown>).isRaw = false;
-        vi.spyOn(process.stdin, "resume").mockImplementation(() => process.stdin);
-        vi.spyOn(process.stdin, "pause").mockImplementation(() => process.stdin);
-        vi.spyOn(process.stdin, "setEncoding").mockImplementation(() => process.stdin);
         vi.spyOn(process.stdin, "on").mockImplementation((event: string, cb: (...args: unknown[]) => void) => {
           (stdinListeners[event] ??= []).push(cb);
           return process.stdin;
@@ -103,91 +100,128 @@ describe("prompt", () => {
         });
       });
 
-      it("collects password chars and resolves on Enter", async () => {
-        const promise = promptPassword();
+      const fireKeypress = () => {
+        stdinListeners["keypress"]?.forEach((cb) => cb());
+      };
 
-        // Type "abc" then Enter
-        for (const ch of ["a", "b", "c"]) {
-          stdinListeners["data"]?.forEach((cb) => cb(ch));
-        }
-        stdinListeners["data"]?.forEach((cb) => cb("\r"));
+      it("resolves with answer from readline and displays prompt", async () => {
+        mockQuestion.mockResolvedValue("abc");
+        const result = await promptPassword();
+        expect(result).toBe("abc");
+        expect(stdoutWriteSpy).toHaveBeenCalledWith("Password: ");
+        expect(stdoutWriteSpy).toHaveBeenCalledWith("\n");
+        expect(mockClose).toHaveBeenCalled();
+      });
+
+      it("displays * for each keypress character", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
+
+        const promise = promptPassword();
+        mockLine = "a"; fireKeypress();
+        mockLine = "ab"; fireKeypress();
+        mockLine = "abc"; fireKeypress();
+        resolveQ("abc");
 
         const result = await promise;
         expect(result).toBe("abc");
-        // Should have written Password: prompt and 3 * chars
-        expect(stdoutWriteSpy).toHaveBeenCalledWith("Password: ");
         expect(stdoutWriteSpy).toHaveBeenCalledWith("*");
+        const starCalls = stdoutWriteSpy.mock.calls.filter(([arg]) => /^\*+$/.test(arg as string));
+        expect(starCalls.reduce((sum, [arg]) => sum + (arg as string).length, 0)).toBe(3);
       });
 
-      it("handles newline (\\n) as Enter", async () => {
-        const promise = promptPassword();
-        stdinListeners["data"]?.forEach((cb) => cb("x"));
-        stdinListeners["data"]?.forEach((cb) => cb("\n"));
-        const result = await promise;
-        expect(result).toBe("x");
-      });
+      it("handles backspace by erasing a *", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
 
-      it("handles Ctrl+C (code 3) by rejecting", async () => {
         const promise = promptPassword();
-        stdinListeners["data"]?.forEach((cb) => cb(String.fromCharCode(3)));
-        await expect(promise).rejects.toThrow("User cancelled");
-      });
+        mockLine = "ab"; fireKeypress();
+        mockLine = "a"; fireKeypress();
+        resolveQ("a");
 
-      it("handles backspace (code 127)", async () => {
-        const promise = promptPassword();
-        stdinListeners["data"]?.forEach((cb) => cb("a"));
-        stdinListeners["data"]?.forEach((cb) => cb("b"));
-        // Backspace
-        stdinListeners["data"]?.forEach((cb) => cb(String.fromCharCode(127)));
-        stdinListeners["data"]?.forEach((cb) => cb("\r"));
         const result = await promise;
         expect(result).toBe("a");
         expect(stdoutWriteSpy).toHaveBeenCalledWith("\b \b");
       });
 
-      it("handles backspace (code 8)", async () => {
+      it("handles delete key by erasing a *", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
+
         const promise = promptPassword();
-        stdinListeners["data"]?.forEach((cb) => cb("x"));
-        stdinListeners["data"]?.forEach((cb) => cb(String.fromCharCode(8)));
-        stdinListeners["data"]?.forEach((cb) => cb("\r"));
+        mockLine = "ab"; fireKeypress();
+        mockLine = "a"; fireKeypress(); // delete key removes char
+        resolveQ("a");
+
         const result = await promise;
-        expect(result).toBe("");
+        expect(result).toBe("a");
+        expect(stdoutWriteSpy).toHaveBeenCalledWith("\b \b");
       });
 
       it("ignores backspace on empty password", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
+
         const promise = promptPassword();
-        stdinListeners["data"]?.forEach((cb) => cb(String.fromCharCode(127)));
-        stdinListeners["data"]?.forEach((cb) => cb("\r"));
+        mockLine = ""; fireKeypress();
+        resolveQ("");
+
         const result = await promise;
         expect(result).toBe("");
+        expect(stdoutWriteSpy).not.toHaveBeenCalledWith("\b \b");
       });
 
-      it("ignores control chars below code 32", async () => {
+      it("handles paste with multiple characters at once", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
+
         const promise = promptPassword();
-        // Send a control char that isn't enter, ctrl+c, or backspace
-        stdinListeners["data"]?.forEach((cb) => cb(String.fromCharCode(1))); // Ctrl+A
-        stdinListeners["data"]?.forEach((cb) => cb("z"));
-        stdinListeners["data"]?.forEach((cb) => cb("\r"));
+        mockLine = "pasted"; fireKeypress();
+        resolveQ("pasted");
+
         const result = await promise;
-        expect(result).toBe("z");
+        expect(result).toBe("pasted");
+        expect(stdoutWriteSpy).toHaveBeenCalledWith("******");
       });
 
-      it("handles error event", async () => {
+      it("displays one * for a surrogate-pair character", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
+
         const promise = promptPassword();
-        const error = new Error("stdin error");
-        stdinListeners["error"]?.forEach((cb) => cb(error));
-        await expect(promise).rejects.toThrow("stdin error");
+        mockLine = "🔑"; fireKeypress();
+        resolveQ("🔑");
+
+        await promise;
+        expect(stdoutWriteSpy).toHaveBeenCalledWith("*");
       });
 
-      it("handles isRaw being undefined (wasRaw ?? false branch)", async () => {
-        (process.stdin as never as Record<string, unknown>).isRaw = undefined;
+      it("no-op when rl.line length unchanged", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
+
         const promise = promptPassword();
-        stdinListeners["data"]?.forEach((cb) => cb("p"));
-        stdinListeners["data"]?.forEach((cb) => cb("\r"));
-        const result = await promise;
-        expect(result).toBe("p");
-        // setRawMode should be called with false (from ?? false)
-        expect((process.stdin as never as Record<string, unknown>).setRawMode).toHaveBeenCalledWith(false);
+        mockLine = "a"; fireKeypress();
+        stdoutWriteSpy.mockClear();
+        // Same length, different content (e.g. cursor move) — no mask change
+        mockLine = "b"; fireKeypress();
+        resolveQ("b");
+
+        await promise;
+        expect(stdoutWriteSpy).not.toHaveBeenCalledWith("*");
+        expect(stdoutWriteSpy).not.toHaveBeenCalledWith("\b \b");
+      });
+
+      it("uses custom label", async () => {
+        mockQuestion.mockResolvedValue("secret");
+        await promptPassword("New password");
+        expect(stdoutWriteSpy).toHaveBeenCalledWith("New password: ");
+      });
+
+      it("cleans up keypress listener after resolve", async () => {
+        mockQuestion.mockResolvedValue("test");
+        await promptPassword();
+        expect(stdinListeners["keypress"]?.length ?? 0).toBe(0);
       });
     });
 
