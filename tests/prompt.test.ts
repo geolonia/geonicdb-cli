@@ -83,12 +83,6 @@ describe("prompt", () => {
     describe("TTY mode", () => {
       beforeEach(() => {
         Object.defineProperty(process.stdin, "isTTY", { value: true, writable: true });
-        // Mock setRawMode, resume, pause, setEncoding, on, removeListener
-        (process.stdin as never as Record<string, unknown>).setRawMode = vi.fn();
-        (process.stdin as never as Record<string, unknown>).isRaw = false;
-        vi.spyOn(process.stdin, "resume").mockImplementation(() => process.stdin);
-        vi.spyOn(process.stdin, "pause").mockImplementation(() => process.stdin);
-        vi.spyOn(process.stdin, "setEncoding").mockImplementation(() => process.stdin);
         vi.spyOn(process.stdin, "on").mockImplementation((event: string, cb: (...args: unknown[]) => void) => {
           (stdinListeners[event] ??= []).push(cb);
           return process.stdin;
@@ -103,91 +97,98 @@ describe("prompt", () => {
         });
       });
 
-      it("collects password chars and resolves on Enter", async () => {
-        const promise = promptPassword();
+      it("resolves with answer from readline and displays prompt", async () => {
+        mockQuestion.mockResolvedValue("abc");
+        const result = await promptPassword();
+        expect(result).toBe("abc");
+        expect(stdoutWriteSpy).toHaveBeenCalledWith("Password: ");
+        expect(stdoutWriteSpy).toHaveBeenCalledWith("\n");
+        expect(mockClose).toHaveBeenCalled();
+      });
 
-        // Type "abc" then Enter
+      it("displays * for each keypress character", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
+
+        const promise = promptPassword();
         for (const ch of ["a", "b", "c"]) {
-          stdinListeners["data"]?.forEach((cb) => cb(ch));
+          stdinListeners["keypress"]?.forEach((cb) => cb(ch, { name: ch }));
         }
-        stdinListeners["data"]?.forEach((cb) => cb("\r"));
+        resolveQ("abc");
 
         const result = await promise;
         expect(result).toBe("abc");
-        // Should have written Password: prompt and 3 * chars
-        expect(stdoutWriteSpy).toHaveBeenCalledWith("Password: ");
-        expect(stdoutWriteSpy).toHaveBeenCalledWith("*");
+        const starCalls = stdoutWriteSpy.mock.calls.filter(([arg]) => arg === "*");
+        expect(starCalls).toHaveLength(3);
       });
 
-      it("handles newline (\\n) as Enter", async () => {
-        const promise = promptPassword();
-        stdinListeners["data"]?.forEach((cb) => cb("x"));
-        stdinListeners["data"]?.forEach((cb) => cb("\n"));
-        const result = await promise;
-        expect(result).toBe("x");
-      });
+      it("handles backspace keypress by erasing a *", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
 
-      it("handles Ctrl+C (code 3) by rejecting", async () => {
         const promise = promptPassword();
-        stdinListeners["data"]?.forEach((cb) => cb(String.fromCharCode(3)));
-        await expect(promise).rejects.toThrow("User cancelled");
-      });
+        stdinListeners["keypress"]?.forEach((cb) => cb("a", { name: "a" }));
+        stdinListeners["keypress"]?.forEach((cb) => cb("b", { name: "b" }));
+        stdinListeners["keypress"]?.forEach((cb) => cb(undefined, { name: "backspace" }));
+        resolveQ("a");
 
-      it("handles backspace (code 127)", async () => {
-        const promise = promptPassword();
-        stdinListeners["data"]?.forEach((cb) => cb("a"));
-        stdinListeners["data"]?.forEach((cb) => cb("b"));
-        // Backspace
-        stdinListeners["data"]?.forEach((cb) => cb(String.fromCharCode(127)));
-        stdinListeners["data"]?.forEach((cb) => cb("\r"));
         const result = await promise;
         expect(result).toBe("a");
         expect(stdoutWriteSpy).toHaveBeenCalledWith("\b \b");
       });
 
-      it("handles backspace (code 8)", async () => {
-        const promise = promptPassword();
-        stdinListeners["data"]?.forEach((cb) => cb("x"));
-        stdinListeners["data"]?.forEach((cb) => cb(String.fromCharCode(8)));
-        stdinListeners["data"]?.forEach((cb) => cb("\r"));
-        const result = await promise;
-        expect(result).toBe("");
-      });
-
       it("ignores backspace on empty password", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
+
         const promise = promptPassword();
-        stdinListeners["data"]?.forEach((cb) => cb(String.fromCharCode(127)));
-        stdinListeners["data"]?.forEach((cb) => cb("\r"));
+        stdinListeners["keypress"]?.forEach((cb) => cb(undefined, { name: "backspace" }));
+        resolveQ("");
+
         const result = await promise;
         expect(result).toBe("");
+        expect(stdoutWriteSpy).not.toHaveBeenCalledWith("\b \b");
       });
 
-      it("ignores control chars below code 32", async () => {
+      it("ignores Enter keypress for display", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
+
         const promise = promptPassword();
-        // Send a control char that isn't enter, ctrl+c, or backspace
-        stdinListeners["data"]?.forEach((cb) => cb(String.fromCharCode(1))); // Ctrl+A
-        stdinListeners["data"]?.forEach((cb) => cb("z"));
-        stdinListeners["data"]?.forEach((cb) => cb("\r"));
+        stdinListeners["keypress"]?.forEach((cb) => cb("x", { name: "x" }));
+        stdinListeners["keypress"]?.forEach((cb) => cb(undefined, { name: "return" }));
+        resolveQ("x");
+
+        await promise;
+        const starCalls = stdoutWriteSpy.mock.calls.filter(([arg]) => arg === "*");
+        expect(starCalls).toHaveLength(1);
+      });
+
+      it("ignores ctrl key combos for display", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
+
+        const promise = promptPassword();
+        stdinListeners["keypress"]?.forEach((cb) => cb("\x01", { name: "a", ctrl: true }));
+        stdinListeners["keypress"]?.forEach((cb) => cb("z", { name: "z" }));
+        resolveQ("z");
+
         const result = await promise;
         expect(result).toBe("z");
+        const starCalls = stdoutWriteSpy.mock.calls.filter(([arg]) => arg === "*");
+        expect(starCalls).toHaveLength(1);
       });
 
-      it("handles error event", async () => {
-        const promise = promptPassword();
-        const error = new Error("stdin error");
-        stdinListeners["error"]?.forEach((cb) => cb(error));
-        await expect(promise).rejects.toThrow("stdin error");
+      it("uses custom label", async () => {
+        mockQuestion.mockResolvedValue("secret");
+        await promptPassword("New password");
+        expect(stdoutWriteSpy).toHaveBeenCalledWith("New password: ");
       });
 
-      it("handles isRaw being undefined (wasRaw ?? false branch)", async () => {
-        (process.stdin as never as Record<string, unknown>).isRaw = undefined;
-        const promise = promptPassword();
-        stdinListeners["data"]?.forEach((cb) => cb("p"));
-        stdinListeners["data"]?.forEach((cb) => cb("\r"));
-        const result = await promise;
-        expect(result).toBe("p");
-        // setRawMode should be called with false (from ?? false)
-        expect((process.stdin as never as Record<string, unknown>).setRawMode).toHaveBeenCalledWith(false);
+      it("cleans up keypress listener after resolve", async () => {
+        mockQuestion.mockResolvedValue("test");
+        await promptPassword();
+        expect(stdinListeners["keypress"]?.length ?? 0).toBe(0);
       });
     });
 

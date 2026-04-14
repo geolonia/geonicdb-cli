@@ -1,4 +1,5 @@
 import { createInterface } from "node:readline/promises";
+import { Writable } from "node:stream";
 
 export function isInteractive(): boolean {
   return process.stdin.isTTY === true && process.stdout.isTTY === true;
@@ -15,13 +16,13 @@ export async function promptEmail(): Promise<string> {
 }
 
 export async function promptPassword(label = "Password"): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const stdin = process.stdin;
-    const stdout = process.stdout;
+  const stdin = process.stdin;
+  const stdout = process.stdout;
 
-    stdout.write(`${label}: `);
+  stdout.write(`${label}: `);
 
-    if (!stdin.isTTY) {
+  if (!stdin.isTTY) {
+    return new Promise((resolve, reject) => {
       let data = "";
       stdin.setEncoding("utf-8");
       stdin.resume();
@@ -54,58 +55,46 @@ export async function promptPassword(label = "Password"): Promise<string> {
       stdin.on("data", onData);
       stdin.on("end", onEnd);
       stdin.on("error", onError);
-      return;
-    }
+    });
+  }
 
-    const wasRaw = stdin.isRaw;
-    stdin.setRawMode(true);
-    stdin.resume();
-    stdin.setEncoding("utf-8");
-
-    let password = "";
-
-    const restoreTerminal = () => {
-      stdin.removeListener("data", onData);
-      stdin.removeListener("error", onError);
-      stdin.setRawMode(wasRaw ?? false);
-      stdin.pause();
-    };
-
-    const onError = (err: Error) => {
-      restoreTerminal();
-      stdout.write("\n");
-      reject(err);
-    };
-
-    const onData = (data: string) => {
-      for (const char of data) {
-        const code = char.codePointAt(0)!;
-
-        if (char === "\r" || char === "\n") {
-          restoreTerminal();
-          stdout.write("\n");
-          resolve(password);
-          return;
-        } else if (code === 3) {
-          restoreTerminal();
-          stdout.write("\n");
-          reject(new Error("User cancelled"));
-          return;
-        } else if (code === 127 || code === 8) {
-          if (password.length > 0) {
-            password = password.slice(0, -1);
-            stdout.write("\b \b");
-          }
-        } else if (code >= 32) {
-          password += char;
-          stdout.write("*");
-        }
-      }
-    };
-
-    stdin.on("data", onData);
-    stdin.on("error", onError);
+  // Use readline with muted output to avoid conflicts with emitKeypressEvents
+  // that prior createInterface calls install on stdin.
+  const muted = new Writable({
+    write(_chunk: Buffer, _encoding: string, callback: () => void) {
+      callback();
+    },
   });
+
+  const rl = createInterface({
+    input: stdin,
+    output: muted,
+    terminal: true,
+  });
+
+  let len = 0;
+  const onKeypress = (str: string | undefined, key: { name?: string; ctrl?: boolean }) => {
+    if (key?.name === "return" || key?.name === "enter") return;
+    if (key?.name === "backspace") {
+      if (len > 0) {
+        len--;
+        stdout.write("\b \b");
+      }
+    } else if (str && str.codePointAt(0)! >= 32 && !key?.ctrl) {
+      len += [...str].length;
+      stdout.write("*".repeat([...str].length));
+    }
+  };
+  stdin.on("keypress", onKeypress);
+
+  try {
+    const answer = await rl.question("");
+    stdout.write("\n");
+    return answer;
+  } finally {
+    stdin.removeListener("keypress", onKeypress);
+    rl.close();
+  }
 }
 
 export interface TenantChoice {
