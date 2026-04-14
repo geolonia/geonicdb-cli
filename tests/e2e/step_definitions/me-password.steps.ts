@@ -1,68 +1,18 @@
 import { Given, When } from "@cucumber/cucumber";
 import { strict as assert } from "node:assert";
-import { GdbWorld, performSuperAdminLogin } from "../support/world.js";
-
-const PW_TEST_EMAIL = "pw-test@test.com";
-const PW_TEST_PASSWORD = "PwTestUser12345!";
+import type { GdbWorld } from "../support/world.js";
+import { PW_TEST_EMAIL, PW_TEST_PASSWORD } from "../support/world.js";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
- * Create a dedicated user for password change tests and log in as that user.
- * Uses a separate user so that password changes and token invalidations
- * don't pollute the shared tenant-admin used by other test features.
+ * Log in as the dedicated password-test user (created in BeforeAll).
+ * No admin API calls needed — the user is part of the baseline snapshot,
+ * so it is restored between scenarios automatically.
  */
 Given("I am logged in as password test user", async function (this: GdbWorld) {
-  // Login as super admin to create the test user
-  await performSuperAdminLogin(this);
-  const superConfig = this.readProfileConfig();
-  const superToken = superConfig.token as string;
-
-  // Always create a fresh user with a known password to guarantee test isolation.
-  // The Before hook restores the users collection to baseline (removing this user),
-  // but we unconditionally delete + recreate to stay robust against any residual state.
-  const listRes = await fetch(new URL("/admin/users", this.serverUrl).toString(), {
-    headers: { Authorization: `Bearer ${superToken}` },
-  });
-  assert.ok(listRes.ok, `Failed to list users: HTTP ${listRes.status}`);
-  const users = (await listRes.json()) as Record<string, unknown>[];
-  const existing = users.find((u) => u.email === PW_TEST_EMAIL);
-
-  if (existing) {
-    const userId = (existing.id ?? existing.userId) as string;
-    const delRes = await fetch(
-      new URL(`/admin/users/${encodeURIComponent(userId)}`, this.serverUrl).toString(),
-      { method: "DELETE", headers: { Authorization: `Bearer ${superToken}` } },
-    );
-    assert.ok(delRes.ok || delRes.status === 404, `Failed to delete stale test user: HTTP ${delRes.status}`);
-  }
-
-  const tenantsRes = await fetch(new URL("/admin/tenants", this.serverUrl).toString(), {
-    headers: { Authorization: `Bearer ${superToken}` },
-  });
-  assert.ok(tenantsRes.ok, `Failed to list tenants: HTTP ${tenantsRes.status}`);
-  const tenants = (await tenantsRes.json()) as Record<string, unknown>[];
-  const tenant = tenants.find((t) => t.name === "e2e_test");
-  assert.ok(tenant, "e2e_test tenant not found");
-
-  const createRes = await fetch(new URL("/admin/users", this.serverUrl).toString(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${superToken}`,
-    },
-    body: JSON.stringify({
-      email: PW_TEST_EMAIL,
-      password: PW_TEST_PASSWORD,
-      role: "user",
-      tenantId: tenant.tenantId ?? tenant.id,
-    }),
-  });
-  assert.ok(createRes.ok, `Failed to create password test user: HTTP ${createRes.status}`);
-
-  // Login as the password test user
   const loginRes = await fetch(new URL("/auth/login", this.serverUrl).toString(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },

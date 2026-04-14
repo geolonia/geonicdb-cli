@@ -1,7 +1,7 @@
 import { BeforeAll, AfterAll, Before, After } from "@cucumber/cucumber";
 import { createServer, type GeonicDBServer } from "geonicdb";
 import { MongoClient, type Db, type Document } from "mongodb";
-import { GdbWorld, TEST_EMAIL, TEST_PASSWORD, JWT_SECRET, TENANT_ADMIN_EMAIL, TENANT_ADMIN_PASSWORD } from "./world.js";
+import { GdbWorld, TEST_EMAIL, TEST_PASSWORD, JWT_SECRET, TENANT_ADMIN_EMAIL, TENANT_ADMIN_PASSWORD, PW_TEST_EMAIL, PW_TEST_PASSWORD } from "./world.js";
 
 let server: GeonicDBServer;
 let mongoClient: MongoClient;
@@ -89,6 +89,19 @@ BeforeAll(async function () {
     }),
   });
   if (!userRes.ok) throw new Error(`Tenant admin user creation failed: HTTP ${userRes.status}`);
+
+  // Create dedicated user for password change tests
+  const pwUserRes = await fetch(new URL("/admin/users", server.url).toString(), {
+    method: "POST",
+    headers: authHeaders,
+    body: JSON.stringify({
+      email: PW_TEST_EMAIL,
+      password: PW_TEST_PASSWORD,
+      role: "user",
+      tenantId,
+    }),
+  });
+  if (!pwUserRes.ok) throw new Error(`Password test user creation failed: HTTP ${pwUserRes.status}`);
 
   // Snapshot initial state of preserved collections AFTER tenant + user setup
   for (const name of preservedCollectionNames) {

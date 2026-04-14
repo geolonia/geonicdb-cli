@@ -14,6 +14,9 @@ export const JWT_SECRET = "e2e-test-secret-key-minimum-32-characters-long";
 export const TENANT_ADMIN_EMAIL = "tenant-admin@test.com";
 export const TENANT_ADMIN_PASSWORD = "TenantAdmin123!";
 
+export const PW_TEST_EMAIL = "pw-test@test.com";
+export const PW_TEST_PASSWORD = "PwTestUser12345!";
+
 export interface CliResult {
   stdout: string;
   stderr: string;
