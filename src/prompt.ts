@@ -72,18 +72,15 @@ export async function promptPassword(label = "Password"): Promise<string> {
     terminal: true,
   });
 
-  let len = 0;
-  const onKeypress = (str: string | undefined, key: { name?: string; ctrl?: boolean }) => {
-    if (key?.name === "return" || key?.name === "enter") return;
-    if (key?.name === "backspace") {
-      if (len > 0) {
-        len--;
-        stdout.write("\b \b");
-      }
-    } else if (str && str.codePointAt(0)! >= 32 && !key?.ctrl) {
-      len += [...str].length;
-      stdout.write("*".repeat([...str].length));
+  let maskedLen = 0;
+  const onKeypress = () => {
+    const nextLen = [...rl.line].length;
+    if (nextLen > maskedLen) {
+      stdout.write("*".repeat(nextLen - maskedLen));
+    } else if (nextLen < maskedLen) {
+      stdout.write("\b \b".repeat(maskedLen - nextLen));
     }
+    maskedLen = nextLen;
   };
   stdin.on("keypress", onKeypress);
 

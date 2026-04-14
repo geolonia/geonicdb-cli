@@ -2,10 +2,12 @@ import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 
 const mockQuestion = vi.fn();
 const mockClose = vi.fn();
+let mockLine = "";
 vi.mock("node:readline/promises", () => ({
   createInterface: vi.fn(() => ({
     question: mockQuestion,
     close: mockClose,
+    get line() { return mockLine; },
   })),
 }));
 
@@ -21,6 +23,7 @@ describe("prompt", () => {
     vi.restoreAllMocks();
     mockQuestion.mockReset();
     mockClose.mockReset();
+    mockLine = "";
   });
 
   describe("isInteractive", () => {
@@ -97,6 +100,10 @@ describe("prompt", () => {
         });
       });
 
+      const fireKeypress = () => {
+        stdinListeners["keypress"]?.forEach((cb) => cb());
+      };
+
       it("resolves with answer from readline and displays prompt", async () => {
         mockQuestion.mockResolvedValue("abc");
         const result = await promptPassword();
@@ -111,25 +118,39 @@ describe("prompt", () => {
         mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
 
         const promise = promptPassword();
-        for (const ch of ["a", "b", "c"]) {
-          stdinListeners["keypress"]?.forEach((cb) => cb(ch, { name: ch }));
-        }
+        mockLine = "a"; fireKeypress();
+        mockLine = "ab"; fireKeypress();
+        mockLine = "abc"; fireKeypress();
         resolveQ("abc");
 
         const result = await promise;
         expect(result).toBe("abc");
-        const starCalls = stdoutWriteSpy.mock.calls.filter(([arg]) => arg === "*");
-        expect(starCalls).toHaveLength(3);
+        expect(stdoutWriteSpy).toHaveBeenCalledWith("*");
+        const starCalls = stdoutWriteSpy.mock.calls.filter(([arg]) => /^\*+$/.test(arg as string));
+        expect(starCalls.reduce((sum, [arg]) => sum + (arg as string).length, 0)).toBe(3);
       });
 
-      it("handles backspace keypress by erasing a *", async () => {
+      it("handles backspace by erasing a *", async () => {
         let resolveQ!: (v: string) => void;
         mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
 
         const promise = promptPassword();
-        stdinListeners["keypress"]?.forEach((cb) => cb("a", { name: "a" }));
-        stdinListeners["keypress"]?.forEach((cb) => cb("b", { name: "b" }));
-        stdinListeners["keypress"]?.forEach((cb) => cb(undefined, { name: "backspace" }));
+        mockLine = "ab"; fireKeypress();
+        mockLine = "a"; fireKeypress();
+        resolveQ("a");
+
+        const result = await promise;
+        expect(result).toBe("a");
+        expect(stdoutWriteSpy).toHaveBeenCalledWith("\b \b");
+      });
+
+      it("handles delete key by erasing a *", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
+
+        const promise = promptPassword();
+        mockLine = "ab"; fireKeypress();
+        mockLine = "a"; fireKeypress(); // delete key removes char
         resolveQ("a");
 
         const result = await promise;
@@ -142,7 +163,7 @@ describe("prompt", () => {
         mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
 
         const promise = promptPassword();
-        stdinListeners["keypress"]?.forEach((cb) => cb(undefined, { name: "backspace" }));
+        mockLine = ""; fireKeypress();
         resolveQ("");
 
         const result = await promise;
@@ -150,33 +171,45 @@ describe("prompt", () => {
         expect(stdoutWriteSpy).not.toHaveBeenCalledWith("\b \b");
       });
 
-      it("ignores Enter keypress for display", async () => {
+      it("handles paste with multiple characters at once", async () => {
         let resolveQ!: (v: string) => void;
         mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
 
         const promise = promptPassword();
-        stdinListeners["keypress"]?.forEach((cb) => cb("x", { name: "x" }));
-        stdinListeners["keypress"]?.forEach((cb) => cb(undefined, { name: "return" }));
-        resolveQ("x");
-
-        await promise;
-        const starCalls = stdoutWriteSpy.mock.calls.filter(([arg]) => arg === "*");
-        expect(starCalls).toHaveLength(1);
-      });
-
-      it("ignores ctrl key combos for display", async () => {
-        let resolveQ!: (v: string) => void;
-        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
-
-        const promise = promptPassword();
-        stdinListeners["keypress"]?.forEach((cb) => cb("\x01", { name: "a", ctrl: true }));
-        stdinListeners["keypress"]?.forEach((cb) => cb("z", { name: "z" }));
-        resolveQ("z");
+        mockLine = "pasted"; fireKeypress();
+        resolveQ("pasted");
 
         const result = await promise;
-        expect(result).toBe("z");
-        const starCalls = stdoutWriteSpy.mock.calls.filter(([arg]) => arg === "*");
-        expect(starCalls).toHaveLength(1);
+        expect(result).toBe("pasted");
+        expect(stdoutWriteSpy).toHaveBeenCalledWith("******");
+      });
+
+      it("displays one * for a surrogate-pair character", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
+
+        const promise = promptPassword();
+        mockLine = "🔑"; fireKeypress();
+        resolveQ("🔑");
+
+        await promise;
+        expect(stdoutWriteSpy).toHaveBeenCalledWith("*");
+      });
+
+      it("no-op when rl.line length unchanged", async () => {
+        let resolveQ!: (v: string) => void;
+        mockQuestion.mockReturnValue(new Promise<string>((r) => { resolveQ = r; }));
+
+        const promise = promptPassword();
+        mockLine = "a"; fireKeypress();
+        stdoutWriteSpy.mockClear();
+        // Same length, different content (e.g. cursor move) — no mask change
+        mockLine = "b"; fireKeypress();
+        resolveQ("b");
+
+        await promise;
+        expect(stdoutWriteSpy).not.toHaveBeenCalledWith("*");
+        expect(stdoutWriteSpy).not.toHaveBeenCalledWith("\b \b");
       });
 
       it("uses custom label", async () => {
