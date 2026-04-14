@@ -77,25 +77,29 @@ export async function promptPassword(label = "Password"): Promise<string> {
       reject(err);
     };
 
-    const onData = (char: string) => {
-      const code = char.charCodeAt(0);
+    const onData = (data: string) => {
+      for (const char of data) {
+        const code = char.codePointAt(0)!;
 
-      if (char === "\r" || char === "\n") {
-        restoreTerminal();
-        stdout.write("\n");
-        resolve(password);
-      } else if (code === 3) {
-        restoreTerminal();
-        stdout.write("\n");
-        reject(new Error("User cancelled"));
-      } else if (code === 127 || code === 8) {
-        if (password.length > 0) {
-          password = password.slice(0, -1);
-          stdout.write("\b \b");
+        if (char === "\r" || char === "\n") {
+          restoreTerminal();
+          stdout.write("\n");
+          resolve(password);
+          return;
+        } else if (code === 3) {
+          restoreTerminal();
+          stdout.write("\n");
+          reject(new Error("User cancelled"));
+          return;
+        } else if (code === 127 || code === 8) {
+          if (password.length > 0) {
+            password = password.slice(0, -1);
+            stdout.write("\b \b");
+          }
+        } else if (code >= 32) {
+          password += char;
+          stdout.write("*");
         }
-      } else if (code >= 32) {
-        password += char;
-        stdout.write("*");
       }
     };
 
