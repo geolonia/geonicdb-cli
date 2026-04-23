@@ -5,6 +5,10 @@ on:
     - cron: "0 9 * * 1" # 毎週月曜 09:00 UTC
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -60,7 +64,7 @@ jobs:
           ")
           gh issue create \
             --title "geonicdb 最新版 (${GEONICDB_VERSION}) との互換性エラー" \
-            --body "$(cat <<'EOF'
+            --body "$(cat <<EOF
           ## 概要
 
           週次の互換性チェックで、geonicdb の最新版でテストが失敗しました。
