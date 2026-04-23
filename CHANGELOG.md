@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-04-24
+
 ### 2026-04-24
 - **Feat**: `entities list` に `--scope-q` オプションを追加 — NGSI-LD `scopeQ` パラメータによるスコープフィルタリングに対応 (#110)
 - **Feat**: テーブル表示で `scope` プロパティを `id`, `type` の直後に表示 (#110)
@@ -208,7 +210,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.12.1...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.10.1...v0.11.0
