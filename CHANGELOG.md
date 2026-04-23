@@ -8,9 +8,9 @@
 ## [Unreleased]
 
 ### 2026-04-24
-- **Feat**: `entities list` に `--scope-q` オプションを追加 — NGSI-LD `scopeQ` パラメータによるスコープフィルタリングに対応 (#109)
-- **Feat**: テーブル表示で `scope` プロパティを `id`, `type` の直後に表示 (#109)
-- **Feat**: `entities create` のヘルプに `scope` プロパティの使用例を追加 (#109)
+- **Feat**: `entities list` に `--scope-q` オプションを追加 — NGSI-LD `scopeQ` パラメータによるスコープフィルタリングに対応 (#110)
+- **Feat**: テーブル表示で `scope` プロパティを `id`, `type` の直後に表示 (#110)
+- **Feat**: `entities create` のヘルプに `scope` プロパティの使用例を追加 (#110)
 
 ## [0.12.1] - 2026-04-14
 

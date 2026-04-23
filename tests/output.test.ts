@@ -117,6 +117,14 @@ describe("output", () => {
       const result = stripAnsi(formatOutput(data, "table"));
       expect(result).toContain("/Japan/Tokyo");
     });
+
+    it("falls back to JSON for object arrays", () => {
+      const data = [
+        { id: "e1", items: [{ name: "a" }, { name: "b" }] },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      expect(result).toContain('[{"name":"a"},{"name":"b"}]');
+    });
   });
 
   describe("cellValue", () => {

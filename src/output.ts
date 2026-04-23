@@ -135,7 +135,10 @@ function isGeoJSON(v: unknown): boolean {
 function cellValue(val: unknown): string {
   if (val === undefined || val === null) return "";
   if (typeof val !== "object") return String(val);
-  if (Array.isArray(val)) return val.map(String).join(", ");
+  if (Array.isArray(val)) {
+    const scalarArray = val.every((v) => v === null || typeof v !== "object");
+    return scalarArray ? val.map(String).join(", ") : JSON.stringify(val);
+  }
   const obj = val as Record<string, unknown>;
   if (isGeoJSON(obj)) return formatGeoJSON(obj);
   if ("value" in obj) {
