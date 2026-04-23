@@ -167,6 +167,49 @@ Feature: Entity management
     And the output should contain "Place:GEO2"
     And the output should not contain "Place:GEO3"
 
+  # Scope
+
+  Scenario: Create an entity with scope
+    Given I am logged in
+    When I run `geonic entities create '{"id":"urn:ngsi-ld:Restaurant:SC1","type":"Restaurant","scope":["/Japan/Tokyo"]}'`
+    Then the exit code should be 0
+    And the output should contain "Entity created."
+
+  Scenario: Get entity shows scope property
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Restaurant:SC2","type":"Restaurant","scope":["/Japan/Tokyo"]}'`
+    When I run `geonic entities get urn:ngsi-ld:Restaurant:SC2`
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the JSON output should have key "scope"
+
+  Scenario: Filter entities by scopeQ (all descendants)
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Restaurant:SC3","type":"Restaurant","scope":["/Japan/Tokyo"]}'`
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Restaurant:SC4","type":"Restaurant","scope":["/France/Paris"]}'`
+    When I run `geonic entities list --type Restaurant --scope-q '/Japan/#'`
+    Then the exit code should be 0
+    And the output should contain "Restaurant:SC3"
+    And the output should not contain "Restaurant:SC4"
+
+  Scenario: Filter entities by scopeQ (exact match)
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Restaurant:SC5","type":"Restaurant","scope":["/Japan/Tokyo"]}'`
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Restaurant:SC6","type":"Restaurant","scope":["/Japan/Osaka"]}'`
+    When I run `geonic entities list --type Restaurant --scope-q '/Japan/Tokyo'`
+    Then the exit code should be 0
+    And the output should contain "Restaurant:SC5"
+    And the output should not contain "Restaurant:SC6"
+
+  Scenario: Filter entities by scopeQ (single level)
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Restaurant:SC7","type":"Restaurant","scope":["/Japan/Tokyo"]}'`
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Restaurant:SC8","type":"Restaurant","scope":["/Japan/Tokyo/Shibuya"]}'`
+    When I run `geonic entities list --type Restaurant --scope-q '/Japan/+'`
+    Then the exit code should be 0
+    And the output should contain "Restaurant:SC7"
+    And the output should not contain "Restaurant:SC8"
+
   # Stdin and JSON5 input
 
   Scenario: Create entity via stdin (without -)

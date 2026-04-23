@@ -174,6 +174,13 @@ describe("entities command", () => {
 
       expect(mockClient.get).toHaveBeenCalledWith("/entities", expect.objectContaining({ options: "keyValues,sysAttrs" }));
     });
+
+    it("passes scopeQ option", async () => {
+      mockClient.get.mockResolvedValue(mockResponse([]));
+      await runCommand(program, ["entities", "list", "--scope-q", "/restaurants/#"]);
+
+      expect(mockClient.get).toHaveBeenCalledWith("/entities", expect.objectContaining({ scopeQ: "/restaurants/#" }));
+    });
   });
 
   describe("get", () => {
