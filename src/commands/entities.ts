@@ -31,6 +31,7 @@ export function registerEntitiesCommand(program: Command): void {
     .option("--offset <n>", "Skip first N entities", parseInt)
     .option("--order-by <field>", "Order results by field")
     .option("--count", "Include total count in response")
+    .option("--scope-q <expr>", "Filter by scope (e.g. /restaurants/#, /Japan/Tokyo, /Japan/+)")
     .option("--count-only", "Only show the total count without listing entities")
     .option("--key-values", "Request simplified key-value format")
     .option("--sys-attrs", "Include system attributes (createdAt, modifiedAt)")
@@ -52,6 +53,7 @@ export function registerEntitiesCommand(program: Command): void {
         if (opts.limit !== undefined) params.limit = String(opts.limit);
         if (opts.offset !== undefined) params.offset = String(opts.offset);
         if (opts.orderBy) params.orderBy = String(opts.orderBy);
+        if (opts.scopeQ) params.scopeQ = String(opts.scopeQ);
         if (opts.count || opts.countOnly) params.count = "true";
         if (opts.countOnly) params.limit = "0";
 
@@ -136,6 +138,18 @@ export function registerEntitiesCommand(program: Command): void {
       description: "Include system attributes (createdAt, modifiedAt)",
       command: "geonic entities list --type Sensor --sys-attrs",
     },
+    {
+      description: "Filter by scope (all descendants)",
+      command: "geonic entities list --scope-q '/restaurants/#'",
+    },
+    {
+      description: "Filter by scope (exact match)",
+      command: "geonic entities list --scope-q '/Japan/Tokyo'",
+    },
+    {
+      description: "Filter by scope (one level below)",
+      command: "geonic entities list --scope-q '/Japan/+'",
+    },
   ]);
 
   // entities get
@@ -189,6 +203,7 @@ export function registerEntitiesCommand(program: Command): void {
         "  {\n" +
         '    "id": "urn:ngsi-ld:Sensor:001",\n' +
         '    "type": "Sensor",\n' +
+        '    "scope": ["/Japan/Tokyo"],\n' +
         '    "temperature": {"type": "Property", "value": 25}\n' +
         "  }",
     )
@@ -219,6 +234,10 @@ export function registerEntitiesCommand(program: Command): void {
     {
       description: "Create from stdin pipe",
       command: "cat entity.json | geonic entities create",
+    },
+    {
+      description: "Create with scope (hierarchical membership)",
+      command: `geonic entities create '{"id":"urn:ngsi-ld:Sensor:001","type":"Sensor","scope":["/Japan/Tokyo"],"temperature":{"type":"Property","value":25}}'`,
     },
     {
       description: "Interactive mode (omit JSON argument)",

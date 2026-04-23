@@ -93,7 +93,7 @@ function formatObjectTable(obj: Record<string, unknown>): string {
 }
 
 function collectKeys(items: Record<string, unknown>[]): string[] {
-  const priority = ["id", "type"];
+  const priority = ["id", "type", "scope"];
   const keySet = new Set<string>();
   for (const item of items) {
     for (const key of Object.keys(item)) {
@@ -135,6 +135,10 @@ function isGeoJSON(v: unknown): boolean {
 function cellValue(val: unknown): string {
   if (val === undefined || val === null) return "";
   if (typeof val !== "object") return String(val);
+  if (Array.isArray(val)) {
+    const scalarArray = val.every((v) => v === null || typeof v !== "object");
+    return scalarArray ? val.map(String).join(", ") : JSON.stringify(val);
+  }
   const obj = val as Record<string, unknown>;
   if (isGeoJSON(obj)) return formatGeoJSON(obj);
   if ("value" in obj) {

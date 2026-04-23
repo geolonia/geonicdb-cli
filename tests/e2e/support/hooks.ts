@@ -85,7 +85,7 @@ BeforeAll(async function () {
       email: TENANT_ADMIN_EMAIL,
       password: TENANT_ADMIN_PASSWORD,
       role: "tenant_admin",
-      tenantId,
+      primaryTenantId: tenantId,
     }),
   });
   if (!userRes.ok) throw new Error(`Tenant admin user creation failed: HTTP ${userRes.status}`);
@@ -98,7 +98,7 @@ BeforeAll(async function () {
       email: PW_TEST_EMAIL,
       password: PW_TEST_PASSWORD,
       role: "user",
-      tenantId,
+      primaryTenantId: tenantId,
     }),
   });
   if (!pwUserRes.ok) throw new Error(`Password test user creation failed: HTTP ${pwUserRes.status}`);

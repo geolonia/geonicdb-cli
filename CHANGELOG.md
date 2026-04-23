@@ -7,6 +7,13 @@
 
 ## [Unreleased]
 
+### 2026-04-24
+- **Feat**: `entities list` に `--scope-q` オプションを追加 — NGSI-LD `scopeQ` パラメータによるスコープフィルタリングに対応 (#110)
+- **Feat**: テーブル表示で `scope` プロパティを `id`, `type` の直後に表示 (#110)
+- **Feat**: `entities create` のヘルプに `scope` プロパティの使用例を追加 (#110)
+- **CI**: geonicdb 週次互換性チェックワークフローを追加 (#110)
+- **Refactor**: devDependency `geonicdb` をコミットハッシュでピン留めに変更 (#110)
+
 ## [0.12.1] - 2026-04-14
 
 ### 2026-04-14

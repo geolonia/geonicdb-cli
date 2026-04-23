@@ -88,6 +88,45 @@ describe("output", () => {
     });
   });
 
+  describe("scope in table", () => {
+    it("displays scope column after id and type", () => {
+      const data = [
+        { id: "e1", type: "Sensor", scope: ["/Japan/Tokyo"] },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      const headerLine = result.split("\n")[0];
+      const idIdx = headerLine.indexOf("id");
+      const typeIdx = headerLine.indexOf("type");
+      const scopeIdx = headerLine.indexOf("scope");
+      expect(scopeIdx).toBeGreaterThan(typeIdx);
+      expect(typeIdx).toBeGreaterThan(idIdx);
+    });
+
+    it("formats scope array as comma-separated values", () => {
+      const data = [
+        { id: "e1", type: "Sensor", scope: ["/Japan/Tokyo", "/restaurants"] },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      expect(result).toContain("/Japan/Tokyo, /restaurants");
+    });
+
+    it("formats single scope value", () => {
+      const data = [
+        { id: "e1", type: "Sensor", scope: ["/Japan/Tokyo"] },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      expect(result).toContain("/Japan/Tokyo");
+    });
+
+    it("falls back to JSON for object arrays", () => {
+      const data = [
+        { id: "e1", items: [{ name: "a" }, { name: "b" }] },
+      ];
+      const result = stripAnsi(formatOutput(data, "table"));
+      expect(result).toContain('[{"name":"a"},{"name":"b"}]');
+    });
+  });
+
   describe("cellValue", () => {
     it("extracts .value from object with value property", () => {
       const data = [{ id: "e1", temp: { value: 42, type: "Property" } }];
