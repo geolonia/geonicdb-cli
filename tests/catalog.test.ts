@@ -33,8 +33,17 @@ describe("catalog command", () => {
       mockClient.rawRequest.mockResolvedValue(mockResponse([{ id: "ds1" }]));
       await runCommand(program, ["catalog", "datasets", "list"]);
 
-      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/catalog/datasets");
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/catalog/datasets", { params: {} });
       expect(outputResponse).toHaveBeenCalledWith(expect.anything(), "json");
+    });
+
+    it("forwards --limit and --offset", async () => {
+      mockClient.rawRequest.mockResolvedValue(mockResponse([{ id: "ds1" }]));
+      await runCommand(program, ["catalog", "datasets", "list", "--limit", "10", "--offset", "5"]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/catalog/datasets", {
+        params: { limit: "10", offset: "5" },
+      });
     });
   });
 

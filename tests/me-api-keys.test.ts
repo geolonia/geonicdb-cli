@@ -8,6 +8,16 @@ vi.mock("../src/helpers.js", () => ({
   outputResponse: vi.fn(),
   withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
   resolveOptions: vi.fn().mockReturnValue({ profile: "default" }),
+  parseNonNegativeInt: (value: string): number => {
+    if (!/^\d+$/.test(value)) throw new Error("Invalid non-negative integer");
+    return Number(value);
+  },
+  buildPaginationParams: (opts: { limit?: number; offset?: number }): Record<string, string> => {
+    const params: Record<string, string> = {};
+    if (opts.limit !== undefined) params["limit"] = String(opts.limit);
+    if (opts.offset !== undefined) params["offset"] = String(opts.offset);
+    return params;
+  },
 }));
 
 vi.mock("../src/input.js", () => ({
@@ -75,11 +85,20 @@ describe("me api-keys commands", () => {
       client.rawRequest.mockResolvedValue(mockResponse([{ keyId: "k1" }]));
       const program = makeProgram();
       await runCommand(program, ["me", "api-keys", "list"]);
-      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/api-keys");
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/api-keys", { params: {} });
       expect(outputResponse).toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("API キー値は作成時"),
       );
+    });
+
+    it("forwards --limit and --offset", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, ["me", "api-keys", "list", "--limit", "10", "--offset", "5"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/api-keys", {
+        params: { limit: "10", offset: "5" },
+      });
     });
 
     it("outputs dpopRequired field in list response", async () => {

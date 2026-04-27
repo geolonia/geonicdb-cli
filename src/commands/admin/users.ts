@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, getFormat, outputResponse } from "../../helpers.js";
+import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../../helpers.js";
 import { parseJsonInput } from "../../input.js";
 import { printSuccess } from "../../output.js";
 import { addExamples } from "../help.js";
@@ -13,11 +13,15 @@ export function registerUsersCommand(parent: Command): void {
   const list = users
     .command("list")
     .description("List all users across tenants, showing email, role, and status")
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/admin/users");
+        const params = buildPaginationParams(cmd.opts());
+
+        const response = await client.rawRequest("GET", "/admin/users", { params });
         outputResponse(response, format);
       }),
     );
@@ -34,6 +38,10 @@ export function registerUsersCommand(parent: Command): void {
     {
       description: "List users for a specific tenant",
       command: "geonic admin users list --service <tenant-id>",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic admin users list --limit 50 --offset 100",
     },
   ]);
 

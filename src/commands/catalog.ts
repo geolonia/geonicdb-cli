@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, getFormat, outputResponse } from "../helpers.js";
+import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../helpers.js";
 import { addExamples } from "./help.js";
 
 export function registerCatalogCommand(program: Command): void {
@@ -40,11 +40,15 @@ export function registerCatalogCommand(program: Command): void {
   const datasetsList = datasets
     .command("list")
     .description("List all datasets published in the catalog")
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/catalog/datasets");
+        const params = buildPaginationParams(cmd.opts());
+
+        const response = await client.rawRequest("GET", "/catalog/datasets", { params });
         outputResponse(response, format);
       }),
     );
@@ -57,6 +61,10 @@ export function registerCatalogCommand(program: Command): void {
     {
       description: "Browse datasets in table format",
       command: "geonic catalog datasets list --format table",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic catalog datasets list --limit 50 --offset 100",
     },
   ]);
 

@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, getFormat, outputResponse } from "../helpers.js";
+import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
 import { addExamples, addNotes } from "./help.js";
@@ -13,11 +13,15 @@ export function addMePoliciesSubcommand(me: Command): void {
   const list = policies
     .command("list")
     .description("List your personal policies")
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/me/policies");
+        const params = buildPaginationParams(cmd.opts());
+
+        const response = await client.rawRequest("GET", "/me/policies", { params });
         outputResponse(response, format);
       }),
     );
@@ -30,6 +34,10 @@ export function addMePoliciesSubcommand(me: Command): void {
     {
       description: "List in table format for a quick overview",
       command: "geonic me policies list --format table",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic me policies list --limit 50 --offset 100",
     },
   ]);
 

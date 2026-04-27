@@ -4,6 +4,8 @@ import {
   createClient,
   getFormat,
   outputResponse,
+  parseNonNegativeInt,
+  buildPaginationParams,
 } from "../helpers.js";
 import { addExamples } from "./help.js";
 
@@ -16,12 +18,15 @@ export function registerTypesCommand(program: Command): void {
   const list = types
     .command("list")
     .description("List all entity types currently stored in the broker")
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
+        const params = buildPaginationParams(cmd.opts());
 
-        const response = await client.get("/types");
+        const response = await client.get("/types", params);
         outputResponse(response, format);
       }),
     );
@@ -34,6 +39,10 @@ export function registerTypesCommand(program: Command): void {
     {
       description: "List entity types in table format for a quick overview",
       command: "geonic types list --format table",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic types list --limit 50 --offset 100",
     },
   ]);
 

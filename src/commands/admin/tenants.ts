@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, getFormat, outputResponse } from "../../helpers.js";
+import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../../helpers.js";
 import { parseJsonInput } from "../../input.js";
 import { printSuccess } from "../../output.js";
 import { addExamples } from "../help.js";
@@ -13,11 +13,15 @@ export function registerTenantsCommand(parent: Command): void {
   const list = tenants
     .command("list")
     .description("List all tenants in the system, including their status and configuration")
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/admin/tenants");
+        const params = buildPaginationParams(cmd.opts());
+
+        const response = await client.rawRequest("GET", "/admin/tenants", { params });
         outputResponse(response, format);
       }),
     );
@@ -30,6 +34,10 @@ export function registerTenantsCommand(parent: Command): void {
     {
       description: "List tenants in table format",
       command: "geonic admin tenants list --format table",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic admin tenants list --limit 50 --offset 100",
     },
   ]);
 

@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse } from "../../helpers.js";
+import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../../helpers.js";
 import { loadConfig, saveConfig } from "../../config.js";
 import { parseJsonInput } from "../../input.js";
 import { printApiKeyBox, printError } from "../../output.js";
@@ -109,12 +109,14 @@ export function registerApiKeysCommand(parent: Command): void {
     .command("list")
     .description("List all API keys, showing name, tenant, policy, and status (key values are masked)")
     .option("--tenant-id <id>", "Filter by tenant ID")
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
-        const opts = cmd.opts() as { tenantId?: string };
+        const opts = cmd.opts() as { tenantId?: string; limit?: number; offset?: number };
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const params: Record<string, string> = {};
+        const params: Record<string, string> = buildPaginationParams(opts);
         if (opts.tenantId) params.tenantId = opts.tenantId;
         const response = await client.rawRequest("GET", "/admin/api-keys", {
           params,
@@ -137,6 +139,10 @@ export function registerApiKeysCommand(parent: Command): void {
     {
       description: "List API keys for a specific tenant",
       command: "geonic admin api-keys list --tenant-id <tenant-id>",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic admin api-keys list --limit 50 --offset 100",
     },
   ]);
 

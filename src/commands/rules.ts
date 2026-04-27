@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, getFormat, outputResponse } from "../helpers.js";
+import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
 import { addExamples } from "./help.js";
@@ -13,11 +13,15 @@ export function registerRulesCommand(program: Command): void {
   const list = rules
     .command("list")
     .description("List all configured rules and their current status")
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/rules");
+        const params = buildPaginationParams(cmd.opts());
+
+        const response = await client.rawRequest("GET", "/rules", { params });
         outputResponse(response, format);
       }),
     );
@@ -30,6 +34,10 @@ export function registerRulesCommand(program: Command): void {
     {
       description: "List rules in table format to review status at a glance",
       command: "geonic rules list --format table",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic rules list --limit 50 --offset 100",
     },
   ]);
 

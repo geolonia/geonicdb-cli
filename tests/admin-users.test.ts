@@ -8,6 +8,16 @@ vi.mock("../src/helpers.js", () => ({
   outputResponse: vi.fn(),
   withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
   resolveOptions: vi.fn(),
+  parseNonNegativeInt: (value: string): number => {
+    if (!/^\d+$/.test(value)) throw new Error("Invalid non-negative integer");
+    return Number(value);
+  },
+  buildPaginationParams: (opts: { limit?: number; offset?: number }): Record<string, string> => {
+    const params: Record<string, string> = {};
+    if (opts.limit !== undefined) params["limit"] = String(opts.limit);
+    if (opts.offset !== undefined) params["offset"] = String(opts.offset);
+    return params;
+  },
 }));
 
 vi.mock("../src/input.js", () => ({
@@ -55,8 +65,17 @@ describe("admin users commands", () => {
       client.rawRequest.mockResolvedValue(mockResponse([{ id: "u1" }]));
       const program = makeProgram();
       await runCommand(program, ["admin", "users", "list"]);
-      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/users");
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/users", { params: {} });
       expect(outputResponse).toHaveBeenCalled();
+    });
+
+    it("forwards --limit and --offset", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "users", "list", "--limit", "10", "--offset", "5"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/users", {
+        params: { limit: "10", offset: "5" },
+      });
     });
   });
 

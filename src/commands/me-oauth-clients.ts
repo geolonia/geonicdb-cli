@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse } from "../helpers.js";
+import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../helpers.js";
 import { loadConfig, saveConfig, validateUrl } from "../config.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess, printError, printInfo, printWarning } from "../output.js";
@@ -15,11 +15,15 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
   const list = oauthClients
     .command("list")
     .description("List your OAuth clients")
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/me/oauth-clients");
+        const params = buildPaginationParams(cmd.opts());
+
+        const response = await client.rawRequest("GET", "/me/oauth-clients", { params });
         outputResponse(response, format);
       }),
     );
@@ -32,6 +36,10 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
     {
       description: "List in table format for a quick overview",
       command: "geonic me oauth-clients list --format table",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic me oauth-clients list --limit 50 --offset 100",
     },
   ]);
 

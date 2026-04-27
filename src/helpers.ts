@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, InvalidArgumentError } from "commander";
 import { loadConfig, saveConfig, validateUrl } from "./config.js";
 import { DryRunSignal, GdbClient, GdbClientError } from "./client.js";
 import { printError, printOutput, printCount } from "./output.js";
@@ -85,6 +85,32 @@ export function outputResponse(
   if (response.data !== undefined && response.data !== "") {
     printOutput(response.data, format);
   }
+}
+
+/**
+ * Commander.js option parser for `--limit` / `--offset` style flags.
+ * Rejects non-integer or negative values with InvalidArgumentError so
+ * Commander surfaces a clear failure before the request is built.
+ */
+export function parseNonNegativeInt(value: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new InvalidArgumentError("Must be a non-negative integer.");
+  }
+  return Number(value);
+}
+
+/**
+ * Build a pagination query-param record from parsed CLI options.
+ * Centralizes the limit/offset → string conversion shared by every list command.
+ */
+export function buildPaginationParams(opts: {
+  limit?: number;
+  offset?: number;
+}): Record<string, string> {
+  const params: Record<string, string> = {};
+  if (opts.limit !== undefined) params["limit"] = String(opts.limit);
+  if (opts.offset !== undefined) params["offset"] = String(opts.offset);
+  return params;
 }
 
 /**

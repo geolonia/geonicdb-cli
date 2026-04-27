@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse } from "../helpers.js";
+import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../helpers.js";
 import { loadConfig, saveConfig } from "../config.js";
 import { parseJsonInput } from "../input.js";
 import { printApiKeyBox, printError } from "../output.js";
@@ -66,11 +66,15 @@ export function addMeApiKeysSubcommand(me: Command): void {
   const list = apiKeys
     .command("list")
     .description("List your API keys")
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/me/api-keys");
+        const params = buildPaginationParams(cmd.opts());
+
+        const response = await client.rawRequest("GET", "/me/api-keys", { params });
         response.data = cleanApiKeyData(response.data);
         outputResponse(response, format);
         console.error("※ API キー値は作成時 (create) またはリフレッシュ時 (refresh) にのみ表示されます。");
@@ -85,6 +89,10 @@ export function addMeApiKeysSubcommand(me: Command): void {
     {
       description: "List in table format for a quick overview",
       command: "geonic me api-keys list --format table",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic me api-keys list --limit 50 --offset 100",
     },
   ]);
 

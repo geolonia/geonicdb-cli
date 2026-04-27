@@ -8,6 +8,16 @@ vi.mock("../src/helpers.js", () => ({
   outputResponse: vi.fn(),
   withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
   resolveOptions: vi.fn(),
+  parseNonNegativeInt: (value: string): number => {
+    if (!/^\d+$/.test(value)) throw new Error("Invalid non-negative integer");
+    return Number(value);
+  },
+  buildPaginationParams: (opts: { limit?: number; offset?: number }): Record<string, string> => {
+    const params: Record<string, string> = {};
+    if (opts.limit !== undefined) params["limit"] = String(opts.limit);
+    if (opts.offset !== undefined) params["offset"] = String(opts.offset);
+    return params;
+  },
 }));
 
 vi.mock("../src/input.js", () => ({
@@ -72,8 +82,17 @@ describe("me oauth-clients commands", () => {
       client.rawRequest.mockResolvedValue(mockResponse([{ clientId: "c1" }]));
       const program = makeProgram();
       await runCommand(program, ["me", "oauth-clients", "list"]);
-      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/oauth-clients");
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/oauth-clients", { params: {} });
       expect(outputResponse).toHaveBeenCalled();
+    });
+
+    it("forwards --limit and --offset", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, ["me", "oauth-clients", "list", "--limit", "10", "--offset", "5"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/oauth-clients", {
+        params: { limit: "10", offset: "5" },
+      });
     });
   });
 

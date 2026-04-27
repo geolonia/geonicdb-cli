@@ -25,7 +25,7 @@ describe("models (custom-data-models) command", () => {
       mockClient.rawRequest.mockResolvedValue(mockResponse([{ id: "model1" }]));
       await runCommand(program, ["custom-data-models", "list"]);
 
-      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/custom-data-models");
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/custom-data-models", { params: {} });
       expect(outputResponse).toHaveBeenCalledWith(expect.anything(), "json");
     });
 
@@ -33,7 +33,16 @@ describe("models (custom-data-models) command", () => {
       mockClient.rawRequest.mockResolvedValue(mockResponse([]));
       await runCommand(program, ["models", "list"]);
 
-      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/custom-data-models");
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/custom-data-models", { params: {} });
+    });
+
+    it("forwards --limit and --offset", async () => {
+      mockClient.rawRequest.mockResolvedValue(mockResponse([]));
+      await runCommand(program, ["models", "list", "--limit", "10", "--offset", "5"]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/custom-data-models", {
+        params: { limit: "10", offset: "5" },
+      });
     });
   });
 
