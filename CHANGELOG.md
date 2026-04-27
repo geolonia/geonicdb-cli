@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-04-27
+
 ### 2026-04-27
 - **Feat**: ページング未対応だった `list` 系コマンドに `--limit` / `--offset` フラグを追加 — `types list`, `rules list`, `catalog datasets list`, `custom-data-models list`, `me policies list`, `me api-keys list`, `me oauth-clients list`, `admin tenants list`, `admin users list`, `admin api-keys list`, `admin oauth-clients list`, `admin policies list` で全件取得可能に (#113)
 - **Refactor**: ページング処理を `helpers.ts` の `parseNonNegativeInt` / `buildPaginationParams` に共通化。負数や非整数を CLI 側で早期に弾くようバリデーションを追加 (#113)
@@ -214,7 +216,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.11.0...v0.12.0
