@@ -55,8 +55,17 @@ describe("admin users commands", () => {
       client.rawRequest.mockResolvedValue(mockResponse([{ id: "u1" }]));
       const program = makeProgram();
       await runCommand(program, ["admin", "users", "list"]);
-      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/users");
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/users", { params: {} });
       expect(outputResponse).toHaveBeenCalled();
+    });
+
+    it("forwards --limit and --offset", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "users", "list", "--limit", "10", "--offset", "5"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/users", {
+        params: { limit: "10", offset: "5" },
+      });
     });
   });
 

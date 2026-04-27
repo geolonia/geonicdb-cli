@@ -43,8 +43,18 @@ describe("types command", () => {
       mockClient.get.mockResolvedValue(mockResponse([{ id: "Sensor" }]));
       await runCommand(program, ["types", "list"]);
 
-      expect(mockClient.get).toHaveBeenCalledWith("/types");
+      expect(mockClient.get).toHaveBeenCalledWith("/types", {});
       expect(outputResponse).toHaveBeenCalledWith(expect.anything(), "json");
+    });
+
+    it("forwards --limit and --offset", async () => {
+      mockClient.get.mockResolvedValue(mockResponse([{ id: "Sensor" }]));
+      await runCommand(program, ["types", "list", "--limit", "10", "--offset", "5"]);
+
+      expect(mockClient.get).toHaveBeenCalledWith("/types", {
+        limit: "10",
+        offset: "5",
+      });
     });
   });
 

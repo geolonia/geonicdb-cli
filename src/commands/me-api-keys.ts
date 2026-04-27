@@ -66,11 +66,19 @@ export function addMeApiKeysSubcommand(me: Command): void {
   const list = apiKeys
     .command("list")
     .description("List your API keys")
+    .option("--limit <n>", "Maximum number of results", parseInt)
+    .option("--offset <n>", "Skip N results", parseInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/me/api-keys");
+        const cmdOpts = cmd.opts();
+
+        const params: Record<string, string> = {};
+        if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
+        if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
+
+        const response = await client.rawRequest("GET", "/me/api-keys", { params });
         response.data = cleanApiKeyData(response.data);
         outputResponse(response, format);
         console.error("※ API キー値は作成時 (create) またはリフレッシュ時 (refresh) にのみ表示されます。");
@@ -85,6 +93,10 @@ export function addMeApiKeysSubcommand(me: Command): void {
     {
       description: "List in table format for a quick overview",
       command: "geonic me api-keys list --format table",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic me api-keys list --limit 50 --offset 100",
     },
   ]);
 

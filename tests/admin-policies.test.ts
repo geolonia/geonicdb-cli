@@ -55,8 +55,17 @@ describe("admin policies commands", () => {
       client.rawRequest.mockResolvedValue(mockResponse([{ id: "p1" }]));
       const program = makeProgram();
       await runCommand(program, ["admin", "policies", "list"]);
-      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/policies");
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/policies", { params: {} });
       expect(outputResponse).toHaveBeenCalled();
+    });
+
+    it("forwards --limit and --offset", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "policies", "list", "--limit", "10", "--offset", "5"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/policies", {
+        params: { limit: "10", offset: "5" },
+      });
     });
   });
 

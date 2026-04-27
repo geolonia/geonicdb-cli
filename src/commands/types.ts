@@ -16,12 +16,19 @@ export function registerTypesCommand(program: Command): void {
   const list = types
     .command("list")
     .description("List all entity types currently stored in the broker")
+    .option("--limit <n>", "Maximum number of results", parseInt)
+    .option("--offset <n>", "Skip N results", parseInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
+        const cmdOpts = cmd.opts();
 
-        const response = await client.get("/types");
+        const params: Record<string, string> = {};
+        if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
+        if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
+
+        const response = await client.get("/types", params);
         outputResponse(response, format);
       }),
     );
@@ -34,6 +41,10 @@ export function registerTypesCommand(program: Command): void {
     {
       description: "List entity types in table format for a quick overview",
       command: "geonic types list --format table",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic types list --limit 50 --offset 100",
     },
   ]);
 

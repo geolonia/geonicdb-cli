@@ -13,11 +13,19 @@ export function addMePoliciesSubcommand(me: Command): void {
   const list = policies
     .command("list")
     .description("List your personal policies")
+    .option("--limit <n>", "Maximum number of results", parseInt)
+    .option("--offset <n>", "Skip N results", parseInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/me/policies");
+        const cmdOpts = cmd.opts();
+
+        const params: Record<string, string> = {};
+        if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
+        if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
+
+        const response = await client.rawRequest("GET", "/me/policies", { params });
         outputResponse(response, format);
       }),
     );
@@ -30,6 +38,10 @@ export function addMePoliciesSubcommand(me: Command): void {
     {
       description: "List in table format for a quick overview",
       command: "geonic me policies list --format table",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic me policies list --limit 50 --offset 100",
     },
   ]);
 

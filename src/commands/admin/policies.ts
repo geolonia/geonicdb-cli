@@ -13,11 +13,19 @@ export function registerPoliciesCommand(parent: Command): void {
   const list = policies
     .command("list")
     .description("List all access control policies, showing their status and priority")
+    .option("--limit <n>", "Maximum number of results", parseInt)
+    .option("--offset <n>", "Skip N results", parseInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/admin/policies");
+        const cmdOpts = cmd.opts();
+
+        const params: Record<string, string> = {};
+        if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
+        if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
+
+        const response = await client.rawRequest("GET", "/admin/policies", { params });
         outputResponse(response, format);
       }),
     );
@@ -30,6 +38,10 @@ export function registerPoliciesCommand(parent: Command): void {
     {
       description: "List policies in table format for an overview",
       command: "geonic admin policies list --format table",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic admin policies list --limit 50 --offset 100",
     },
   ]);
 

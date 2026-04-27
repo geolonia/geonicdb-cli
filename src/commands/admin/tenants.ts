@@ -13,11 +13,19 @@ export function registerTenantsCommand(parent: Command): void {
   const list = tenants
     .command("list")
     .description("List all tenants in the system, including their status and configuration")
+    .option("--limit <n>", "Maximum number of results", parseInt)
+    .option("--offset <n>", "Skip N results", parseInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/admin/tenants");
+        const cmdOpts = cmd.opts();
+
+        const params: Record<string, string> = {};
+        if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
+        if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
+
+        const response = await client.rawRequest("GET", "/admin/tenants", { params });
         outputResponse(response, format);
       }),
     );
@@ -30,6 +38,10 @@ export function registerTenantsCommand(parent: Command): void {
     {
       description: "List tenants in table format",
       command: "geonic admin tenants list --format table",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic admin tenants list --limit 50 --offset 100",
     },
   ]);
 

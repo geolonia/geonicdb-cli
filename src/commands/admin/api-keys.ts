@@ -109,13 +109,17 @@ export function registerApiKeysCommand(parent: Command): void {
     .command("list")
     .description("List all API keys, showing name, tenant, policy, and status (key values are masked)")
     .option("--tenant-id <id>", "Filter by tenant ID")
+    .option("--limit <n>", "Maximum number of results", parseInt)
+    .option("--offset <n>", "Skip N results", parseInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
-        const opts = cmd.opts() as { tenantId?: string };
+        const opts = cmd.opts() as { tenantId?: string; limit?: number; offset?: number };
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const params: Record<string, string> = {};
         if (opts.tenantId) params.tenantId = opts.tenantId;
+        if (opts.limit !== undefined) params.limit = String(opts.limit);
+        if (opts.offset !== undefined) params.offset = String(opts.offset);
         const response = await client.rawRequest("GET", "/admin/api-keys", {
           params,
         });
@@ -137,6 +141,10 @@ export function registerApiKeysCommand(parent: Command): void {
     {
       description: "List API keys for a specific tenant",
       command: "geonic admin api-keys list --tenant-id <tenant-id>",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic admin api-keys list --limit 50 --offset 100",
     },
   ]);
 

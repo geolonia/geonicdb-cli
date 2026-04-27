@@ -75,11 +75,20 @@ describe("me api-keys commands", () => {
       client.rawRequest.mockResolvedValue(mockResponse([{ keyId: "k1" }]));
       const program = makeProgram();
       await runCommand(program, ["me", "api-keys", "list"]);
-      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/api-keys");
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/api-keys", { params: {} });
       expect(outputResponse).toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("API キー値は作成時"),
       );
+    });
+
+    it("forwards --limit and --offset", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, ["me", "api-keys", "list", "--limit", "10", "--offset", "5"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/api-keys", {
+        params: { limit: "10", offset: "5" },
+      });
     });
 
     it("outputs dpopRequired field in list response", async () => {

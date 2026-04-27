@@ -70,8 +70,17 @@ describe("me policies commands", () => {
       client.rawRequest.mockResolvedValue(mockResponse([{ policyId: "p1" }]));
       const program = makeProgram();
       await runCommand(program, ["me", "policies", "list"]);
-      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/policies");
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/policies", { params: {} });
       expect(outputResponse).toHaveBeenCalled();
+    });
+
+    it("forwards --limit and --offset", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, ["me", "policies", "list", "--limit", "10", "--offset", "5"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/me/policies", {
+        params: { limit: "10", offset: "5" },
+      });
     });
   });
 

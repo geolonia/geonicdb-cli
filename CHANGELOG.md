@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-04-27
+- **Feat**: ページング未対応だった `list` 系コマンドに `--limit` / `--offset` フラグを追加 — `types list`, `rules list`, `catalog datasets list`, `custom-data-models list`, `me policies list`, `me api-keys list`, `me oauth-clients list`, `admin tenants list`, `admin users list`, `admin api-keys list`, `admin oauth-clients list`, `admin policies list` で全件取得可能に (#112)
+
 ## [0.13.0] - 2026-04-24
 
 ### 2026-04-24

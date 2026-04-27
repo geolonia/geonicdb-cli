@@ -40,11 +40,19 @@ export function registerCatalogCommand(program: Command): void {
   const datasetsList = datasets
     .command("list")
     .description("List all datasets published in the catalog")
+    .option("--limit <n>", "Maximum number of results", parseInt)
+    .option("--offset <n>", "Skip N results", parseInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/catalog/datasets");
+        const cmdOpts = cmd.opts();
+
+        const params: Record<string, string> = {};
+        if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
+        if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
+
+        const response = await client.rawRequest("GET", "/catalog/datasets", { params });
         outputResponse(response, format);
       }),
     );
@@ -57,6 +65,10 @@ export function registerCatalogCommand(program: Command): void {
     {
       description: "Browse datasets in table format",
       command: "geonic catalog datasets list --format table",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic catalog datasets list --limit 50 --offset 100",
     },
   ]);
 

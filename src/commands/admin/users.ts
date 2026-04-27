@@ -13,11 +13,19 @@ export function registerUsersCommand(parent: Command): void {
   const list = users
     .command("list")
     .description("List all users across tenants, showing email, role, and status")
+    .option("--limit <n>", "Maximum number of results", parseInt)
+    .option("--offset <n>", "Skip N results", parseInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("GET", "/admin/users");
+        const cmdOpts = cmd.opts();
+
+        const params: Record<string, string> = {};
+        if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
+        if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
+
+        const response = await client.rawRequest("GET", "/admin/users", { params });
         outputResponse(response, format);
       }),
     );
@@ -34,6 +42,10 @@ export function registerUsersCommand(parent: Command): void {
     {
       description: "List users for a specific tenant",
       command: "geonic admin users list --service <tenant-id>",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic admin users list --limit 50 --offset 100",
     },
   ]);
 

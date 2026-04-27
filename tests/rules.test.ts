@@ -25,8 +25,17 @@ describe("rules command", () => {
       mockClient.rawRequest.mockResolvedValue(mockResponse([{ id: "rule1" }]));
       await runCommand(program, ["rules", "list"]);
 
-      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/rules");
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/rules", { params: {} });
       expect(outputResponse).toHaveBeenCalledWith(expect.anything(), "json");
+    });
+
+    it("forwards --limit and --offset", async () => {
+      mockClient.rawRequest.mockResolvedValue(mockResponse([{ id: "rule1" }]));
+      await runCommand(program, ["rules", "list", "--limit", "10", "--offset", "5"]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/rules", {
+        params: { limit: "10", offset: "5" },
+      });
     });
   });
 
