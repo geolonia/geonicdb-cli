@@ -15,7 +15,10 @@ vi.mock("../src/helpers.js", () => ({
   getFormat: vi.fn(),
   outputResponse: vi.fn(),
   withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
-  parseNonNegativeInt: (value: string): number => Number(value),
+  parseNonNegativeInt: (value: string): number => {
+    if (!/^\d+$/.test(value)) throw new Error("Invalid non-negative integer");
+    return Number(value);
+  },
   buildPaginationParams: (opts: { limit?: number; offset?: number }): Record<string, string> => {
     const params: Record<string, string> = {};
     if (opts.limit !== undefined) params["limit"] = String(opts.limit);
