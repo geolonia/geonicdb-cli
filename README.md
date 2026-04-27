@@ -85,6 +85,19 @@ Options are resolved in this order (first wins):
 2. Config file (`~/.config/geonic/config.json`)
 3. Defaults (`format=json`)
 
+## Pagination
+
+All `list` subcommands accept `--limit <n>` and `--offset <n>` to paginate through results:
+
+```bash
+geonic types list --limit 50 --offset 100
+geonic admin users list --limit 100 --offset 0
+```
+
+Supported on: `entities list`, `temporal entities list`, `subscriptions list`, `registrations list`, `snapshots list`, `types list`, `rules list`, `catalog datasets list`, `custom-data-models list`, `me policies list`, `me api-keys list`, `me oauth-clients list`, and all `admin <resource> list` commands.
+
+Server-side maximum limits: 1000 for NGSI endpoints, 100 for admin endpoints. Omit both flags to use server defaults.
+
 ## Commands
 
 ### help — Get help on commands
