@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse } from "../helpers.js";
+import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../helpers.js";
 import { loadConfig, saveConfig } from "../config.js";
 import { parseJsonInput } from "../input.js";
 import { printApiKeyBox, printError } from "../output.js";
@@ -66,17 +66,13 @@ export function addMeApiKeysSubcommand(me: Command): void {
   const list = apiKeys
     .command("list")
     .description("List your API keys")
-    .option("--limit <n>", "Maximum number of results", parseInt)
-    .option("--offset <n>", "Skip N results", parseInt)
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const cmdOpts = cmd.opts();
-
-        const params: Record<string, string> = {};
-        if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
-        if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
+        const params = buildPaginationParams(cmd.opts());
 
         const response = await client.rawRequest("GET", "/me/api-keys", { params });
         response.data = cleanApiKeyData(response.data);

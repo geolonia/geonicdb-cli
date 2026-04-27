@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, getFormat, outputResponse } from "../../helpers.js";
+import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../../helpers.js";
 import { parseJsonInput } from "../../input.js";
 import { printSuccess } from "../../output.js";
 import { addExamples } from "../help.js";
@@ -13,17 +13,13 @@ export function registerPoliciesCommand(parent: Command): void {
   const list = policies
     .command("list")
     .description("List all access control policies, showing their status and priority")
-    .option("--limit <n>", "Maximum number of results", parseInt)
-    .option("--offset <n>", "Skip N results", parseInt)
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const cmdOpts = cmd.opts();
-
-        const params: Record<string, string> = {};
-        if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
-        if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
+        const params = buildPaginationParams(cmd.opts());
 
         const response = await client.rawRequest("GET", "/admin/policies", { params });
         outputResponse(response, format);

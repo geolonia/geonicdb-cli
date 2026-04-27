@@ -8,6 +8,13 @@ vi.mock("../src/helpers.js", () => ({
   outputResponse: vi.fn(),
   withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
   resolveOptions: vi.fn().mockReturnValue({ profile: "default" }),
+  parseNonNegativeInt: (value: string): number => Number(value),
+  buildPaginationParams: (opts: { limit?: number; offset?: number }): Record<string, string> => {
+    const params: Record<string, string> = {};
+    if (opts.limit !== undefined) params["limit"] = String(opts.limit);
+    if (opts.offset !== undefined) params["offset"] = String(opts.offset);
+    return params;
+  },
 }));
 
 vi.mock("../src/input.js", () => ({

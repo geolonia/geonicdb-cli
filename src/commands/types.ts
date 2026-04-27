@@ -4,6 +4,8 @@ import {
   createClient,
   getFormat,
   outputResponse,
+  parseNonNegativeInt,
+  buildPaginationParams,
 } from "../helpers.js";
 import { addExamples } from "./help.js";
 
@@ -16,17 +18,13 @@ export function registerTypesCommand(program: Command): void {
   const list = types
     .command("list")
     .description("List all entity types currently stored in the broker")
-    .option("--limit <n>", "Maximum number of results", parseInt)
-    .option("--offset <n>", "Skip N results", parseInt)
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const cmdOpts = cmd.opts();
-
-        const params: Record<string, string> = {};
-        if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
-        if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
+        const params = buildPaginationParams(cmd.opts());
 
         const response = await client.get("/types", params);
         outputResponse(response, format);
