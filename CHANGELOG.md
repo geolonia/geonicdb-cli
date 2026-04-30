@@ -7,8 +7,10 @@
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-04-30
+
 ### 2026-04-30
-- **Feat**: `admin tenants create` / `admin tenants update` に `--allowed-origins` フラグを追加 — テナント単位の CORS origin 制御 (`Tenant.settings.allowedOrigins`, geonicdb #1069 対応) を専用フラグで設定可能に。`api-keys` の `--origins` と同じカンマ区切り命名規則を踏襲し、空文字列で `[]`（全 deny）、`*` で wildcard 許可を表現 (#115)
+- **Feat**: `admin tenants create` / `admin tenants update` に `--allowed-origins` フラグを追加 — テナント単位の CORS origin 制御 (`Tenant.settings.allowedOrigins`, geonicdb #1069 対応) を専用フラグで設定可能に。`api-keys` の `--origins` と同じカンマ区切り命名規則を踏襲し、空文字列で `[]`（全 deny）、`*` で wildcard 許可を表現 (#115, #116)
 
 ## [0.14.0] - 2026-04-27
 
@@ -219,7 +221,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.12.1...v0.13.0
 [0.12.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.12.0...v0.12.1
