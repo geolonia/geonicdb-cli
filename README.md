@@ -441,6 +441,28 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 | `admin tenants activate <id>` | Activate a tenant |
 | `admin tenants deactivate <id>` | Deactivate a tenant |
 
+`admin tenants create` / `admin tenants update` support `--allowed-origins <origins>` for tenant-scoped CORS control. The flag maps to `settings.allowedOrigins`:
+
+| Value | Behavior |
+|---|---|
+| Flag omitted | All origins allowed (backward-compatible default) |
+| `--allowed-origins ""` | Empty array — deny all |
+| `--allowed-origins "*"` | Wildcard — allow all origins (including non-browser / S2S clients) |
+| `--allowed-origins "https://a,https://b"` | Exact-match list (max 50 entries) |
+
+```bash
+# Restrict to specific origins
+geonic admin tenants update <tenant-id> --allowed-origins "https://app.example.com,https://admin.example.com"
+
+# Wildcard for development tenants
+geonic admin tenants update <tenant-id> --allowed-origins "*"
+
+# Deny all
+geonic admin tenants update <tenant-id> --allowed-origins ""
+```
+
+When combined with a JSON payload, the flag merges into `settings` without dropping other `settings.*` keys.
+
 #### admin users
 
 | Subcommand | Description |

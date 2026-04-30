@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-04-30
+- **Feat**: `admin tenants create` / `admin tenants update` に `--allowed-origins` フラグを追加 — テナント単位の CORS origin 制御 (`Tenant.settings.allowedOrigins`, geonicdb #1069 対応) を専用フラグで設定可能に。`api-keys` の `--origins` と同じカンマ区切り命名規則を踏襲し、空文字列で `[]`（全 deny）、`*` で wildcard 許可を表現 (#115)
+
 ## [0.14.0] - 2026-04-27
 
 ### 2026-04-27
