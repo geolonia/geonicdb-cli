@@ -2,7 +2,29 @@ import type { Command } from "commander";
 import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../../helpers.js";
 import { parseJsonInput } from "../../input.js";
 import { printSuccess } from "../../output.js";
-import { addExamples } from "../help.js";
+import { addExamples, addNotes } from "../help.js";
+
+/**
+ * Apply --allowed-origins flag to body.settings.allowedOrigins.
+ * Empty string → []. Wildcard / max-length validation is left to the server.
+ */
+function applyAllowedOriginsFlag(
+  body: Record<string, unknown>,
+  opts: { allowedOrigins?: string },
+): void {
+  if (opts.allowedOrigins === undefined) return;
+  const origins = opts.allowedOrigins
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const existing = body.settings;
+  const settings: Record<string, unknown> =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? { ...(existing as Record<string, unknown>) }
+      : {};
+  settings.allowedOrigins = origins;
+  body.settings = settings;
+}
 
 export function registerTenantsCommand(parent: Command): void {
   const tenants = parent
@@ -80,9 +102,22 @@ export function registerTenantsCommand(parent: Command): void {
         '    "description": "Production environment tenant"\n' +
         "  }",
     )
+    .option(
+      "--allowed-origins <origins>",
+      "Comma-separated allowed origins for CORS (empty string = deny all, '*' = allow all)",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-        const body = await parseJsonInput(json as string | undefined);
+        const opts = cmd.opts() as { allowedOrigins?: string };
+        let body: Record<string, unknown>;
+        if (json !== undefined) {
+          body = (await parseJsonInput(json as string | undefined)) as Record<string, unknown>;
+        } else if (opts.allowedOrigins !== undefined) {
+          body = {};
+        } else {
+          body = (await parseJsonInput()) as Record<string, unknown>;
+        }
+        applyAllowedOriginsFlag(body, opts);
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const response = await client.rawRequest("POST", "/admin/tenants", {
@@ -92,6 +127,14 @@ export function registerTenantsCommand(parent: Command): void {
         printSuccess("Tenant created.");
       }),
     );
+
+  addNotes(create, [
+    "--allowed-origins maps to settings.allowedOrigins (CORS).",
+    "  Unset = allow all origins (backward-compatible default).",
+    "  '' (empty string) = explicit empty array — deny all.",
+    "  '*' = wildcard — allow all origins (including non-browser clients).",
+    "  Otherwise = comma-separated list of exact-match origins (max 50).",
+  ]);
 
   addExamples(create, [
     {
@@ -114,6 +157,10 @@ export function registerTenantsCommand(parent: Command): void {
       description: "Interactive mode (omit JSON argument)",
       command: "geonic admin tenants create",
     },
+    {
+      description: "Restrict CORS allowed origins on creation",
+      command: `geonic admin tenants create '{"name":"production"}' --allowed-origins "https://app.example.com,https://admin.example.com"`,
+    },
   ]);
 
   // tenants update
@@ -125,10 +172,23 @@ export function registerTenantsCommand(parent: Command): void {
         "JSON payload: only specified fields are updated.\n" +
         '  e.g. {"name": "new-name", "description": "Updated description"}',
     )
+    .option(
+      "--allowed-origins <origins>",
+      "Comma-separated allowed origins for CORS (empty string = deny all, '*' = allow all)",
+    )
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
-          const body = (await parseJsonInput(json as string | undefined)) as Record<string, unknown>;
+          const opts = cmd.opts() as { allowedOrigins?: string };
+          let body: Record<string, unknown>;
+          if (json !== undefined) {
+            body = (await parseJsonInput(json as string | undefined)) as Record<string, unknown>;
+          } else if (opts.allowedOrigins !== undefined) {
+            body = {};
+          } else {
+            body = (await parseJsonInput()) as Record<string, unknown>;
+          }
+          applyAllowedOriginsFlag(body, opts);
           const client = createClient(cmd);
           const format = getFormat(cmd);
           const response = await client.rawRequest(
@@ -141,6 +201,14 @@ export function registerTenantsCommand(parent: Command): void {
         },
       ),
     );
+
+  addNotes(update, [
+    "--allowed-origins maps to settings.allowedOrigins (CORS).",
+    "  '' (empty string) = explicit empty array — deny all.",
+    "  '*' = wildcard — allow all origins (including non-browser clients).",
+    "  Otherwise = comma-separated list of exact-match origins (max 50).",
+    "  Existing settings.* keys in JSON payload are preserved.",
+  ]);
 
   addExamples(update, [
     {
@@ -162,6 +230,18 @@ export function registerTenantsCommand(parent: Command): void {
     {
       description: "Interactive mode",
       command: "geonic admin tenants update <tenant-id>",
+    },
+    {
+      description: "Restrict CORS to a single origin",
+      command: `geonic admin tenants update <tenant-id> --allowed-origins "https://app.example.com"`,
+    },
+    {
+      description: "Allow all origins (wildcard)",
+      command: `geonic admin tenants update <tenant-id> --allowed-origins "*"`,
+    },
+    {
+      description: "Deny all origins (empty array)",
+      command: `geonic admin tenants update <tenant-id> --allowed-origins ""`,
     },
   ]);
 

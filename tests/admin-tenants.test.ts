@@ -107,6 +107,114 @@ describe("admin tenants commands", () => {
       expect(outputResponse).toHaveBeenCalled();
       expect(printSuccess).toHaveBeenCalledWith("Tenant created.");
     });
+
+    it("merges --allowed-origins into settings", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ name: "production" });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t2" }, 201));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "create",
+        '{"name":"production"}',
+        "--allowed-origins",
+        "https://a.example.com,https://b.example.com",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", {
+        body: {
+          name: "production",
+          settings: {
+            allowedOrigins: ["https://a.example.com", "https://b.example.com"],
+          },
+        },
+      });
+    });
+
+    it("preserves existing settings keys when merging --allowed-origins", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({
+        name: "production",
+        settings: { someOtherFlag: true },
+      });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t2" }, 201));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "create",
+        '{"name":"production","settings":{"someOtherFlag":true}}',
+        "--allowed-origins",
+        "https://app.example.com",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", {
+        body: {
+          name: "production",
+          settings: {
+            someOtherFlag: true,
+            allowedOrigins: ["https://app.example.com"],
+          },
+        },
+      });
+    });
+
+    it("treats wildcard --allowed-origins as ['*'] on create", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ name: "dev" });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t3" }, 201));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "create",
+        '{"name":"dev"}',
+        "--allowed-origins",
+        "*",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", {
+        body: { name: "dev", settings: { allowedOrigins: ["*"] } },
+      });
+    });
+
+    it("treats empty --allowed-origins as [] on create", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ name: "locked" });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t4" }, 201));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "create",
+        '{"name":"locked"}',
+        "--allowed-origins",
+        "",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", {
+        body: { name: "locked", settings: { allowedOrigins: [] } },
+      });
+    });
+
+    it("does not call parseJsonInput when only --allowed-origins is given", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t5" }, 201));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "create",
+        "--allowed-origins",
+        "https://app.example.com",
+      ]);
+      expect(parseJsonInput).not.toHaveBeenCalled();
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", {
+        body: { settings: { allowedOrigins: ["https://app.example.com"] } },
+      });
+    });
+
+    it("falls back to parseJsonInput when no json and no --allowed-origins on create", async () => {
+      const body = { name: "interactive" };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t6" }, 201));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "tenants", "create"]);
+      expect(parseJsonInput).toHaveBeenCalledWith();
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", { body });
+    });
   });
 
   describe("tenants update", () => {
@@ -127,8 +235,140 @@ describe("admin tenants commands", () => {
       client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
       const program = makeProgram();
       await runCommand(program, ["admin", "tenants", "update", "t1"]);
-      expect(parseJsonInput).toHaveBeenCalledWith(undefined);
+      expect(parseJsonInput).toHaveBeenCalledWith();
       expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", { body });
+    });
+
+    it("sends settings.allowedOrigins from --allowed-origins flag without JSON", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "update",
+        "t1",
+        "--allowed-origins",
+        "https://app.example.com",
+      ]);
+      expect(parseJsonInput).not.toHaveBeenCalled();
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
+        body: { settings: { allowedOrigins: ["https://app.example.com"] } },
+      });
+    });
+
+    it("treats wildcard --allowed-origins as ['*']", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "update",
+        "t1",
+        "--allowed-origins",
+        "*",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
+        body: { settings: { allowedOrigins: ["*"] } },
+      });
+    });
+
+    it("treats empty --allowed-origins as [] (deny all)", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "update",
+        "t1",
+        "--allowed-origins",
+        "",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
+        body: { settings: { allowedOrigins: [] } },
+      });
+    });
+
+    it("trims whitespace and ignores empty entries in --allowed-origins", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "update",
+        "t1",
+        "--allowed-origins",
+        " https://a.example.com , , https://b.example.com ",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
+        body: {
+          settings: {
+            allowedOrigins: ["https://a.example.com", "https://b.example.com"],
+          },
+        },
+      });
+    });
+
+    it("preserves existing settings keys from JSON when merging --allowed-origins", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({
+        settings: { someOtherFlag: true },
+      });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "update",
+        "t1",
+        '{"settings":{"someOtherFlag":true}}',
+        "--allowed-origins",
+        "https://app.example.com",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
+        body: {
+          settings: {
+            someOtherFlag: true,
+            allowedOrigins: ["https://app.example.com"],
+          },
+        },
+      });
+    });
+
+    it("overwrites existing settings.allowedOrigins from JSON when --allowed-origins is given", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({
+        settings: { allowedOrigins: ["https://old.example.com"] },
+      });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "update",
+        "t1",
+        '{"settings":{"allowedOrigins":["https://old.example.com"]}}',
+        "--allowed-origins",
+        "https://new.example.com",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
+        body: {
+          settings: { allowedOrigins: ["https://new.example.com"] },
+        },
+      });
+    });
+
+    it("does not add settings field when --allowed-origins is not provided", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ description: "no flag" });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "update",
+        "t1",
+        '{"description":"no flag"}',
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
+        body: { description: "no flag" },
+      });
     });
   });
 
