@@ -190,7 +190,10 @@ describe("admin tenants commands", () => {
       });
     });
 
-    it("does not call parseJsonInput when only --allowed-origins is given", async () => {
+    it("merges --allowed-origins into stdin/interactive body (no JSON arg)", async () => {
+      // Simulates `cat tenant.json | geonic admin tenants create --allowed-origins ...`
+      // and the TTY interactive case — both are routed through parseJsonInput(undefined).
+      vi.mocked(parseJsonInput).mockResolvedValue({ name: "from-stdin" });
       client.rawRequest.mockResolvedValue(mockResponse({ id: "t5" }, 201));
       const program = makeProgram();
       await runCommand(program, [
@@ -200,9 +203,12 @@ describe("admin tenants commands", () => {
         "--allowed-origins",
         "https://app.example.com",
       ]);
-      expect(parseJsonInput).not.toHaveBeenCalled();
+      expect(parseJsonInput).toHaveBeenCalledWith(undefined);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", {
-        body: { settings: { allowedOrigins: ["https://app.example.com"] } },
+        body: {
+          name: "from-stdin",
+          settings: { allowedOrigins: ["https://app.example.com"] },
+        },
       });
     });
 
@@ -212,7 +218,7 @@ describe("admin tenants commands", () => {
       client.rawRequest.mockResolvedValue(mockResponse({ id: "t6" }, 201));
       const program = makeProgram();
       await runCommand(program, ["admin", "tenants", "create"]);
-      expect(parseJsonInput).toHaveBeenCalledWith();
+      expect(parseJsonInput).toHaveBeenCalledWith(undefined);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", { body });
     });
   });
@@ -235,11 +241,14 @@ describe("admin tenants commands", () => {
       client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
       const program = makeProgram();
       await runCommand(program, ["admin", "tenants", "update", "t1"]);
-      expect(parseJsonInput).toHaveBeenCalledWith();
+      expect(parseJsonInput).toHaveBeenCalledWith(undefined);
       expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", { body });
     });
 
-    it("sends settings.allowedOrigins from --allowed-origins flag without JSON", async () => {
+    it("merges --allowed-origins into stdin/interactive body (no JSON arg)", async () => {
+      // Simulates `cat patch.json | geonic admin tenants update t1 --allowed-origins ...`
+      // and the TTY interactive case — both are routed through parseJsonInput(undefined).
+      vi.mocked(parseJsonInput).mockResolvedValue({ description: "from-stdin" });
       client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
       const program = makeProgram();
       await runCommand(program, [
@@ -250,13 +259,17 @@ describe("admin tenants commands", () => {
         "--allowed-origins",
         "https://app.example.com",
       ]);
-      expect(parseJsonInput).not.toHaveBeenCalled();
+      expect(parseJsonInput).toHaveBeenCalledWith(undefined);
       expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
-        body: { settings: { allowedOrigins: ["https://app.example.com"] } },
+        body: {
+          description: "from-stdin",
+          settings: { allowedOrigins: ["https://app.example.com"] },
+        },
       });
     });
 
     it("treats wildcard --allowed-origins as ['*']", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({});
       client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
       const program = makeProgram();
       await runCommand(program, [
@@ -273,6 +286,7 @@ describe("admin tenants commands", () => {
     });
 
     it("treats empty --allowed-origins as [] (deny all)", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({});
       client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
       const program = makeProgram();
       await runCommand(program, [
@@ -289,6 +303,7 @@ describe("admin tenants commands", () => {
     });
 
     it("trims whitespace and ignores empty entries in --allowed-origins", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({});
       client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
       const program = makeProgram();
       await runCommand(program, [

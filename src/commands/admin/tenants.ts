@@ -109,14 +109,7 @@ export function registerTenantsCommand(parent: Command): void {
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const opts = cmd.opts() as { allowedOrigins?: string };
-        let body: Record<string, unknown>;
-        if (json !== undefined) {
-          body = (await parseJsonInput(json as string | undefined)) as Record<string, unknown>;
-        } else if (opts.allowedOrigins !== undefined) {
-          body = {};
-        } else {
-          body = (await parseJsonInput()) as Record<string, unknown>;
-        }
+        const body = (await parseJsonInput(json as string | undefined)) as Record<string, unknown>;
         applyAllowedOriginsFlag(body, opts);
         const client = createClient(cmd);
         const format = getFormat(cmd);
@@ -180,14 +173,7 @@ export function registerTenantsCommand(parent: Command): void {
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
           const opts = cmd.opts() as { allowedOrigins?: string };
-          let body: Record<string, unknown>;
-          if (json !== undefined) {
-            body = (await parseJsonInput(json as string | undefined)) as Record<string, unknown>;
-          } else if (opts.allowedOrigins !== undefined) {
-            body = {};
-          } else {
-            body = (await parseJsonInput()) as Record<string, unknown>;
-          }
+          const body = (await parseJsonInput(json as string | undefined)) as Record<string, unknown>;
           applyAllowedOriginsFlag(body, opts);
           const client = createClient(cmd);
           const format = getFormat(cmd);
