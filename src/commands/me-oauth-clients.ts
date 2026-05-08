@@ -48,7 +48,7 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
     .command("create [json]")
     .description("Create a new OAuth client")
     .option("--name <name>", "Client name")
-    .option("--policy <policyId>", "Policy ID to attach")
+    .option("--policy <policyId>", "Policy ID to attach (NOTE: use --policy-id on update)")
     .option("--save", "Save credentials to config for automatic re-authentication")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
@@ -147,7 +147,7 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
     .description("Update an OAuth client")
     .option("--name <name>", "Client name")
     .option("--description <desc>", "Client description")
-    .option("--policy-id <policyId>", "Policy ID to attach (use 'null' to unbind)")
+    .option("--policy-id <policyId>", "Policy ID to attach or 'null' to unbind (NOTE: use --policy on create)")
     .option("--active", "Activate the OAuth client")
     .option("--inactive", "Deactivate the OAuth client")
     .action(

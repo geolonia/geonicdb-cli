@@ -200,6 +200,18 @@ describe("me oauth-clients commands", () => {
         process.stdin.isTTY = isTTY;
       }
     });
+
+    // #119: create accepts --policy but update accepts --policy-id. Surface the asymmetry.
+    it("--policy description points users to --policy-id on update", () => {
+      const program = makeProgram();
+      const create = program.commands
+        .find((c) => c.name() === "me")!
+        .commands.find((c) => c.name() === "oauth-clients")!
+        .commands.find((c) => c.name() === "create")!;
+      const policy = create.options.find((o) => o.long === "--policy");
+      expect(policy).toBeDefined();
+      expect(policy!.description).toMatch(/--policy-id.*update/);
+    });
   });
 
   describe("oauth-clients update", () => {
@@ -269,6 +281,18 @@ describe("me oauth-clients commands", () => {
       const program = makeProgram();
       await runCommand(program, ["me", "oauth-clients", "update", "urn:c:1", '{"name":"x"}']);
       expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/oauth-clients/urn%3Ac%3A1", { body });
+    });
+
+    // #119: counterpart of the create-side hint.
+    it("--policy-id description points users to --policy on create", () => {
+      const program = makeProgram();
+      const update = program.commands
+        .find((c) => c.name() === "me")!
+        .commands.find((c) => c.name() === "oauth-clients")!
+        .commands.find((c) => c.name() === "update")!;
+      const policyId = update.options.find((o) => o.long === "--policy-id");
+      expect(policyId).toBeDefined();
+      expect(policyId!.description).toMatch(/--policy.*create/);
     });
   });
 

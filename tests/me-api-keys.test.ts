@@ -383,6 +383,19 @@ describe("me api-keys commands", () => {
       await runCommand(program, ["me", "api-keys", "create", '{"name":"ok"}']);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/me/api-keys", { body });
     });
+
+    // #119: create accepts --policy but update accepts --policy-id. The asymmetry
+    // is a known footgun; the help description must point users to the counterpart.
+    it("--policy description points users to --policy-id on update", () => {
+      const program = makeProgram();
+      const create = program.commands
+        .find((c) => c.name() === "me")!
+        .commands.find((c) => c.name() === "api-keys")!
+        .commands.find((c) => c.name() === "create")!;
+      const policy = create.options.find((o) => o.long === "--policy");
+      expect(policy).toBeDefined();
+      expect(policy!.description).toMatch(/--policy-id.*update/);
+    });
   });
 
   describe("api-keys update", () => {
@@ -550,6 +563,18 @@ describe("me api-keys commands", () => {
       const program = makeProgram();
       await runCommand(program, ["me", "api-keys", "update", "urn:k:1", '{"name":"x"}']);
       expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/me/api-keys/urn%3Ak%3A1", { body });
+    });
+
+    // #119: counterpart of the create-side hint.
+    it("--policy-id description points users to --policy on create", () => {
+      const program = makeProgram();
+      const update = program.commands
+        .find((c) => c.name() === "me")!
+        .commands.find((c) => c.name() === "api-keys")!
+        .commands.find((c) => c.name() === "update")!;
+      const policyId = update.options.find((o) => o.long === "--policy-id");
+      expect(policyId).toBeDefined();
+      expect(policyId!.description).toMatch(/--policy.*create/);
     });
   });
 
