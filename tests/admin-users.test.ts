@@ -38,9 +38,11 @@ vi.mock("../src/commands/help.js", () => ({
   addNotes: vi.fn(),
 }));
 
+import type { Command } from "commander";
 import { createClient, getFormat, outputResponse } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
 import { printSuccess } from "../src/output.js";
+import { addExamples } from "../src/commands/help.js";
 import { registerUsersCommand } from "../src/commands/admin/users.js";
 
 describe("admin users commands", () => {
@@ -106,6 +108,40 @@ describe("admin users commands", () => {
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/users", { body });
       expect(outputResponse).toHaveBeenCalled();
       expect(printSuccess).toHaveBeenCalledWith("User created.");
+    });
+
+    // #118: server schema accepts only `primaryTenantId`. Help and examples must reflect that.
+    it("references primaryTenantId (not legacy tenantId) in description", () => {
+      const program = makeProgram();
+      const createCmd = program.commands
+        .find((c) => c.name() === "admin")!
+        .commands.find((c) => c.name() === "users")!
+        .commands.find((c) => c.name() === "create")!;
+      const desc = createCmd.description();
+      expect(desc).toContain('"primaryTenantId":');
+      expect(desc).toContain("primaryTenantId is required");
+      expect(desc).not.toContain('"tenantId":');
+      expect(desc).not.toContain("tenantId is required");
+    });
+
+    it("uses primaryTenantId in registered example payloads", () => {
+      makeProgram();
+      const addExamplesMock = vi.mocked(addExamples);
+      const createCalls = addExamplesMock.mock.calls.filter(
+        ([cmd]) => (cmd as Command).name() === "create",
+      );
+      expect(createCalls.length).toBeGreaterThan(0);
+      const examples = createCalls.flatMap(
+        ([, exs]) => exs as ReadonlyArray<{ description: string; command: string }>,
+      );
+      const roleSpecificExamples = examples.filter(
+        (e) => e.command.includes('"role":"tenant_admin"') || e.command.includes('"role":"user"'),
+      );
+      expect(roleSpecificExamples.length).toBeGreaterThan(0);
+      for (const ex of roleSpecificExamples) {
+        expect(ex.command).toContain('"primaryTenantId":');
+        expect(ex.command).not.toContain('"tenantId":');
+      }
     });
   });
 
