@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-05-08
-- **Docs**: `me api-keys` および `me oauth-clients` で create のフラグが `--policy`、update のフラグが `--policy-id` という命名非対称になっている件について、ヘルプ description と README で明示的に案内するよう修正。`--policy` の説明文に "use --policy-id on update" を、`--policy-id` の説明文に "use --policy on create" を追記。回帰防止としてヘルプ option description を Commander API 経由で検証するユニットテストを追加 (#119, #TBD)
+- **Docs**: `me api-keys` および `me oauth-clients` で create のフラグが `--policy`、update のフラグが `--policy-id` という命名非対称になっている件について、ヘルプ description と README で明示的に案内するよう修正。`--policy` の説明文に "use --policy-id on update" を、`--policy-id` の説明文に "use --policy on create" を追記。回帰防止としてヘルプ option description を Commander API 経由で検証するユニットテストを追加 (#119, #121)
 
 ## [0.15.0] - 2026-04-30
 
