@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-05-08
+- **Docs**: `admin users create` のヘルプ description / examples で旧フィールド名 `tenantId` を使っていた箇所を `primaryTenantId` に修正。サーバ側 `CreateUserInputSchema` (`.strict()`) は `primaryTenantId` のみを受理しており、ヘルプ通りに書くと `400 Unrecognized key: "tenantId"` で失敗していた。回帰防止としてヘルプ文字列・examples を `primaryTenantId` で検証するユニットテストを追加 (#118, #120)
+
 ## [0.15.0] - 2026-04-30
 
 ### 2026-04-30
