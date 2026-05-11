@@ -230,6 +230,8 @@ geonic me oauth-clients update <client-id> --policy-id null
 
 **Note**: `--policy-id` on update accepts only policies created by yourself (`/me/policies`). Policies created via `admin policies` cannot be bound here.
 
+**Note on flag naming**: On `me api-keys` and `me oauth-clients`, the option is `--policy` for `create` and `--policy-id` for `update`. The `admin api-keys` counterpart uses `--policy` for both. Run `geonic me api-keys update --help` (or `geonic me oauth-clients update --help`) to confirm the exact flag for each subcommand.
+
 #### me api-keys
 
 | Subcommand | Description |
@@ -269,6 +271,8 @@ geonic me api-keys update <key-id> --policy-id null
 `me api-keys list` output includes a `dpopRequired` field (boolean).
 
 **Note**: `--policy-id` on update accepts only policies created by yourself (`/me/policies`). Policies created via `admin policies` cannot be bound here.
+
+**Note on flag naming**: On `me api-keys` and `me oauth-clients`, the option is `--policy` for `create` and `--policy-id` for `update`. The `admin api-keys` counterpart uses `--policy` for both. Run `geonic me api-keys update --help` (or `geonic me oauth-clients update --help`) to confirm the exact flag for each subcommand.
 
 #### me policies
 
