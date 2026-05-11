@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.15.1] - 2026-05-11
+
 ### 2026-05-08
 - **Docs**: `admin users create` のヘルプ description / examples で旧フィールド名 `tenantId` を使っていた箇所を `primaryTenantId` に修正。サーバ側 `CreateUserInputSchema` (`.strict()`) は `primaryTenantId` のみを受理しており、ヘルプ通りに書くと `400 Unrecognized key: "tenantId"` で失敗していた。回帰防止としてヘルプ文字列・examples を `primaryTenantId` で検証するユニットテストを追加 (#118, #120)
 - **Docs**: `me api-keys` および `me oauth-clients` で create のフラグが `--policy`、update のフラグが `--policy-id` という命名非対称になっている件について、ヘルプ description と README で明示的に案内するよう修正。`--policy` の説明文に "use --policy-id on update" を、`--policy-id` の説明文に "use --policy on create" を追記。回帰防止としてヘルプ option description を Commander API 経由で検証するユニットテストを追加 (#119, #121)
@@ -225,7 +227,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.15.1...HEAD
+[0.15.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.12.1...v0.13.0
