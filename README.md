@@ -121,7 +121,7 @@ geonic help [<command>] [<subcommand>]
 |---|---|
 | `profile list` | List all profiles |
 | `profile use <name>` | Switch active profile |
-| `profile create <name> [--tenant <id>] [--url <url>]` | Create a new profile, optionally bound to a tenant and URL |
+| `profile create <name> [--tenant <id\|name>] [--url <url>]` | Create a new profile, optionally bound to a tenant and URL |
 | `profile delete <name>` | Delete a profile |
 | `profile show [name]` | Show profile settings |
 
@@ -160,8 +160,8 @@ geonic auth login
 
 | Option | Description |
 |---|---|
-| `--tenant-id <id>` | Log in to a specific tenant (tenant ID) |
-| `-s, --service <name>` | Log in to a specific tenant (tenant ID or name) |
+| `--tenant-id <id>` | Log in to a specific tenant. Value is sent to the server as-is (server resolves) |
+| `-s, --service <id\|name>` | Log in to a specific tenant. Resolved client-side against the account's available tenants by ID or name |
 
 **Multi-tenant support**: When you belong to multiple tenants, `auth login` requires explicit tenant selection via `--tenant-id` or `-s/--service`. There is no interactive picker — if neither flag is provided and the account has multiple tenants, the command lists the available tenants and exits with an error.
 
