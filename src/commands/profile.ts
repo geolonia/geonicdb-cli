@@ -98,10 +98,22 @@ export function registerProfileCommands(program: Command): void {
   const profileCreate = profile
     .command("create <name>")
     .description("Create a new named profile for a separate environment or tenant")
-    .action((name: string) => {
+    .option("--tenant <tenant>", "Bind this profile to a tenant ID or service name")
+    .action(function (this: Command, name: string) {
       try {
-        createProfile(name);
-        printSuccess(`Profile "${name}" created.`);
+        const localOpts = this.opts() as { tenant?: string };
+        const globalOpts = this.optsWithGlobals() as { url?: string };
+        const init: { service?: string; tenantId?: string; url?: string } = {};
+        if (globalOpts.url) {
+          init.url = validateUrl(globalOpts.url);
+        }
+        if (localOpts.tenant) {
+          init.service = localOpts.tenant;
+          init.tenantId = localOpts.tenant;
+        }
+        createProfile(name, init);
+        const tenantLabel = localOpts.tenant ? ` (tenant: ${localOpts.tenant})` : "";
+        printSuccess(`Profile "${name}" created${tenantLabel}.`);
       } catch (err) {
         printError((err as Error).message);
         process.exit(1);
@@ -114,8 +126,12 @@ export function registerProfileCommands(program: Command): void {
       command: "geonic profile create staging",
     },
     {
-      description: "Create a profile for a different tenant",
-      command: "geonic profile create tenant-b",
+      description: "Create a profile bound to a specific tenant",
+      command: "geonic profile create miya --tenant miya",
+    },
+    {
+      description: "Create a profile for a different tenant with its own URL",
+      command: "geonic profile create geolonia --tenant geolonia --url https://geonicdb.geolonia.com",
     },
   ]);
 

@@ -168,6 +168,13 @@ describe("config", () => {
       expect(() => createProfile("staging")).toThrow('Profile "staging" already exists.');
     });
 
+    it("creates a profile with initial values", () => {
+      createProfile("miya", { service: "miya", tenantId: "miya" });
+      const cfg = loadConfig("miya");
+      expect(cfg.service).toBe("miya");
+      expect(cfg.tenantId).toBe("miya");
+    });
+
     it("switches active profile", () => {
       createProfile("production");
       setCurrentProfile("production");

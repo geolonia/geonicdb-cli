@@ -44,6 +44,7 @@ import {
   deleteProfile,
   loadConfig,
   saveConfig,
+  validateUrl,
 } from "../src/config.js";
 import { printSuccess, printInfo, printError, printWarning } from "../src/output.js";
 import { getTokenStatus } from "../src/token.js";
@@ -208,11 +209,49 @@ describe("profile commands", () => {
   });
 
   describe("profile create", () => {
-    it("creates a new profile", async () => {
+    it("creates a new profile with no options", async () => {
       const program = makeProgram();
       await runCommand(program, ["profile", "create", "staging"]);
-      expect(createProfile).toHaveBeenCalledWith("staging");
+      expect(createProfile).toHaveBeenCalledWith("staging", {});
       expect(printSuccess).toHaveBeenCalledWith('Profile "staging" created.');
+    });
+
+    it("creates a profile bound to a tenant", async () => {
+      const program = makeProgram();
+      await runCommand(program, ["profile", "create", "miya", "--tenant", "miya"]);
+      expect(createProfile).toHaveBeenCalledWith("miya", {
+        service: "miya",
+        tenantId: "miya",
+      });
+      expect(printSuccess).toHaveBeenCalledWith('Profile "miya" created (tenant: miya).');
+    });
+
+    it("creates a profile with both tenant and url", async () => {
+      const program = makeProgram();
+      await runCommand(program, [
+        "profile", "create", "geolonia",
+        "--tenant", "geolonia",
+        "--url", "https://geonicdb.geolonia.com",
+      ]);
+      expect(createProfile).toHaveBeenCalledWith("geolonia", {
+        url: "https://geonicdb.geolonia.com/",
+        service: "geolonia",
+        tenantId: "geolonia",
+      });
+      expect(printSuccess).toHaveBeenCalledWith(
+        'Profile "geolonia" created (tenant: geolonia).',
+      );
+    });
+
+    it("creates a profile with only url", async () => {
+      const program = makeProgram();
+      await runCommand(program, [
+        "profile", "create", "staging",
+        "--url", "https://staging.example.com",
+      ]);
+      expect(createProfile).toHaveBeenCalledWith("staging", {
+        url: "https://staging.example.com/",
+      });
     });
 
     it("prints error and exits when profile already exists", async () => {
@@ -224,6 +263,32 @@ describe("profile commands", () => {
         runCommand(program, ["profile", "create", "existing"]),
       ).rejects.toThrow("process.exit");
       expect(printError).toHaveBeenCalledWith("Profile already exists");
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it("prints error and exits when --url is invalid", async () => {
+      vi.mocked(validateUrl).mockImplementationOnce(() => {
+        throw new Error('Invalid URL: "not-a-url".');
+      });
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["profile", "create", "bad", "--url", "not-a-url"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("Invalid URL"));
+      expect(createProfile).not.toHaveBeenCalled();
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it("prints error and exits when --tenant is given but profile already exists", async () => {
+      vi.mocked(createProfile).mockImplementation(() => {
+        throw new Error('Profile "miya" already exists.');
+      });
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["profile", "create", "miya", "--tenant", "miya"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith('Profile "miya" already exists.');
+      expect(printSuccess).not.toHaveBeenCalled();
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
   });

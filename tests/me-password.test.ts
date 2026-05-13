@@ -59,7 +59,6 @@ vi.mock("../src/prompt.js", () => ({
   isInteractive: vi.fn().mockReturnValue(true),
   promptPassword: vi.fn(),
   promptEmail: vi.fn(),
-  promptTenantSelection: vi.fn(),
 }));
 
 import { createClient } from "../src/helpers.js";

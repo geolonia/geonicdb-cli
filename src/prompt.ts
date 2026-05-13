@@ -95,37 +95,3 @@ export async function promptPassword(label = "Password"): Promise<string> {
   }
 }
 
-export interface TenantChoice {
-  tenantId: string;
-  name?: string;
-  role: string;
-}
-
-export async function promptTenantSelection(
-  tenants: TenantChoice[],
-  currentTenantId?: string,
-): Promise<string | undefined> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  try {
-    console.log("\nAvailable tenants:");
-    for (let i = 0; i < tenants.length; i++) {
-      const t = tenants[i];
-      const current = t.tenantId === currentTenantId ? " ← current" : "";
-      const marker = t.tenantId === currentTenantId ? "  *" : "   ";
-      const label = t.name ? `${t.name} (${t.tenantId})` : t.tenantId;
-      console.log(`${marker} ${i + 1}) ${label} [${t.role}]${current}`);
-    }
-    for (;;) {
-      const answer = await rl.question("\nSelect tenant number (Enter to keep current): ");
-      const trimmed = answer.trim();
-      if (!trimmed) return undefined;
-      const index = parseInt(trimmed, 10) - 1;
-      if (index >= 0 && index < tenants.length) {
-        return tenants[index].tenantId;
-      }
-      console.log(`Invalid selection. Please enter a number between 1 and ${tenants.length}.`);
-    }
-  } finally {
-    rl.close();
-  }
-}

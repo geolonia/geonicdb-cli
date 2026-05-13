@@ -9,8 +9,8 @@ import {
 } from "../helpers.js";
 import { loadConfig, saveConfig, getCurrentProfile, validateUrl } from "../config.js";
 import { printSuccess, printError, printInfo, printWarning } from "../output.js";
-import { isInteractive, promptEmail, promptPassword, promptTenantSelection } from "../prompt.js";
-import type { TenantChoice } from "../prompt.js";
+import { isInteractive, promptEmail, promptPassword } from "../prompt.js";
+import type { TenantInfo } from "../types.js";
 import { getTokenStatus, formatDuration } from "../token.js";
 import { clientCredentialsGrant } from "../oauth.js";
 import { addExamples } from "./help.js";
@@ -119,12 +119,11 @@ function createLoginCommand(): Command {
           process.exit(1);
         }
 
-        // Handle multi-tenant: show available tenants and prompt for selection
-        const availableTenants = data.availableTenants as TenantChoice[] | undefined;
+        // Multi-tenant: require explicit tenant selection (no interactive prompt)
+        const availableTenants = data.availableTenants as TenantInfo[] | undefined;
         let finalTenantId = data.tenantId as string | undefined;
 
         if (availableTenants && availableTenants.length > 1 && !requestTenantId) {
-          // If --service was provided, resolve tenant by name or ID match
           let resolvedTenantId: string | undefined;
           if (serviceFlag) {
             const match = availableTenants.find(
@@ -141,11 +140,16 @@ function createLoginCommand(): Command {
           }
 
           if (!resolvedTenantId) {
-            resolvedTenantId = await promptTenantSelection(availableTenants, finalTenantId);
+            const list = availableTenants
+              .map((t) => `  - ${t.name ?? t.tenantId} (${t.tenantId}) [${t.role}]`)
+              .join("\n");
+            printError(
+              `Multiple tenants are available for this account. Specify one with --tenant-id <id> or -s/--service <name>:\n${list}`,
+            );
+            process.exit(1);
           }
 
-          if (resolvedTenantId && resolvedTenantId !== finalTenantId) {
-            // Re-login with selected tenant
+          if (resolvedTenantId !== finalTenantId) {
             const reloginResponse = await client.rawRequest("POST", "/auth/login", {
               body: { email, password, tenantId: resolvedTenantId },
               skipTenantHeader: true,
