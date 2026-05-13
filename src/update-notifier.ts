@@ -96,7 +96,7 @@ function getCurrentVersion(): string {
 
 export function formatUpdateBox(current: string, latest: string): string {
   const message = `Update available: ${current} → ${latest}`;
-  const install = `Run ${chalk.cyan(`npm i -g ${PACKAGE_NAME}`)} to update`;
+  const install = `Run ${chalk.cyan(`geonic cli update`)} to update`;
   const lines = [message, install];
   const maxLen = Math.max(
     ...lines.map((l) => stripAnsi(l).length),
@@ -162,7 +162,14 @@ export async function startUpdateCheck(): Promise<UpdateCheckResult | null> {
   return null;
 }
 
+let notificationSuppressed = false;
+
+export function suppressUpdateNotification(): void {
+  notificationSuppressed = true;
+}
+
 export function printUpdateNotification(result: UpdateCheckResult | null): void {
+  if (notificationSuppressed) return;
   if (!result) return;
   const box = formatUpdateBox(result.currentVersion, result.latestVersion);
   process.stderr.write("\n" + box + "\n");

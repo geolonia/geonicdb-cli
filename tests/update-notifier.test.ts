@@ -125,7 +125,7 @@ describe("formatUpdateBox", () => {
     expect(box).toContain("0.1.0");
     expect(box).toContain("1.0.0");
     expect(box).toContain("Update available");
-    expect(box).toContain("npm i -g @geolonia/geonicdb-cli");
+    expect(box).toContain("geonic cli update");
     expect(box).toContain("╭");
     expect(box).toContain("╰");
   });
@@ -419,9 +419,13 @@ describe("startUpdateCheck", () => {
 
 describe("printUpdateNotification", () => {
   let printUpdateNotification: typeof import("../src/update-notifier.js").printUpdateNotification;
+  let suppressUpdateNotification: typeof import("../src/update-notifier.js").suppressUpdateNotification;
 
   beforeEach(async () => {
-    ({ printUpdateNotification } = await import("../src/update-notifier.js"));
+    vi.resetModules();
+    ({ printUpdateNotification, suppressUpdateNotification } = await import(
+      "../src/update-notifier.js"
+    ));
   });
 
   it("writes box to stderr when result is provided", () => {
@@ -453,6 +457,13 @@ describe("printUpdateNotification", () => {
   it("does nothing when result is null", () => {
     const writeSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     printUpdateNotification(null);
+    expect(writeSpy).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when suppressed", () => {
+    const writeSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    suppressUpdateNotification();
+    printUpdateNotification({ currentVersion: "0.1.0", latestVersion: "1.0.0" });
     expect(writeSpy).not.toHaveBeenCalled();
   });
 });
