@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import type { Command, Option } from "commander";
 import { printInfo, printSuccess } from "../output.js";
 import { withErrorHandler, resolveOptions } from "../helpers.js";
+import { suppressUpdateNotification } from "../update-notifier.js";
 import { addExamples } from "./help.js";
 
 function findOption(
@@ -297,6 +298,7 @@ export function registerCliCommand(program: Command): void {
         }
         printInfo("Updating @geolonia/geonicdb-cli...");
         execSync(updateCommand, { stdio: "inherit" });
+        suppressUpdateNotification();
         printSuccess("Update complete.");
       }),
     );

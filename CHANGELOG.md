@@ -8,6 +8,8 @@
 ## [Unreleased]
 
 ### 2026-05-13
+- **Fix**: アップデート通知のメッセージを `npm i -g @geolonia/geonicdb-cli` から `geonic cli update` に変更 — CLI 内蔵のアップデートコマンドを案内するように (#124)
+- **Fix**: `geonic cli update` 実行後に同セッション末尾でアップデート通知が再表示される問題を修正 — `update` コマンド成功時に通知出力を抑制 (#124)
 - **Feat**: `profile create` に `--tenant <tenant>` オプションを追加 — プロファイル作成時にテナント ID/名を初期値として束縛できるように。`--url` (グローバルフラグ) と組み合わせて、同じアカウントの別テナントごとに独立したプロファイルを一度に生成可能 (例: `geonic profile create miya --tenant miya` / `geonic profile create geolonia --tenant geolonia`) (#123)
 - **Breaking**: `auth login` の複数テナント所属時の挙動を変更 — 対話プロンプトによるテナント選択を廃止し、`--tenant-id` または `-s/--service` の明示指定を必須化。未指定で複数所属を検出した場合は利用可能テナント一覧を表示してエラー終了する。プロファイル設定で `service`/`tenantId` を保持していれば自動解決される (#123)
 - **Refactor**: `src/prompt.ts` から `promptTenantSelection` / `TenantChoice` を削除。`src/commands/auth.ts` は `types.ts` の `TenantInfo` を参照するように統一 (#123)
