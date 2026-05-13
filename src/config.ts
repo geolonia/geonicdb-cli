@@ -157,12 +157,12 @@ export function setCurrentProfile(name: string): void {
   saveConfigFile(configFile);
 }
 
-export function createProfile(name: string): void {
+export function createProfile(name: string, init?: Partial<GdbConfig>): void {
   const configFile = loadConfigFile();
   if (name in configFile.profiles) {
     throw new Error(`Profile "${name}" already exists.`);
   }
-  configFile.profiles[name] = {};
+  configFile.profiles[name] = { ...(init ?? {}) };
   saveConfigFile(configFile);
 }
 

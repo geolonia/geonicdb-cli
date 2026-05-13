@@ -121,9 +121,25 @@ geonic help [<command>] [<subcommand>]
 |---|---|
 | `profile list` | List all profiles |
 | `profile use <name>` | Switch active profile |
-| `profile create <name>` | Create a new profile |
+| `profile create <name> [--tenant <id\|name>] [--url <url>]` | Create a new profile, optionally bound to a tenant and URL |
 | `profile delete <name>` | Delete a profile |
 | `profile show [name]` | Show profile settings |
+
+When the same account belongs to multiple tenants, create one profile per tenant and switch between them with `profile use`:
+
+```bash
+# One-time setup
+geonic profile create miya --tenant miya --url https://geonicdb.geolonia.com
+geonic profile create geolonia --tenant geolonia --url https://geonicdb.geolonia.com
+geonic --profile miya auth login
+geonic --profile geolonia auth login
+
+# Daily use
+geonic profile use miya       # operate as miya tenant
+geonic profile use geolonia   # operate as geolonia tenant
+```
+
+`--tenant <id>` accepts either a tenant ID or a tenant name. The value is stored as both `service` (sent in `NGSILD-Tenant` headers) and `tenantId` on the profile, so subsequent `auth login` calls resolve to that tenant automatically.
 
 ### auth — Authentication
 
@@ -144,21 +160,23 @@ geonic auth login
 
 | Option | Description |
 |---|---|
-| `--tenant-id <id>` | Log in to a specific tenant |
+| `--tenant-id <id>` | Log in to a specific tenant. Value is sent to the server as-is (server resolves) |
+| `-s, --service <id\|name>` | Log in to a specific tenant. Resolved client-side against the account's available tenants by ID or name |
 
-**Multi-tenant support**: When you belong to multiple tenants, `auth login` displays the list and lets you select one interactively. Use `--tenant-id` to skip the prompt.
+**Multi-tenant support**: When you belong to multiple tenants, `auth login` requires explicit tenant selection via `--tenant-id` or `-s/--service`. There is no interactive picker — if neither flag is provided and the account has multiple tenants, the command lists the available tenants and exits with an error.
+
+A common workflow is to create one profile per tenant (`geonic profile create <name> --tenant <tenant>`); the tenant binding is persisted on the profile, so plain `geonic --profile <name> auth login` resolves to the correct tenant automatically.
 
 ```text
 $ geonic auth login
 Email: user@example.com
 Password: ********
-Login successful. Token saved to config.
+Error: Multiple tenants are available for this account. Specify one with --tenant-id <id> or -s/--service <name>:
+  - my_city (tid-aaa) [tenant_admin]
+  - another_city (tid-bbb) [user]
 
-Available tenants:
-  * 1) my_city (tenant_admin) ← current
-    2) another_city (user)
-
-Select tenant number (Enter to keep current):
+$ geonic auth login --tenant-id tid-aaa
+Login successful (tenant: my_city). Token saved to config.
 ```
 
 #### OAuth Client Credentials
