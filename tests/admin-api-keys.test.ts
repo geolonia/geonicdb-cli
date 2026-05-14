@@ -42,6 +42,7 @@ vi.mock("../src/commands/help.js", () => ({
 vi.mock("../src/config.js", () => ({
   loadConfig: vi.fn().mockImplementation(() => ({})),
   saveConfig: vi.fn(),
+  validateUrl: vi.fn((url: string) => url.replace(/\/+$/, "") + "/"),
 }));
 
 import { createClient, getFormat, outputResponse, resolveOptions } from "../src/helpers.js";
