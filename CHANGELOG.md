@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-05-14
+
 ### 2026-05-13
 - **Fix**: アップデート通知のメッセージを `npm i -g @geolonia/geonicdb-cli` から `geonic cli update` に変更 — CLI 内蔵のアップデートコマンドを案内するように (#124)
 - **Fix**: `geonic cli update` 実行後に同セッション末尾でアップデート通知が再表示される問題を修正 — `update` コマンド成功時に通知出力を抑制 (#124)
@@ -234,7 +236,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.15.1...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.13.0...v0.14.0
