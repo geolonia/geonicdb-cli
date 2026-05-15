@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-05-15
+
 ### 2026-05-14
 - **Fix**: `auth login` / `auth login --client-credentials` / `auth token-exchange --save` で `--url <URL>` を渡してログインしても URL がプロファイルに永続化されず、後続コマンドで `No URL configured` エラーになっていた問題を修正。トークン保存時に URL も一緒に保存するように。空のプロファイルに切り替えてからログインするフロー (`profile create miya` → `profile use miya` → `auth login --url <URL>` → `me`) で発生していた (#126)
 - **Fix**: `me oauth-clients create`、`me api-keys create`、`admin api-keys create/refresh` で `--url` 渡し時に同様の URL 永続化漏れがあった箇所も合わせて修正 (#126)
@@ -241,7 +243,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.1...HEAD
+[0.16.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.14.0...v0.15.0
