@@ -42,6 +42,7 @@ vi.mock("../src/commands/help.js", () => ({
 vi.mock("../src/config.js", () => ({
   loadConfig: vi.fn().mockImplementation(() => ({})),
   saveConfig: vi.fn(),
+  validateUrl: vi.fn((url: string) => url.replace(/\/+$/, "") + "/"),
 }));
 
 import { createClient, getFormat, outputResponse, resolveOptions } from "../src/helpers.js";
@@ -272,7 +273,7 @@ describe("admin api-keys commands", () => {
         ]);
 
         expect(saveConfig).toHaveBeenCalledWith(
-          expect.objectContaining({ apiKey: "gdb_saved123" }),
+          expect.objectContaining({ apiKey: "gdb_saved123", url: "https://example.com/" }),
           "default",
         );
         expect(consoleSpy).toHaveBeenCalledWith(
@@ -570,7 +571,7 @@ describe("admin api-keys commands", () => {
       ]);
 
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ apiKey: "gdb_refreshed" }),
+        expect.objectContaining({ apiKey: "gdb_refreshed", url: "https://example.com/" }),
         "default",
       );
       expect(consoleSpy).toHaveBeenCalledWith(

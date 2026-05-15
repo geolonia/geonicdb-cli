@@ -188,6 +188,7 @@ describe("me oauth-clients commands", () => {
             clientId: "c4",
             clientSecret: "s3cret",
             token: "new-token",
+            url: "https://example.com/",
           }),
           "default",
         );

@@ -99,6 +99,7 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
           });
 
           const config = loadConfig(globalOpts.profile);
+          config.url = baseUrl;
           config.clientId = clientId;
           config.clientSecret = clientSecret;
           config.token = tokenResult.access_token;

@@ -1,6 +1,6 @@
 import type { Command } from "commander";
 import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../helpers.js";
-import { loadConfig, saveConfig } from "../config.js";
+import { loadConfig, saveConfig, validateUrl } from "../config.js";
 import { parseJsonInput } from "../input.js";
 import { printApiKeyBox, printError } from "../output.js";
 import { addExamples, addNotes } from "./help.js";
@@ -28,6 +28,7 @@ function handleSaveKey(
   }
   try {
     const config = loadConfig(globalOpts.profile);
+    if (globalOpts.url) config.url = validateUrl(globalOpts.url);
     config.apiKey = key;
     saveConfig(config, globalOpts.profile);
     console.error("API key saved to config. X-Api-Key header will be sent automatically.");

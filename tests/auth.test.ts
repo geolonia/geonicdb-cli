@@ -122,7 +122,7 @@ describe("auth commands", () => {
         scope: undefined,
       });
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "oauth-token-123" }),
+        expect.objectContaining({ token: "oauth-token-123", url: "http://localhost:3000/" }),
         "default",
       );
       expect(printSuccess).toHaveBeenCalledWith(expect.stringContaining("Login successful"));
@@ -309,7 +309,7 @@ describe("auth commands", () => {
       const program = makeProgram();
       await runCommand(program, ["auth", "login"]);
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "tok", refreshToken: "ref" }),
+        expect.objectContaining({ token: "tok", refreshToken: "ref", url: "http://localhost:3000/" }),
         "default",
       );
     });
@@ -384,6 +384,35 @@ describe("auth commands", () => {
         expect.objectContaining({ token: "legacy-token" }),
         "default",
       );
+    });
+
+    // Regression: logging in with --url against an empty profile must persist the
+    // URL alongside the token. Previously the URL was used only for the in-flight
+    // request and discarded, leaving the profile in a state where subsequent
+    // commands failed with "No URL configured".
+    it("persists --url to the profile on successful login (regression)", async () => {
+      vi.mocked(loadConfig).mockReturnValue({});
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "https://geonicdb.geolonia.com",
+        profile: "miya",
+        format: "json",
+      } as never);
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("miya@geolonia.com");
+      vi.mocked(promptPassword).mockResolvedValue("password1234");
+      client.rawRequest.mockResolvedValue(mockResponse({ accessToken: "tok" }));
+
+      const program = makeProgram();
+      await runCommand(program, [
+        "auth", "login",
+        "--url", "https://geonicdb.geolonia.com",
+      ]);
+
+      const savedConfig = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      const savedProfile = vi.mocked(saveConfig).mock.calls[0][1];
+      expect(savedConfig.url).toBe("https://geonicdb.geolonia.com/");
+      expect(savedConfig.token).toBe("tok");
+      expect(savedProfile).toBe("miya");
     });
   });
 
@@ -915,7 +944,7 @@ describe("auth commands", () => {
       const program = makeProgram();
       await runCommand(program, ["auth", "token-exchange", "--save"]);
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "saved-jwt" }),
+        expect.objectContaining({ token: "saved-jwt", url: "http://localhost:3000/" }),
         "default",
       );
       expect(printSuccess).toHaveBeenCalledWith("Token exchange successful. Token saved to config.");

@@ -7,6 +7,11 @@
 
 ## [Unreleased]
 
+### 2026-05-14
+- **Fix**: `auth login` / `auth login --client-credentials` / `auth token-exchange --save` で `--url <URL>` を渡してログインしても URL がプロファイルに永続化されず、後続コマンドで `No URL configured` エラーになっていた問題を修正。トークン保存時に URL も一緒に保存するように。空のプロファイルに切り替えてからログインするフロー (`profile create miya` → `profile use miya` → `auth login --url <URL>` → `me`) で発生していた (#126)
+- **Fix**: `me oauth-clients create`、`me api-keys create`、`admin api-keys create/refresh` で `--url` 渡し時に同様の URL 永続化漏れがあった箇所も合わせて修正 (#126)
+- **Test**: `auth login` の URL 永続化を直接検証する回帰防止テストを追加 (#126)
+
 ## [0.16.0] - 2026-05-14
 
 ### 2026-05-13

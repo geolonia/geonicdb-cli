@@ -63,6 +63,7 @@ function createLoginCommand(): Command {
           });
 
           const config = loadConfig(globalOpts.profile);
+          config.url = validateUrl(globalOpts.url);
           config.token = result.access_token;
           delete config.refreshToken;
           saveConfig(config, globalOpts.profile);
@@ -167,6 +168,7 @@ function createLoginCommand(): Command {
         }
 
         const config = loadConfig(globalOpts.profile);
+        config.url = validateUrl(globalOpts.url);
         config.token = token;
         if (refreshToken) {
           config.refreshToken = refreshToken;
@@ -408,6 +410,7 @@ function createTokenExchangeCommand(): Command {
 
         if (exchangeOpts.save) {
           const config = loadConfig(globalOpts.profile);
+          config.url = baseUrl;
           config.token = tokenData.access_token;
           saveConfig(config, globalOpts.profile);
           printSuccess("Token exchange successful. Token saved to config.");
