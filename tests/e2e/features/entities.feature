@@ -70,9 +70,7 @@ Feature: Entity management
     When I run `geonic entities list`
     Then the exit code should be 1
 
-  @wip
   Scenario: Replace entity attributes
-    # Server does not support PUT on /entities/{id}/attrs
     Given I am logged in
     And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:050","type":"Room"}'`
     When I run `geonic entities replace urn:ngsi-ld:Room:050 '{"temperature":{"value":30,"type":"Property"}}'`

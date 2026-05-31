@@ -258,7 +258,7 @@ describe("entities command", () => {
   });
 
   describe("replace", () => {
-    it("parses JSON input and puts entity attrs", async () => {
+    it("parses JSON input and puts to /entities/{id} (NGSI-LD 5.6.4 Replace Entity)", async () => {
       const attrData = { temperature: { value: 30 } };
       vi.mocked(parseJsonInput).mockResolvedValue(attrData);
       mockClient.put.mockResolvedValue(mockResponse(undefined, 204));
@@ -267,7 +267,7 @@ describe("entities command", () => {
 
       expect(parseJsonInput).toHaveBeenCalledWith('{"temperature":{"value":30}}');
       expect(mockClient.put).toHaveBeenCalledWith(
-        `/entities/${encodeURIComponent("urn:ngsi-ld:Sensor:001")}/attrs`,
+        `/entities/${encodeURIComponent("urn:ngsi-ld:Sensor:001")}`,
         attrData,
       );
       expect(printSuccess).toHaveBeenCalledWith("Entity replaced.");

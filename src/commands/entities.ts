@@ -305,7 +305,7 @@ export function registerEntitiesCommand(program: Command): void {
           const data = await parseJsonInput(json);
 
           await client.put(
-            `/entities/${encodeURIComponent(id)}/attrs`,
+            `/entities/${encodeURIComponent(id)}`,
             data,
           );
           printSuccess("Entity replaced.");
