@@ -293,8 +293,12 @@ export function registerEntitiesCommand(program: Command): void {
     .summary("Replace all attributes of an entity (PUT)")
     .description(
       "Replace all attributes of an entity (PUT)\n\n" +
-        "JSON payload: all existing attributes are replaced.\n" +
-        '  e.g. {"temperature": {"type": "Property", "value": 20}}',
+        "JSON payload: a full NGSI-LD Entity Representation (id, type, attributes).\n" +
+        "  e.g. {\"id\":\"urn:ngsi-ld:Sensor:001\",\"type\":\"Sensor\"," +
+        '"temperature":{"type":"Property","value":20}}\n\n' +
+        "Per NGSI-LD spec 5.6.4 (Replace Entity), the body should be a complete\n" +
+        "Entity Representation. Server may accept attribute-only bodies but a full\n" +
+        "representation is recommended for spec compliance.",
     )
     .argument("<id>", "Entity ID")
     .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
@@ -315,16 +319,16 @@ export function registerEntitiesCommand(program: Command): void {
 
   addExamples(replace, [
     {
-      description: "Replace all attributes with inline JSON",
-      command: `geonic entities replace urn:ngsi-ld:Sensor:001 '{"temperature":{"type":"Property","value":20}}'`,
+      description: "Replace with full Entity Representation (recommended, spec 5.6.4)",
+      command: `geonic entities replace urn:ngsi-ld:Sensor:001 '{"id":"urn:ngsi-ld:Sensor:001","type":"Sensor","temperature":{"type":"Property","value":20}}'`,
     },
     {
       description: "Replace from a file",
-      command: "geonic entities replace urn:ngsi-ld:Sensor:001 @attrs.json",
+      command: "geonic entities replace urn:ngsi-ld:Sensor:001 @entity.json",
     },
     {
       description: "Replace from stdin pipe",
-      command: "cat attrs.json | geonic entities replace urn:ngsi-ld:Sensor:001",
+      command: "cat entity.json | geonic entities replace urn:ngsi-ld:Sensor:001",
     },
   ]);
 

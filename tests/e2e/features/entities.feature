@@ -70,10 +70,10 @@ Feature: Entity management
     When I run `geonic entities list`
     Then the exit code should be 1
 
-  Scenario: Replace entity attributes
+  Scenario: Replace entity with full Entity Representation
     Given I am logged in
     And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:050","type":"Room"}'`
-    When I run `geonic entities replace urn:ngsi-ld:Room:050 '{"temperature":{"value":30,"type":"Property"}}'`
+    When I run `geonic entities replace urn:ngsi-ld:Room:050 '{"id":"urn:ngsi-ld:Room:050","type":"Room","temperature":{"value":30,"type":"Property"}}'`
     Then the exit code should be 0
     And the output should contain "Entity replaced."
 
