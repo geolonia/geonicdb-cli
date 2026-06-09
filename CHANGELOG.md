@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.16.2] - 2026-06-09
+
 ### 2026-05-31
 - **Fix**: `entities replace` が PUT を `/ngsi-ld/v1/entities/{id}/attrs` に送ってサーバーの `MethodNotAllowed` で常に失敗していた問題を修正。NGSI-LD 仕様 (ETSI GS CIM 009 clause 5.6.4 Replace Entity) に従い、PUT を `/ngsi-ld/v1/entities/{id}` に送るよう変更。`@wip` でスキップしていた E2E シナリオを有効化 (#128)
 
@@ -246,7 +248,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.1...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.2...HEAD
+[0.16.2]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.1...v0.16.2
 [0.16.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.15.1...v0.16.0
 [0.15.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.15.0...v0.15.1
