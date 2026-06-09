@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-05-31
+- **Fix**: `entities replace` が PUT を `/ngsi-ld/v1/entities/{id}/attrs` に送ってサーバーの `MethodNotAllowed` で常に失敗していた問題を修正。NGSI-LD 仕様 (ETSI GS CIM 009 clause 5.6.4 Replace Entity) に従い、PUT を `/ngsi-ld/v1/entities/{id}` に送るよう変更。`@wip` でスキップしていた E2E シナリオを有効化 (#128)
+
 ## [0.16.1] - 2026-05-15
 
 ### 2026-05-14
