@@ -477,7 +477,7 @@ describe("auth commands", () => {
       );
     });
 
-    it("resolves --tenant-id by tenant name and re-logins", async () => {
+    it("--tenant-id resolves by tenant ID and re-logins", async () => {
       const tenants = [
         { tenantId: "tid-aaa", tenantName: "demo_smartcity", role: "tenant_admin" },
         { tenantId: "tid-bbb", tenantName: "demo_bousai", role: "user" },
@@ -490,18 +490,39 @@ describe("auth commands", () => {
           mockResponse({ accessToken: "tok-b", tenantId: "tid-bbb" }),
         );
       const program = makeProgram();
-      await runCommand(program, ["auth", "login", "--tenant-id", "demo_bousai"]);
+      await runCommand(program, ["auth", "login", "--tenant-id", "tid-bbb"]);
       expect(client.rawRequest).toHaveBeenLastCalledWith("POST", "/auth/login", {
         body: { email: "user@example.com", password: "pass123", tenantId: "tid-bbb" },
         skipTenantHeader: true,
       });
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "tok-b", service: "tid-bbb", tenantId: "tid-bbb" }),
+        expect.objectContaining({ token: "tok-b", tenantId: "tid-bbb" }),
         "default",
       );
     });
 
-    it("accepts --tenant as an alias of --tenant-id", async () => {
+    it("--tenant-id rejects a tenant name (hints to use --tenant)", async () => {
+      const tenants = [
+        { tenantId: "tid-aaa", tenantName: "demo_smartcity", role: "tenant_admin" },
+        { tenantId: "tid-bbb", tenantName: "demo_bousai", role: "user" },
+      ];
+      client.rawRequest.mockResolvedValueOnce(
+        mockResponse({ accessToken: "tok-a", tenantId: "tid-aaa", availableTenants: tenants }),
+      );
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login", "--tenant-id", "demo_bousai"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining('Tenant ID "demo_bousai" not found'),
+      );
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("Use --tenant demo_bousai"),
+      );
+      expect(saveConfig).not.toHaveBeenCalled();
+    });
+
+    it("--tenant resolves by tenant name and re-logins", async () => {
       const tenants = [
         { tenantId: "tid-aaa", tenantName: "demo_smartcity", role: "tenant_admin" },
         { tenantId: "tid-bbb", tenantName: "demo_bousai", role: "user" },
@@ -519,6 +540,26 @@ describe("auth commands", () => {
         body: { email: "user@example.com", password: "pass123", tenantId: "tid-bbb" },
         skipTenantHeader: true,
       });
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: "tid-bbb" }),
+        "default",
+      );
+    });
+
+    it("--tenant also accepts a tenant ID", async () => {
+      const tenants = [
+        { tenantId: "tid-aaa", tenantName: "demo_smartcity", role: "tenant_admin" },
+        { tenantId: "tid-bbb", tenantName: "demo_bousai", role: "user" },
+      ];
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-a", tenantId: "tid-aaa", availableTenants: tenants }),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-b", tenantId: "tid-bbb" }),
+        );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login", "--tenant", "tid-bbb"]);
       expect(saveConfig).toHaveBeenCalledWith(
         expect.objectContaining({ tenantId: "tid-bbb" }),
         "default",
