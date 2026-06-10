@@ -27,6 +27,7 @@ function createLoginCommand(): Command {
     .option("--client-secret <secret>", "OAuth client secret")
     .option("--scope <scopes>", "OAuth scopes (space-separated)")
     .option("--tenant-id <name|id>", "Tenant to authenticate against (accepts tenant name or ID)")
+    .option("--tenant <name|id>", "Alias of --tenant-id")
     .action(
       withErrorHandler(async (...args: unknown[]) => {
         const cmd = args[args.length - 1] as Command;
@@ -36,6 +37,7 @@ function createLoginCommand(): Command {
           clientSecret?: string;
           scope?: string;
           tenantId?: string;
+          tenant?: string;
         };
         const globalOpts = resolveOptions(cmd);
 
@@ -97,8 +99,8 @@ function createLoginCommand(): Command {
 
         const client = createClient(cmd);
 
-        // Tenant flag: accept either a tenant name or a tenantId via --tenant-id or -s/--service
-        const tenantFlag = loginOpts.tenantId ?? globalOpts.service;
+        // Tenant flag: accept either a tenant name or a tenantId via --tenant-id, --tenant, or -s/--service
+        const tenantFlag = loginOpts.tenantId ?? loginOpts.tenant ?? globalOpts.service;
 
         // Step 1: tenantless login. Server returns either a single-tenant token
         // or, for multi-tenant users, a primary-tenant token plus availableTenants.
@@ -449,6 +451,10 @@ export function registerAuthCommands(program: Command): void {
     },
     {
       description: "Login to a tenant by name or ID (multi-tenant accounts)",
+      command: "geonic auth login --tenant miya",
+    },
+    {
+      description: "Same as above — --tenant-id is an alias of --tenant",
       command: "geonic auth login --tenant-id my-tenant",
     },
     {

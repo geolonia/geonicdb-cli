@@ -13,6 +13,7 @@
   - `--tenant-id` フラグはサーバーへの素通しで ID 検索のみ対応していたため、name を渡すと 403 で失敗していた。`-s/--service` と同じく `availableTenants` を引いて name→ID 解決を行うようフラグの挙動を統合
   - 複数テナント検出時に TTY であってもインタラクティブ選択 prompt を出さず即エラー終了していた挙動を改善。TTY 時は番号入力による選択 prompt を表示する (フラグ未指定かつ非 TTY 時は従来通りエラー)
 - **Refactor**: `auth login` の HTTP フローを「テナント未指定の初回ログイン → クライアント側で name→ID 解決 → 必要なら resolved ID で再ログイン」に整理。`--tenant-id <name|id>` のフラグヘルプも実挙動に合わせて更新 (#132)
+- **Feat**: `auth login` に `--tenant <name|id>` を追加 — `--tenant-id` のエイリアス。`profile create --tenant` と表記を揃え、`geonic auth login --tenant miya` のように打てる (#132)
 - **Test**: `promptTenantSelection`、`--tenant-id` の name 解決、インタラクティブ選択フローの単体テストを追加。既存テストの `TenantInfo` フィクスチャを `tenantName` に揃えた (#132)
 
 ## [0.16.2] - 2026-06-09

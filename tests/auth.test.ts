@@ -501,6 +501,30 @@ describe("auth commands", () => {
       );
     });
 
+    it("accepts --tenant as an alias of --tenant-id", async () => {
+      const tenants = [
+        { tenantId: "tid-aaa", tenantName: "demo_smartcity", role: "tenant_admin" },
+        { tenantId: "tid-bbb", tenantName: "demo_bousai", role: "user" },
+      ];
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-a", tenantId: "tid-aaa", availableTenants: tenants }),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-b", tenantId: "tid-bbb" }),
+        );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login", "--tenant", "demo_bousai"]);
+      expect(client.rawRequest).toHaveBeenLastCalledWith("POST", "/auth/login", {
+        body: { email: "user@example.com", password: "pass123", tenantId: "tid-bbb" },
+        skipTenantHeader: true,
+      });
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: "tid-bbb" }),
+        "default",
+      );
+    });
+
     it("prompts interactively when multi-tenant and no flag is provided (TTY)", async () => {
       const tenants = [
         { tenantId: "tid-aaa", tenantName: "demo_smartcity", role: "tenant_admin" },
