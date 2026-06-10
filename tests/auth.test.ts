@@ -49,6 +49,7 @@ vi.mock("../src/prompt.js", () => ({
   isInteractive: vi.fn(),
   promptEmail: vi.fn(),
   promptPassword: vi.fn(),
+  promptTenantSelection: vi.fn(),
 }));
 
 vi.mock("../src/token.js", () => ({
@@ -63,7 +64,7 @@ vi.mock("../src/oauth.js", () => ({
 import { createClient, getFormat, outputResponse, resolveOptions } from "../src/helpers.js";
 import { printSuccess, printError, printInfo, printWarning } from "../src/output.js";
 import { loadConfig, saveConfig, getCurrentProfile, validateUrl } from "../src/config.js";
-import { isInteractive, promptEmail, promptPassword } from "../src/prompt.js";
+import { isInteractive, promptEmail, promptPassword, promptTenantSelection } from "../src/prompt.js";
 import { getTokenStatus, formatDuration } from "../src/token.js";
 import { clientCredentialsGrant } from "../src/oauth.js";
 import { registerAuthCommands } from "../src/commands/auth.js";
@@ -258,17 +259,18 @@ describe("auth commands", () => {
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
-    it("includes tenantId in the request body when --tenant-id is provided", async () => {
+    it("first request is tenantless even when --tenant-id is provided", async () => {
+      // New flow: always do tenantless first to receive availableTenants for name->ID resolution.
       vi.mocked(isInteractive).mockReturnValue(true);
       vi.mocked(promptEmail).mockResolvedValue("user@example.com");
       vi.mocked(promptPassword).mockResolvedValue("pass123");
       client.rawRequest.mockResolvedValue(
-        mockResponse({ accessToken: "tenant-token" }),
+        mockResponse({ accessToken: "tenant-token", tenantId: "my-tenant" }),
       );
       const program = makeProgram();
       await runCommand(program, ["auth", "login", "--tenant-id", "my-tenant"]);
-      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/auth/login", {
-        body: { email: "user@example.com", password: "pass123", tenantId: "my-tenant" },
+      expect(client.rawRequest).toHaveBeenNthCalledWith(1, "POST", "/auth/login", {
+        body: { email: "user@example.com", password: "pass123" },
         skipTenantHeader: true,
       });
     });
@@ -423,7 +425,10 @@ describe("auth commands", () => {
       vi.mocked(promptPassword).mockResolvedValue("pass123");
     });
 
-    it("errors out when multiple tenants are available and none is specified", async () => {
+    it("errors out when multi-tenant, non-interactive, and no flag is specified", async () => {
+      // Interactive selection requires a TTY (but auth.login itself already required TTY for
+      // password prompt — this branch is reached when stdin is TTY-faked but isInteractive() is overridden).
+      vi.mocked(isInteractive).mockReturnValueOnce(true).mockReturnValue(false);
       const tenants = [
         { tenantId: "city_a", role: "tenant_admin" },
         { tenantId: "city_b", role: "user" },
@@ -450,7 +455,7 @@ describe("auth commands", () => {
       expect(saveConfig).not.toHaveBeenCalled();
     });
 
-    it("succeeds when --tenant-id is explicitly provided", async () => {
+    it("succeeds when --tenant-id matches the primary tenant (no re-login)", async () => {
       const tenants = [
         { tenantId: "city_a", role: "tenant_admin" },
         { tenantId: "city_b", role: "user" },
@@ -460,12 +465,64 @@ describe("auth commands", () => {
       );
       const program = makeProgram();
       await runCommand(program, ["auth", "login", "--tenant-id", "city_a"]);
+      // Primary tenant already matches the flag — only the initial tenantless call is made.
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/auth/login", {
-        body: { email: "user@example.com", password: "pass123", tenantId: "city_a" },
+        body: { email: "user@example.com", password: "pass123" },
         skipTenantHeader: true,
       });
       expect(saveConfig).toHaveBeenCalledWith(
         expect.objectContaining({ token: "tok", service: "city_a" }),
+        "default",
+      );
+    });
+
+    it("resolves --tenant-id by tenant name and re-logins", async () => {
+      const tenants = [
+        { tenantId: "tid-aaa", tenantName: "demo_smartcity", role: "tenant_admin" },
+        { tenantId: "tid-bbb", tenantName: "demo_bousai", role: "user" },
+      ];
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-a", tenantId: "tid-aaa", availableTenants: tenants }),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-b", tenantId: "tid-bbb" }),
+        );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login", "--tenant-id", "demo_bousai"]);
+      expect(client.rawRequest).toHaveBeenLastCalledWith("POST", "/auth/login", {
+        body: { email: "user@example.com", password: "pass123", tenantId: "tid-bbb" },
+        skipTenantHeader: true,
+      });
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "tok-b", service: "tid-bbb", tenantId: "tid-bbb" }),
+        "default",
+      );
+    });
+
+    it("prompts interactively when multi-tenant and no flag is provided (TTY)", async () => {
+      const tenants = [
+        { tenantId: "tid-aaa", tenantName: "demo_smartcity", role: "tenant_admin" },
+        { tenantId: "tid-bbb", tenantName: "demo_bousai", role: "user" },
+      ];
+      vi.mocked(promptTenantSelection).mockResolvedValue(tenants[1]);
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-a", tenantId: "tid-aaa", availableTenants: tenants }),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tok-b", tenantId: "tid-bbb" }),
+        );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      expect(promptTenantSelection).toHaveBeenCalledWith(tenants);
+      expect(client.rawRequest).toHaveBeenLastCalledWith("POST", "/auth/login", {
+        body: { email: "user@example.com", password: "pass123", tenantId: "tid-bbb" },
+        skipTenantHeader: true,
+      });
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "tok-b", tenantId: "tid-bbb" }),
         "default",
       );
     });
@@ -485,7 +542,7 @@ describe("auth commands", () => {
 
     it("saves availableTenants list when login succeeds with one tenant", async () => {
       const tenants = [
-        { tenantId: "city_a", name: "Smart City A", role: "tenant_admin" },
+        { tenantId: "city_a", tenantName: "Smart City A", role: "tenant_admin" },
       ];
       client.rawRequest.mockResolvedValue(
         mockResponse({ accessToken: "tok", tenantId: "city_a", availableTenants: tenants }),
@@ -496,7 +553,7 @@ describe("auth commands", () => {
         expect.objectContaining({
           tenantId: "city_a",
           availableTenants: [
-            { tenantId: "city_a", name: "Smart City A", role: "tenant_admin" },
+            { tenantId: "city_a", tenantName: "Smart City A", role: "tenant_admin" },
           ],
         }),
         "default",
@@ -505,8 +562,8 @@ describe("auth commands", () => {
 
     it("resolves tenant by name via --service flag and re-logins", async () => {
       const tenants = [
-        { tenantId: "tid-aaa", name: "demo_smartcity", role: "tenant_admin" },
-        { tenantId: "tid-bbb", name: "demo_bousai", role: "user" },
+        { tenantId: "tid-aaa", tenantName: "demo_smartcity", role: "tenant_admin" },
+        { tenantId: "tid-bbb", tenantName: "demo_bousai", role: "user" },
       ];
       vi.mocked(resolveOptions).mockReturnValue({
         url: "http://localhost:3000",
@@ -563,7 +620,7 @@ describe("auth commands", () => {
 
     it("prints error when --service tenant name not found", async () => {
       const tenants = [
-        { tenantId: "city_a", name: "Smart City A", role: "tenant_admin" },
+        { tenantId: "city_a", tenantName: "Smart City A", role: "tenant_admin" },
         { tenantId: "city_b", role: "user" },
       ];
       vi.mocked(resolveOptions).mockReturnValue({
@@ -614,7 +671,7 @@ describe("auth commands", () => {
 
     it("includes tenant label in success message", async () => {
       const tenants = [
-        { tenantId: "city_a", name: "Smart City A", role: "tenant_admin" },
+        { tenantId: "city_a", tenantName: "Smart City A", role: "tenant_admin" },
       ];
       client.rawRequest.mockResolvedValue(
         mockResponse({ accessToken: "tok", tenantId: "city_a", availableTenants: tenants }),

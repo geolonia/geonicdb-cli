@@ -47,7 +47,7 @@ export function registerProfileCommands(program: Command): void {
 
       const config = loadConfig(name);
       const tenantLabel = config.tenantId
-        ? ` (tenant: ${config.availableTenants?.find((t) => t.tenantId === config.tenantId)?.name ?? config.tenantId})`
+        ? ` (tenant: ${config.availableTenants?.find((t) => t.tenantId === config.tenantId)?.tenantName ?? config.tenantId})`
         : "";
 
       // Auto-refresh expired token if refreshToken is available
@@ -174,8 +174,8 @@ export function registerProfileCommands(program: Command): void {
           console.log(`${key}: ***`);
         } else if (key === "availableTenants" && Array.isArray(value)) {
           console.log(`${key}:`);
-          for (const t of value as { tenantId: string; name?: string; role: string }[]) {
-            const label = t.name ? `${t.name} (${t.tenantId})` : t.tenantId;
+          for (const t of value as { tenantId: string; tenantName?: string; role: string }[]) {
+            const label = t.tenantName ? `${t.tenantName} (${t.tenantId})` : t.tenantId;
             const current = t.tenantId === config.tenantId ? " ← current" : "";
             console.log(`  - ${label} [${t.role}]${current}`);
           }

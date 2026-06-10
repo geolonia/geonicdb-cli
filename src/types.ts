@@ -2,7 +2,7 @@ export type OutputFormat = "json" | "table" | "geojson";
 
 export interface TenantInfo {
   tenantId: string;
-  name?: string;
+  tenantName?: string;
   role: string;
 }
 
