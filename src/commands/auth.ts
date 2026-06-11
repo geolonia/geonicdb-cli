@@ -9,7 +9,7 @@ import {
 } from "../helpers.js";
 import { loadConfig, saveConfig, getCurrentProfile, validateUrl } from "../config.js";
 import { printSuccess, printError, printInfo, printWarning } from "../output.js";
-import { isInteractive, promptEmail, promptPassword } from "../prompt.js";
+import { isInteractive, promptEmail, promptPassword, promptTenantSelection } from "../prompt.js";
 import type { TenantInfo } from "../types.js";
 import { getTokenStatus, formatDuration } from "../token.js";
 import { clientCredentialsGrant } from "../oauth.js";
@@ -26,7 +26,8 @@ function createLoginCommand(): Command {
     .option("--client-id <id>", "OAuth client ID")
     .option("--client-secret <secret>", "OAuth client secret")
     .option("--scope <scopes>", "OAuth scopes (space-separated)")
-    .option("--tenant-id <id>", "Tenant ID for scoped authentication")
+    .option("--tenant-id <id>", "Tenant ID to authenticate against (accepts tenant ID only — use --tenant for name)")
+    .option("--tenant <name|id>", "Tenant to authenticate against (accepts tenant name or ID)")
     .action(
       withErrorHandler(async (...args: unknown[]) => {
         const cmd = args[args.length - 1] as Command;
@@ -36,6 +37,7 @@ function createLoginCommand(): Command {
           clientSecret?: string;
           scope?: string;
           tenantId?: string;
+          tenant?: string;
         };
         const globalOpts = resolveOptions(cmd);
 
@@ -96,18 +98,17 @@ function createLoginCommand(): Command {
         const password = await promptPassword();
 
         const client = createClient(cmd);
-        const body: Record<string, string> = { email, password };
 
-        // --tenant-id takes priority
-        const requestTenantId = loginOpts.tenantId;
-        const serviceFlag = globalOpts.service;
+        // --tenant-id matches by ID only. --tenant and -s/--service match by name or ID.
+        // --tenant-id wins when both are supplied.
+        const tenantIdFlag = loginOpts.tenantId;
+        const tenantNameOrIdFlag = loginOpts.tenant ?? globalOpts.service;
+        const tenantFlag = tenantIdFlag ?? tenantNameOrIdFlag;
 
-        if (requestTenantId) {
-          body.tenantId = requestTenantId;
-        }
-
+        // Step 1: tenantless login. Server returns either a single-tenant token
+        // or, for multi-tenant users, a primary-tenant token plus availableTenants.
         const response = await client.rawRequest("POST", "/auth/login", {
-          body,
+          body: { email, password },
           skipTenantHeader: true,
         });
 
@@ -120,39 +121,58 @@ function createLoginCommand(): Command {
           process.exit(1);
         }
 
-        // Multi-tenant: require explicit tenant selection (no interactive prompt)
         const availableTenants = data.availableTenants as TenantInfo[] | undefined;
         let finalTenantId = data.tenantId as string | undefined;
 
-        if (availableTenants && availableTenants.length > 1 && !requestTenantId) {
-          let resolvedTenantId: string | undefined;
-          if (serviceFlag) {
-            const match = availableTenants.find(
-              (t) => t.name === serviceFlag || t.tenantId === serviceFlag,
-            );
-            if (match) {
-              resolvedTenantId = match.tenantId;
-            } else {
+        // Multi-tenant: resolve target tenant from flag, interactive prompt, or fall back to primary
+        if (availableTenants && availableTenants.length > 1) {
+          let selected: TenantInfo | undefined;
+
+          if (tenantIdFlag) {
+            // --tenant-id: match by ID only
+            selected = availableTenants.find((t) => t.tenantId === tenantIdFlag);
+            if (!selected) {
+              const list = availableTenants
+                .map((t) => `  - ${t.tenantName ?? t.tenantId} (${t.tenantId}) [${t.role}]`)
+                .join("\n");
+              const nameMatch = availableTenants.find((t) => t.tenantName === tenantIdFlag);
+              const hint = nameMatch
+                ? `\nHint: "${tenantIdFlag}" looks like a tenant name. Use --tenant ${tenantIdFlag} (or --tenant-id ${nameMatch.tenantId}).`
+                : "";
               printError(
-                `Tenant "${serviceFlag}" not found. Available: ${availableTenants.map((t) => t.name ?? t.tenantId).join(", ")}`,
+                `Tenant ID "${tenantIdFlag}" not found. Available tenants:\n${list}${hint}`,
               );
               process.exit(1);
             }
-          }
-
-          if (!resolvedTenantId) {
+          } else if (tenantNameOrIdFlag) {
+            // --tenant / -s / --service: match by name or ID
+            selected = availableTenants.find(
+              (t) => t.tenantName === tenantNameOrIdFlag || t.tenantId === tenantNameOrIdFlag,
+            );
+            if (!selected) {
+              const list = availableTenants
+                .map((t) => `  - ${t.tenantName ?? t.tenantId} (${t.tenantId}) [${t.role}]`)
+                .join("\n");
+              printError(
+                `Tenant "${tenantNameOrIdFlag}" not found. Available tenants:\n${list}`,
+              );
+              process.exit(1);
+            }
+          } else if (isInteractive()) {
+            selected = await promptTenantSelection(availableTenants);
+          } else {
             const list = availableTenants
-              .map((t) => `  - ${t.name ?? t.tenantId} (${t.tenantId}) [${t.role}]`)
+              .map((t) => `  - ${t.tenantName ?? t.tenantId} (${t.tenantId}) [${t.role}]`)
               .join("\n");
             printError(
-              `Multiple tenants are available for this account. Specify one with --tenant-id <id> or -s/--service <name>:\n${list}`,
+              `Multiple tenants are available for this account. Specify one with --tenant <name|id>, --tenant-id <id>, or -s/--service <name|id>:\n${list}`,
             );
             process.exit(1);
           }
 
-          if (resolvedTenantId !== finalTenantId) {
+          if (selected && selected.tenantId !== finalTenantId) {
             const reloginResponse = await client.rawRequest("POST", "/auth/login", {
-              body: { email, password, tenantId: resolvedTenantId },
+              body: { email, password, tenantId: selected.tenantId },
               skipTenantHeader: true,
             });
             const reloginData = reloginResponse.data as Record<string, unknown>;
@@ -163,7 +183,19 @@ function createLoginCommand(): Command {
             }
             token = newToken;
             refreshToken = reloginData.refreshToken as string | undefined;
-            finalTenantId = resolvedTenantId;
+            finalTenantId = selected.tenantId;
+          }
+        } else if (tenantFlag && availableTenants && availableTenants.length === 1) {
+          // Single-tenant account but flag was provided — validate it matches
+          const only = availableTenants[0];
+          const matches = tenantIdFlag
+            ? only.tenantId === tenantIdFlag
+            : only.tenantName === tenantFlag || only.tenantId === tenantFlag;
+          if (!matches) {
+            printError(
+              `Tenant "${tenantFlag}" not found. The only available tenant is "${only.tenantName ?? only.tenantId}" (${only.tenantId}).`,
+            );
+            process.exit(1);
           }
         }
 
@@ -185,7 +217,7 @@ function createLoginCommand(): Command {
         if (availableTenants && availableTenants.length > 0) {
           config.availableTenants = availableTenants.map((t) => ({
             tenantId: t.tenantId,
-            ...(t.name ? { name: t.name } : {}),
+            ...(t.tenantName ? { tenantName: t.tenantName } : {}),
             role: t.role,
           }));
         } else {
@@ -194,7 +226,7 @@ function createLoginCommand(): Command {
         saveConfig(config, globalOpts.profile);
 
         const tenantLabel = finalTenantId
-          ? ` (tenant: ${availableTenants?.find((t) => t.tenantId === finalTenantId)?.name ?? finalTenantId})`
+          ? ` (tenant: ${availableTenants?.find((t) => t.tenantId === finalTenantId)?.tenantName ?? finalTenantId})`
           : "";
         printSuccess(`Login successful${tenantLabel}. Token saved to config.`);
       }),
@@ -441,11 +473,15 @@ export function registerAuthCommands(program: Command): void {
         "geonic auth login --client-credentials --client-id MY_ID --client-secret MY_SECRET",
     },
     {
-      description: "Login to a specific tenant by ID",
-      command: "geonic auth login --tenant-id my-tenant",
+      description: "Login to a tenant by name or ID (multi-tenant accounts)",
+      command: "geonic auth login --tenant miya",
     },
     {
-      description: "Login to a tenant by name",
+      description: "Login by tenant ID only (rejects names — use --tenant for names)",
+      command: "geonic auth login --tenant-id 7f3b1c-abcd-...",
+    },
+    {
+      description: "Login via the --service flag (accepts name or ID, same as --tenant)",
       command: "geonic auth login -s demo_smartcity",
     },
   ]);

@@ -7,6 +7,15 @@
 
 ## [Unreleased]
 
+### 2026-06-10
+- **Fix**: `auth login` で複数テナント所属ユーザーがテナント名で指定できなかった問題を修正 (#133)
+  - サーバーが返す `availableTenants[].tenantName` を CLI 側が `name` で読んでおり、一覧表示が常に tenantId にフォールバックし、`-s/--service <name>` のマッチングも常に false になっていた。`TenantInfo.tenantName` に統一
+  - 複数テナント検出時に TTY であってもインタラクティブ選択 prompt を出さず即エラー終了していた挙動を改善。TTY 時は番号入力による選択 prompt を表示する (フラグ未指定かつ非 TTY 時は従来通りエラー)
+- **Feat**: `auth login` に `--tenant <name|id>` を追加 — テナント名でも ID でもログインできる新フラグ。`profile create --tenant` と表記を揃えた (`geonic auth login --tenant miya`) (#133)
+- **Refactor**: `auth login` の HTTP フローを「テナント未指定の初回ログイン → クライアント側で name→ID 解決 → 必要なら resolved ID で再ログイン」に整理 (#133)
+- **Refactor**: `--tenant-id` フラグはフラグ名通り **ID 専用**として動作するように整理。ヒントを出すエラーメッセージを追加 (`--tenant-id miya` のように name を渡した場合、`Use --tenant miya (or --tenant-id <id>)` と案内する) (#133)
+- **Test**: `promptTenantSelection`、`--tenant-id` の name 解決、インタラクティブ選択フローの単体テストを追加。既存テストの `TenantInfo` フィクスチャを `tenantName` に揃えた (#133)
+
 ## [0.16.2] - 2026-06-09
 
 ### 2026-05-31

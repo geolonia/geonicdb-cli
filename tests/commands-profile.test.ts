@@ -96,7 +96,7 @@ describe("profile commands", () => {
       vi.mocked(loadConfig).mockReturnValue({
         tenantId: "city_a",
         availableTenants: [
-          { tenantId: "city_a", name: "Smart City A", role: "tenant_admin" },
+          { tenantId: "city_a", tenantName: "Smart City A", role: "tenant_admin" },
         ],
       } as never);
       const program = makeProgram();
@@ -367,7 +367,7 @@ describe("profile commands", () => {
         url: "http://example.com",
         tenantId: "city_a",
         availableTenants: [
-          { tenantId: "city_a", name: "Smart City A", role: "tenant_admin" },
+          { tenantId: "city_a", tenantName: "Smart City A", role: "tenant_admin" },
           { tenantId: "city_b", role: "user" },
         ],
       } as never);

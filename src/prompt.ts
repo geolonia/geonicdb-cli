@@ -1,5 +1,6 @@
 import { createInterface } from "node:readline/promises";
 import { Writable } from "node:stream";
+import type { TenantInfo } from "./types.js";
 
 export function isInteractive(): boolean {
   return process.stdin.isTTY === true && process.stdout.isTTY === true;
@@ -10,6 +11,37 @@ export async function promptEmail(): Promise<string> {
   try {
     const email = await rl.question("Email: ");
     return email.trim();
+  } finally {
+    rl.close();
+  }
+}
+
+export async function promptTenantSelection(
+  tenants: TenantInfo[],
+): Promise<TenantInfo> {
+  if (tenants.length === 0) {
+    throw new Error("No tenants to choose from.");
+  }
+  const stdout = process.stdout;
+  stdout.write("Multiple tenants available. Select one:\n");
+  for (let i = 0; i < tenants.length; i++) {
+    const t = tenants[i];
+    const label = t.tenantName ? `${t.tenantName} (${t.tenantId})` : t.tenantId;
+    stdout.write(`  ${i + 1}) ${label} [${t.role}]\n`);
+  }
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    while (true) {
+      const answer = (await rl.question(`Select [1-${tenants.length}] (default: 1): `)).trim();
+      if (answer === "") {
+        return tenants[0];
+      }
+      const idx = Number.parseInt(answer, 10);
+      if (Number.isInteger(idx) && idx >= 1 && idx <= tenants.length) {
+        return tenants[idx - 1];
+      }
+      stdout.write(`Invalid selection "${answer}". Please enter a number between 1 and ${tenants.length}.\n`);
+    }
   } finally {
     rl.close();
   }

@@ -11,7 +11,7 @@ vi.mock("node:readline/promises", () => ({
   })),
 }));
 
-import { isInteractive, promptEmail, promptPassword } from "../src/prompt.js";
+import { isInteractive, promptEmail, promptPassword, promptTenantSelection } from "../src/prompt.js";
 
 describe("prompt", () => {
   const originalStdinIsTTY = process.stdin.isTTY;
@@ -274,6 +274,78 @@ describe("prompt", () => {
         stdinListeners["error"]?.forEach((cb) => cb(error));
         await expect(promise).rejects.toThrow("pipe error");
       });
+    });
+  });
+
+  describe("promptTenantSelection", () => {
+    let stdoutWriteSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      stdoutWriteSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+    });
+
+    afterEach(() => {
+      stdoutWriteSpy.mockRestore();
+    });
+
+    it("returns the selected tenant by index", async () => {
+      mockQuestion.mockResolvedValueOnce("2");
+      const tenants = [
+        { tenantId: "tid-a", tenantName: "alpha", role: "tenant_admin" },
+        { tenantId: "tid-b", tenantName: "beta", role: "user" },
+      ];
+      const result = await promptTenantSelection(tenants);
+      expect(result).toEqual(tenants[1]);
+      expect(stdoutWriteSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Multiple tenants available"),
+      );
+      expect(stdoutWriteSpy).toHaveBeenCalledWith(
+        expect.stringContaining("alpha (tid-a)"),
+      );
+      expect(stdoutWriteSpy).toHaveBeenCalledWith(
+        expect.stringContaining("beta (tid-b)"),
+      );
+    });
+
+    it("defaults to the first tenant on empty input", async () => {
+      mockQuestion.mockResolvedValueOnce("");
+      const tenants = [
+        { tenantId: "tid-a", tenantName: "alpha", role: "tenant_admin" },
+        { tenantId: "tid-b", role: "user" },
+      ];
+      const result = await promptTenantSelection(tenants);
+      expect(result).toEqual(tenants[0]);
+    });
+
+    it("re-prompts on invalid input until a valid index is given", async () => {
+      mockQuestion
+        .mockResolvedValueOnce("xyz")
+        .mockResolvedValueOnce("99")
+        .mockResolvedValueOnce("1");
+      const tenants = [
+        { tenantId: "tid-a", role: "tenant_admin" },
+        { tenantId: "tid-b", role: "user" },
+      ];
+      const result = await promptTenantSelection(tenants);
+      expect(result).toEqual(tenants[0]);
+      expect(mockQuestion).toHaveBeenCalledTimes(3);
+      expect(stdoutWriteSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid selection "xyz"'),
+      );
+    });
+
+    it("falls back to tenantId in the label when tenantName is missing", async () => {
+      mockQuestion.mockResolvedValueOnce("1");
+      const tenants = [{ tenantId: "tid-only", role: "user" }];
+      const result = await promptTenantSelection(tenants);
+      expect(result).toEqual(tenants[0]);
+      expect(stdoutWriteSpy).toHaveBeenCalledWith(
+        expect.stringContaining("tid-only [user]"),
+      );
+    });
+
+    it("throws when no tenants are provided", async () => {
+      await expect(promptTenantSelection([])).rejects.toThrow(/No tenants/);
     });
   });
 
