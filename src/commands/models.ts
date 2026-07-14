@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../helpers.js";
+import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, fetchPaginatedList } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
 import { addExamples } from "./help.js";
@@ -20,9 +20,7 @@ export function registerModelsCommand(program: Command): void {
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const params = buildPaginationParams(cmd.opts());
-
-        const response = await client.rawRequest("GET", "/custom-data-models", { params });
+        const response = await fetchPaginatedList(client, "/custom-data-models", cmd.opts());
         outputResponse(response, format);
       }),
     );

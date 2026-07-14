@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../../helpers.js";
+import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, fetchPaginatedList } from "../../helpers.js";
 import { parseJsonInput } from "../../input.js";
 import { printSuccess } from "../../output.js";
 import { addExamples, addNotes } from "../help.js";
@@ -41,9 +41,7 @@ export function registerTenantsCommand(parent: Command): void {
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const params = buildPaginationParams(cmd.opts());
-
-        const response = await client.rawRequest("GET", "/admin/tenants", { params });
+        const response = await fetchPaginatedList(client, "/admin/tenants", cmd.opts());
         outputResponse(response, format);
       }),
     );

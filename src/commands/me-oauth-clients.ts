@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../helpers.js";
+import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse, parseNonNegativeInt, fetchPaginatedList } from "../helpers.js";
 import { loadConfig, saveConfig, validateUrl } from "../config.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess, printError, printInfo, printWarning } from "../output.js";
@@ -21,9 +21,7 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const params = buildPaginationParams(cmd.opts());
-
-        const response = await client.rawRequest("GET", "/me/oauth-clients", { params });
+        const response = await fetchPaginatedList(client, "/me/oauth-clients", cmd.opts());
         outputResponse(response, format);
       }),
     );

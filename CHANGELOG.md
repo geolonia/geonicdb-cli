@@ -8,6 +8,11 @@
 ## [Unreleased]
 
 ### 2026-07-14
+- **Fix**: list 系コマンドがサーバーのデフォルトページサイズ (20件) で結果を暗黙に切り捨てていた問題を修正 (#141)
+  - `--limit`/`--offset` 未指定時は `X-Total-Count` に従って全ページを自動取得するように変更。対象: `admin users/tenants/policies/api-keys/oauth-clients list`, `me api-keys/oauth-clients/policies list`, `rules list`, `custom-data-models list`, `catalog datasets list`
+  - `--limit`/`--offset` 明示時は従来通り単一リクエストとし、結果が全体の一部である場合は stderr に `Showing N of M results...` の警告を表示する
+  - `types list` / `entities list` は NGSI データプレーンのページネーション (NGSILD-Results-Count) を使うため対象外
+- **Test**: `fetchPaginatedList` のページ巡回・打ち切り警告・非配列応答パススルーの単体テストを追加 (#141)
 - **CI**: 週次 geonicdb 互換性チェックが実際には最新版をテストしていなかった問題を修正 — package.json の spec を `github:geolonia/geonicdb` に書き換えるだけでは package-lock.json の旧解決 (pinned hash) が優先され更新されないため、`git ls-remote` で HEAD ハッシュを取得して明示的に `npm install` するように変更 (#144)
 - **CI**: geonicdb 本体をローカル起動するジョブ (compat check / e2e) の Node.js を 20 → 24 に更新 — 本体の `engines` (>= 24.13) に追従 (#144)
 - **CI**: devDependency の geonicdb を最新 main (`53e27682`) に更新。E2E 全シナリオのパスを確認済み (#144)

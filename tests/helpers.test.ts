@@ -9,9 +9,10 @@ vi.mock("../src/output.js", () => ({
   printError: vi.fn(),
   printOutput: vi.fn(),
   printCount: vi.fn(),
+  printWarning: vi.fn(),
 }));
 
-import { printError, printOutput, printCount } from "../src/output.js";
+import { printError, printOutput, printCount, printWarning } from "../src/output.js";
 import { saveConfig } from "../src/config.js";
 import { DryRunSignal, GdbClientError, GdbClient } from "../src/client.js";
 import {
@@ -20,6 +21,7 @@ import {
   getFormat,
   outputResponse,
   withErrorHandler,
+  fetchPaginatedList,
 } from "../src/helpers.js";
 
 function fakeCmd(cliOpts: Partial<GlobalOptions> = {}): Command {
@@ -369,6 +371,112 @@ describe("helpers", () => {
       const wrapped = withErrorHandler(fn);
       await expect(wrapped()).rejects.toThrow("process.exit");
       expect(printError).toHaveBeenCalledWith("Forbidden");
+    });
+  });
+  describe("fetchPaginatedList", () => {
+    function pageResponse(items: unknown[], total?: number): ClientResponse {
+      const headers = new Headers();
+      if (total !== undefined) headers.set("X-Total-Count", String(total));
+      return { status: 200, headers, data: items };
+    }
+
+    function clientWithPages(...responses: ClientResponse[]): GdbClient {
+      const rawRequest = vi.fn();
+      for (const r of responses) rawRequest.mockResolvedValueOnce(r);
+      return { rawRequest } as unknown as GdbClient;
+    }
+
+    it("follows pages until X-Total-Count is reached when no flags are given", async () => {
+      const page1 = Array.from({ length: 100 }, (_, i) => ({ id: i }));
+      const page2 = Array.from({ length: 100 }, (_, i) => ({ id: 100 + i }));
+      const page3 = Array.from({ length: 50 }, (_, i) => ({ id: 200 + i }));
+      const client = clientWithPages(
+        pageResponse(page1, 250),
+        pageResponse(page2, 250),
+        pageResponse(page3, 250),
+      );
+
+      const response = await fetchPaginatedList(client, "/admin/users", {});
+
+      expect(client.rawRequest).toHaveBeenCalledTimes(3);
+      expect(client.rawRequest).toHaveBeenNthCalledWith(1, "GET", "/admin/users", {
+        params: { limit: "100", offset: "0" },
+      });
+      expect(client.rawRequest).toHaveBeenNthCalledWith(2, "GET", "/admin/users", {
+        params: { limit: "100", offset: "100" },
+      });
+      expect(client.rawRequest).toHaveBeenNthCalledWith(3, "GET", "/admin/users", {
+        params: { limit: "100", offset: "200" },
+      });
+      expect((response.data as unknown[]).length).toBe(250);
+    });
+
+    it("stops after a single short page", async () => {
+      const client = clientWithPages(pageResponse([{ id: 1 }, { id: 2 }], 2));
+      const response = await fetchPaginatedList(client, "/admin/users", {});
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
+      expect(response.data).toEqual([{ id: 1 }, { id: 2 }]);
+    });
+
+    it("stops on a short page even without X-Total-Count", async () => {
+      const client = clientWithPages(pageResponse(Array.from({ length: 7 }, (_, i) => ({ id: i }))));
+      const response = await fetchPaginatedList(client, "/rules", {});
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
+      expect((response.data as unknown[]).length).toBe(7);
+    });
+
+    it("returns an empty list for an empty first page", async () => {
+      const client = clientWithPages(pageResponse([], 0));
+      const response = await fetchPaginatedList(client, "/admin/users", {});
+      expect(response.data).toEqual([]);
+    });
+
+    it("passes non-array responses through untouched", async () => {
+      const data = { message: "not a collection" };
+      const client = clientWithPages({ status: 200, headers: new Headers(), data });
+      const response = await fetchPaginatedList(client, "/admin/users", {});
+      expect(response.data).toBe(data);
+    });
+
+    it("merges extra params into every page request", async () => {
+      const client = clientWithPages(pageResponse([{ id: 1 }], 1));
+      await fetchPaginatedList(client, "/admin/api-keys", {}, { tenantId: "t-1" });
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/api-keys", {
+        params: { tenantId: "t-1", limit: "100", offset: "0" },
+      });
+    });
+
+    it("issues a single request when --limit is given and warns about the remainder", async () => {
+      const client = clientWithPages(pageResponse(Array.from({ length: 20 }, (_, i) => ({ id: i })), 56));
+      const response = await fetchPaginatedList(client, "/admin/users", { limit: 20 });
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/users", {
+        params: { limit: "20" },
+      });
+      expect((response.data as unknown[]).length).toBe(20);
+      expect(printWarning).toHaveBeenCalledWith(
+        "Showing 20 of 56 results. 36 more available (use --offset 20).",
+      );
+    });
+
+    it("accounts for --offset in the truncation warning", async () => {
+      const client = clientWithPages(pageResponse(Array.from({ length: 10 }, (_, i) => ({ id: i })), 56));
+      await fetchPaginatedList(client, "/admin/users", { limit: 10, offset: 40 });
+      expect(printWarning).toHaveBeenCalledWith(
+        "Showing 10 of 56 results. 6 more available (use --offset 50).",
+      );
+    });
+
+    it("does not warn when an explicit request returns the full set", async () => {
+      const client = clientWithPages(pageResponse(Array.from({ length: 56 }, (_, i) => ({ id: i })), 56));
+      await fetchPaginatedList(client, "/admin/users", { limit: 100 });
+      expect(printWarning).not.toHaveBeenCalled();
+    });
+
+    it("does not warn on explicit requests when X-Total-Count is absent", async () => {
+      const client = clientWithPages(pageResponse(Array.from({ length: 20 }, (_, i) => ({ id: i }))));
+      await fetchPaginatedList(client, "/admin/users", { limit: 20 });
+      expect(printWarning).not.toHaveBeenCalled();
     });
   });
 
