@@ -27,7 +27,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # geonicdb 本体の engines (>= 24.13) に合わせる
+          node-version: 24
 
       - name: Configure git for private repos
         run: |
@@ -35,14 +36,14 @@ jobs:
           git config --global --add url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "ssh://git@github.com/"
           git config --global --add url."https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/".insteadOf "git@github.com:"
 
+      # コミットハッシュを明示して install しないと、package-lock.json に
+      # 記録済みの旧解決 (pinned hash) が spec を満たすため npm install が
+      # 何も更新しない (毎回 pinned 版をテストしてしまう)
       - name: Update geonicdb to latest
         run: |
-          node -e "
-            const p = require('./package.json');
-            p.devDependencies.geonicdb = 'github:geolonia/geonicdb';
-            require('fs').writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
-          "
-          npm install
+          LATEST=$(git ls-remote https://github.com/geolonia/geonicdb.git HEAD | cut -f1)
+          echo "Latest geonicdb commit: ${LATEST}"
+          npm install --save-dev "github:geolonia/geonicdb#${LATEST}"
 
       - name: Show updated version
         run: npm ls geonicdb

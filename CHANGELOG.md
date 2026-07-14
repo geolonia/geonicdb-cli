@@ -8,6 +8,9 @@
 ## [Unreleased]
 
 ### 2026-07-14
+- **CI**: 週次 geonicdb 互換性チェックが実際には最新版をテストしていなかった問題を修正 — package.json の spec を `github:geolonia/geonicdb` に書き換えるだけでは package-lock.json の旧解決 (pinned hash) が優先され更新されないため、`git ls-remote` で HEAD ハッシュを取得して明示的に `npm install` するように変更 (#144)
+- **CI**: geonicdb 本体をローカル起動するジョブ (compat check / e2e) の Node.js を 20 → 24 に更新 — 本体の `engines` (>= 24.13) に追従 (#144)
+- **CI**: devDependency の geonicdb を最新 main (`53e27682`) に更新。E2E 全シナリオのパスを確認済み (#144)
 - **Test**: E2E の auth 系シナリオ (whoami / auto-refresh) が間欠的に 401 で落ちる flake を修正 (#142, #143)
   - 真因はサーバーの logout が「現在秒 +1 まで」の全トークンを無効化するため、直後 (同一壁時計秒) に正規ログインで発行された新トークンまで無効化窓に入ること。ローカルモードでは無効化レコードがインメモリ保持のため、E2E の DB クリーンアップでは除去できない
   - `loginAs` で取得したトークンを `/me` で実効性検証し、無効化窓を跨ぐバックオフ (計 2 秒) 付きでリトライするように変更
