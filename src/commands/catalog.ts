@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../helpers.js";
+import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, fetchPaginatedList } from "../helpers.js";
 import { addExamples } from "./help.js";
 
 export function registerCatalogCommand(program: Command): void {
@@ -46,9 +46,7 @@ export function registerCatalogCommand(program: Command): void {
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const params = buildPaginationParams(cmd.opts());
-
-        const response = await client.rawRequest("GET", "/catalog/datasets", { params });
+        const response = await fetchPaginatedList(client, "/catalog/datasets", cmd.opts());
         outputResponse(response, format);
       }),
     );

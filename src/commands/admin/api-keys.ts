@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse, parseNonNegativeInt, buildPaginationParams } from "../../helpers.js";
+import { withErrorHandler, createClient, resolveOptions, getFormat, outputResponse, parseNonNegativeInt, fetchPaginatedList } from "../../helpers.js";
 import { loadConfig, saveConfig, validateUrl } from "../../config.js";
 import { parseJsonInput } from "../../input.js";
 import { printApiKeyBox, printError } from "../../output.js";
@@ -117,11 +117,9 @@ export function registerApiKeysCommand(parent: Command): void {
         const opts = cmd.opts() as { tenantId?: string; limit?: number; offset?: number };
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const params: Record<string, string> = buildPaginationParams(opts);
-        if (opts.tenantId) params.tenantId = opts.tenantId;
-        const response = await client.rawRequest("GET", "/admin/api-keys", {
-          params,
-        });
+        const extraParams: Record<string, string> = {};
+        if (opts.tenantId) extraParams.tenantId = opts.tenantId;
+        const response = await fetchPaginatedList(client, "/admin/api-keys", opts, extraParams);
         response.data = cleanApiKeyData(response.data);
         outputResponse(response, format);
         console.error("※ API キー値は作成時 (create) またはリフレッシュ時 (refresh) にのみ表示されます。");

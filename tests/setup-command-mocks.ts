@@ -25,6 +25,20 @@ vi.mock("../src/helpers.js", () => ({
     if (opts.offset !== undefined) params["offset"] = String(opts.offset);
     return params;
   },
+  // Single-request passthrough so command tests keep asserting on
+  // client.rawRequest; the real page-following logic is unit-tested in
+  // tests/helpers.test.ts against the unmocked implementation.
+  fetchPaginatedList: async (
+    client: { rawRequest: (method: string, path: string, options?: unknown) => Promise<unknown> },
+    path: string,
+    opts: { limit?: number; offset?: number },
+    extraParams: Record<string, string> = {},
+  ): Promise<unknown> => {
+    const params: Record<string, string> = { ...extraParams };
+    if (opts.limit !== undefined) params["limit"] = String(opts.limit);
+    if (opts.offset !== undefined) params["offset"] = String(opts.offset);
+    return client.rawRequest("GET", path, { params });
+  },
 }));
 
 vi.mock("../src/input.js", () => ({
