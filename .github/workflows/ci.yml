@@ -81,7 +81,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # e2e は geonicdb 本体をローカル起動するため engines (>= 24.13) に合わせる
+          node-version: 24
           cache: npm
 
       - name: Configure git for private repos
