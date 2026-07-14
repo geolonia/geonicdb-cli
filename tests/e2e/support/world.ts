@@ -114,11 +114,17 @@ setWorldConstructor(GdbWorld);
 
 /**
  * Internal helper: login with given credentials and write the token to CLI config.
- * Retries up to 3 times to handle race conditions where the DB was just
- * cleared and the server hasn't yet recreated users.
+ * Retries to handle two failure windows:
+ * - the DB was just cleared and the server hasn't yet recreated users
+ * - the server's logout invalidates ALL of the user's tokens issued in the
+ *   same wall-clock second (`invalidatedBefore = now + 1s`), so a token minted
+ *   right after a logout in a preceding scenario is dead on arrival even
+ *   though the login itself succeeded (#142). The token is therefore verified
+ *   against /me before being handed to the scenario; the backoff spans more
+ *   than one second so at least one attempt lands past the invalidation window.
  */
 async function loginAs(world: GdbWorld, email: string, password: string): Promise<Record<string, unknown>> {
-  const maxRetries = 3;
+  const maxRetries = 5;
   let lastError: Error | undefined;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -139,6 +145,14 @@ async function loginAs(world: GdbWorld, email: string, password: string): Promis
       const token = (data.accessToken ?? data.token) as string;
       if (!token) {
         lastError = new Error("No token received from login API");
+        continue;
+      }
+
+      const meRes = await fetch(new URL("/me", world.serverUrl).toString(), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!meRes.ok) {
+        lastError = new Error(`Fresh token rejected by /me: HTTP ${meRes.status} (token invalidation window, see #142)`);
         continue;
       }
 
