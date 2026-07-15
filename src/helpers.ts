@@ -205,7 +205,7 @@ export function withErrorHandler<T extends unknown[]>(fn: (...args: T) => Promis
         // 409 AlreadyExists — サーバのメッセージに違反した一意制約名が含まれる (#136)
         printError(err.message);
         if (/violates unique constraint/i.test(err.message)) {
-          printWarning("Hint: inspect the model's unique constraints with `geonic models get <type>`.");
+          printWarning("Hint: inspect the model's unique constraints with `geonic models get <model-id>`.");
         }
       } else if (err instanceof Error) {
         printError(err.message);

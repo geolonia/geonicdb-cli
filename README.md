@@ -464,14 +464,14 @@ $ geonic models create '{
 - 制約は宣言フィールドを**すべて**持つエンティティにのみ適用されます
 - `models update` の `uniqueConstraints` は全置換です（`[]` で全削除）
 - 既存エンティティが重複している状態で制約を追加すると `400` になります（先に重複を解消してください）
-- 定義済みの制約は `geonic models get <type>` で確認できます（table 形式では `制約名(フィールド, ...)` 表記）
+- 定義済みの制約は `geonic models get <model-id>` で確認できます（table 形式では `制約名(フィールド, ...)` 表記）
 
 重複作成時のエラー表示例:
 
 ```console
 $ geonic entities create '{"id":"urn:ngsi-ld:RoomReservation:002","type":"RoomReservation","room":{"type":"Property","value":"R1"},"date":{"type":"Property","value":"2026-07-15"},"startTime":{"type":"Property","value":"10:00"}}'
 Error: Entity already exists: violates unique constraint 'no-double-booking' on fields [room, date, startTime]
-Hint: inspect the model's unique constraints with `geonic models get <type>`.
+Hint: inspect the model's unique constraints with `geonic models get <model-id>`.
 ```
 
 ### catalog — DCAT-AP catalog

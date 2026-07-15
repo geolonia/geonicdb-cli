@@ -82,6 +82,8 @@ describe("models (custom-data-models) command", () => {
         description: "Room reservation",
         propertyDetails: {
           room: { ngsiType: "Property", valueType: "string", example: "R1" },
+          date: { ngsiType: "Property", valueType: "string", example: "2026-07-15" },
+          startTime: { ngsiType: "Property", valueType: "string", example: "10:00" },
         },
         uniqueConstraints: [{ name: "no-double-booking", fields: ["room", "date", "startTime"] }],
       };
