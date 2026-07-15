@@ -13,6 +13,9 @@
   - 新規シナリオ: 制約宣言 → `models get --format table` の可読表示確認 → 重複エンティティの exit 1 + 違反制約名 + ヒント表示 → `uniqueConstraints: []` での全削除後に重複作成可
   - 既存の get/delete シナリオが Mongo の `id` を渡していたのを type 指定に修正（API はモデルを type でキーする: `GET/DELETE /custom-data-models/{type}`）
   - devDependency の geonicdb を一意制約実装済みの main (`913ceecf`) に更新
+- **Fix**: 存在しないサブコマンドへの `--help` (`geonic hello --help` 等) がヘルプ表示 + exit 0 で成功扱いになっていた問題を修正 — `geonic help <unknown>` と同じエラーを stderr に出力し exit 1 を返す (#147)
+  - エラーメッセージはユーザーが入力したエイリアス表記をそのまま echo する（`models badsub` を `custom-data-models badsub` に置換しない）
+  - 未知オプションの値はサブコマンド名と誤認しない（`geonic entities --bogus json --help` は従来通りヘルプ表示）
 
 ## [0.18.0] - 2026-07-15
 
