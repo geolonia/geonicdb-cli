@@ -738,6 +738,15 @@ describe("help", () => {
       expect(output).not.toContain("custom-data-models");
     });
 
+    it("echoes the typed alias even when an option value collides with a command name", async () => {
+      // The --service value must not be mistaken for the typed command token
+      const output = await runExpectingError([
+        "--service", "custom-data-models", "models", "badsub", "--help",
+      ]);
+      expect(output).toContain("'models badsub' is not a geonic command");
+      expect(output).not.toContain("custom-data-models badsub");
+    });
+
     it("does not mistake an unknown option's value for a subcommand", async () => {
       // "--bogus json" must not be reported as `geonic entities json`
       const output = await runExpectingHelp(["entities", "--bogus", "json", "--help"]);
@@ -747,6 +756,16 @@ describe("help", () => {
     it("shows top-level help when --help precedes a non-command token", async () => {
       const output = await runExpectingHelp(["--help", "hello"]);
       expect(output).toContain("AVAILABLE COMMANDS");
+    });
+
+    it("shows group help when --help precedes a non-command token in a subgroup", async () => {
+      const output = await runExpectingHelp(["entities", "--help", "badsub"]);
+      expect(output).toContain("geonic entities");
+    });
+
+    it("does not report an empty-string operand as an unknown command", async () => {
+      const output = await runExpectingHelp(["entities", "", "--help"]);
+      expect(output).toContain("geonic entities");
     });
   });
 
