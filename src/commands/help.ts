@@ -220,6 +220,12 @@ export function formatCommandDetails(
   return lines.join("\n");
 }
 
+function unknownCommandError(attempted: string): never {
+  console.error(chalk.red(`Error: '${attempted}' is not a geonic command.`));
+  console.error(`\nSee 'geonic help' for available commands.`);
+  process.exit(1);
+}
+
 function showHelp(program: Command, args: string[]): void {
   if (args.length === 0) {
     console.log(formatTopLevelHelp(program));
@@ -232,12 +238,7 @@ function showHelp(program: Command, args: string[]): void {
   for (let i = 0; i < args.length; i++) {
     const found = findCommand(current, args[i]);
     if (!found) {
-      const attempted = args.slice(0, i + 1).join(" ");
-      console.error(
-        chalk.red(`Error: '${attempted}' is not a geonic command.`),
-      );
-      console.error(`\nSee 'geonic help' for available commands.`);
-      process.exit(1);
+      unknownCommandError(args.slice(0, i + 1).join(" "));
     }
     resolved.push(found);
     current = found;
@@ -249,13 +250,31 @@ function showHelp(program: Command, args: string[]): void {
   console.log(formatCommandDetails(program, target, path));
 }
 
-function reportUnknownCommand(cmd: Command, operand: string): never {
-  // getCommandPath() starts with the program name ("geonic"); drop it
-  const prefix = getCommandPath(cmd).split(" ").slice(1);
-  const attempted = [...prefix, operand].join(" ");
-  console.error(chalk.red(`Error: '${attempted}' is not a geonic command.`));
-  console.error(`\nSee 'geonic help' for available commands.`);
-  process.exit(1);
+// Resolve the chain from the program down to cmd back to the tokens the user
+// actually typed (rawArgs), so aliases are echoed as typed (e.g. "models"),
+// not as their canonical name ("custom-data-models").
+function typedCommandPath(cmd: Command): string[] {
+  const chain: Command[] = [];
+  let current: Command | null = cmd;
+  while (current && current.parent) {
+    chain.unshift(current);
+    current = current.parent;
+  }
+
+  // rawArgs exists at runtime but is missing from commander's typings
+  const root = getRootProgram(cmd) as Command & { rawArgs: string[] };
+  const rawArgs = root.rawArgs.slice(2); // drop node + script
+
+  const typed: string[] = [];
+  let i = 0;
+  for (const c of chain) {
+    const names = [c.name(), ...c.aliases()];
+    while (i < rawArgs.length && !names.includes(rawArgs[i])) {
+      i++;
+    }
+    typed.push(i < rawArgs.length ? rawArgs[i] : c.name());
+  }
+  return typed;
 }
 
 export function enforceKnownCommandHelp(program: Command): void {
@@ -270,10 +289,16 @@ export function enforceKnownCommandHelp(program: Command): void {
       cmd.outputHelp = (
         contextOptions?: HelpContext | ((str: string) => string),
       ): void => {
-        // cmd.args is operands followed by unparsed options such as --help
-        const operand = cmd.args.find((arg) => !arg.startsWith("-"));
-        if (operand !== undefined && !findCommand(cmd, operand)) {
-          reportUnknownCommand(cmd, operand);
+        // cmd.args lists operands first, then unparsed options such as --help.
+        // Only a leading non-dash token is a genuine operand — a non-dash token
+        // found later may be the value of an unrecognized option.
+        const operand = cmd.args[0];
+        if (
+          operand !== undefined &&
+          !operand.startsWith("-") &&
+          !findCommand(cmd, operand)
+        ) {
+          unknownCommandError([...typedCommandPath(cmd), operand].join(" "));
         }
         originalOutputHelp(contextOptions as HelpContext | undefined);
       };

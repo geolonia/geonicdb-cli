@@ -16,6 +16,27 @@ function findCommand(program: ReturnType<typeof createProgram>, ...names: string
   return current;
 }
 
+// Parses argv expecting the unknown-command error path: captures stderr,
+// asserts process.exit(1), and returns the stripped stderr output.
+async function runExpectingError(argv: string[]): Promise<string> {
+  const prog = createProgram();
+  prog.exitOverride();
+  const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+    throw new Error("process.exit");
+  });
+  try {
+    await prog.parseAsync(["node", "geonic", ...argv]);
+  } catch {
+    // expected
+  }
+  const output = stripAnsi(errSpy.mock.calls.map((c) => c[0]).join("\n"));
+  expect(exitSpy).toHaveBeenCalledWith(1);
+  errSpy.mockRestore();
+  exitSpy.mockRestore();
+  return output;
+}
+
 describe("help", () => {
   const program = createProgram();
 
@@ -609,21 +630,8 @@ describe("help", () => {
     });
 
     it("shows error for invalid command name in help", async () => {
-      const prog = createProgram();
-      prog.exitOverride();
-      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
-        throw new Error("process.exit");
-      });
-      try {
-        await prog.parseAsync(["node", "geonic", "help", "nonexistent"]);
-      } catch {
-        // expected
-      }
-      const output = errSpy.mock.calls.map((c) => c[0]).join("\n");
-      expect(stripAnsi(output)).toContain("'nonexistent' is not a geonic command");
-      errSpy.mockRestore();
-      exitSpy.mockRestore();
+      const output = await runExpectingError(["help", "nonexistent"]);
+      expect(output).toContain("'nonexistent' is not a geonic command");
     });
 
     it("shows top-level help when help is called with no args", async () => {
@@ -684,22 +692,22 @@ describe("help", () => {
   });
 
   describe("unknown subcommand with --help", () => {
-    async function runExpectingError(argv: string[]): Promise<string> {
+    // Parses argv expecting help to be shown: captures stdout and returns it,
+    // asserting no error was printed.
+    async function runExpectingHelp(argv: string[]): Promise<string> {
       const prog = createProgram();
       prog.exitOverride();
+      const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
       const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
-        throw new Error("process.exit");
-      });
       try {
         await prog.parseAsync(["node", "geonic", ...argv]);
       } catch {
-        // expected
+        // exitOverride throws on help
       }
-      const output = stripAnsi(errSpy.mock.calls.map((c) => c[0]).join("\n"));
-      expect(exitSpy).toHaveBeenCalledWith(1);
+      const output = stripAnsi(writeSpy.mock.calls.map((c) => c[0]).join(""));
+      expect(errSpy).not.toHaveBeenCalled();
+      writeSpy.mockRestore();
       errSpy.mockRestore();
-      exitSpy.mockRestore();
       return output;
     }
 
@@ -720,20 +728,25 @@ describe("help", () => {
     });
 
     it("still shows help for a leaf command with an argument and --help", async () => {
-      const prog = createProgram();
-      prog.exitOverride();
-      const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
-      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-      try {
-        await prog.parseAsync(["node", "geonic", "entities", "get", "urn:x", "--help"]);
-      } catch {
-        // exitOverride throws on help
-      }
-      const output = stripAnsi(writeSpy.mock.calls.map((c) => c[0]).join(""));
+      const output = await runExpectingHelp(["entities", "get", "urn:x", "--help"]);
       expect(output).toContain("geonic entities get");
-      expect(errSpy).not.toHaveBeenCalled();
-      writeSpy.mockRestore();
-      errSpy.mockRestore();
+    });
+
+    it("echoes the alias the user typed, not the canonical command name", async () => {
+      const output = await runExpectingError(["models", "badsub", "--help"]);
+      expect(output).toContain("'models badsub' is not a geonic command");
+      expect(output).not.toContain("custom-data-models");
+    });
+
+    it("does not mistake an unknown option's value for a subcommand", async () => {
+      // "--bogus json" must not be reported as `geonic entities json`
+      const output = await runExpectingHelp(["entities", "--bogus", "json", "--help"]);
+      expect(output).toContain("geonic entities");
+    });
+
+    it("shows top-level help when --help precedes a non-command token", async () => {
+      const output = await runExpectingHelp(["--help", "hello"]);
+      expect(output).toContain("AVAILABLE COMMANDS");
     });
   });
 
