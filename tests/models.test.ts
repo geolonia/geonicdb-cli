@@ -74,6 +74,27 @@ describe("models (custom-data-models) command", () => {
     });
   });
 
+  describe("create with uniqueConstraints (#136)", () => {
+    it("passes uniqueConstraints through in the request body", async () => {
+      const modelData = {
+        type: "RoomReservation",
+        domain: "building",
+        description: "Room reservation",
+        propertyDetails: {
+          room: { ngsiType: "Property", valueType: "string", example: "R1" },
+        },
+        uniqueConstraints: [{ name: "no-double-booking", fields: ["room", "date", "startTime"] }],
+      };
+      vi.mocked(parseJsonInput).mockResolvedValue(modelData);
+      mockClient.rawRequest.mockResolvedValue(mockResponse({ type: "RoomReservation" }, 201));
+
+      await runCommand(program, ["models", "create", JSON.stringify(modelData)]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("POST", "/custom-data-models", { body: modelData });
+      expect(printSuccess).toHaveBeenCalledWith("Model created.");
+    });
+  });
+
   describe("update", () => {
     it("parses JSON and patches via rawRequest", async () => {
       const patchData = { name: "UpdatedModel" };
@@ -90,6 +111,36 @@ describe("models (custom-data-models) command", () => {
       );
       expect(outputResponse).toHaveBeenCalled();
       expect(printSuccess).toHaveBeenCalledWith("Model updated.");
+    });
+  });
+
+  describe("update uniqueConstraints (#136)", () => {
+    it("replaces the constraint list via PATCH", async () => {
+      const patchData = { uniqueConstraints: [{ name: "unique-code", fields: ["code"] }] };
+      vi.mocked(parseJsonInput).mockResolvedValue(patchData);
+      mockClient.rawRequest.mockResolvedValue(mockResponse({ type: "Slot" }, 200));
+
+      await runCommand(program, ["models", "update", "Slot", JSON.stringify(patchData)]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith(
+        "PATCH",
+        `/custom-data-models/${encodeURIComponent("Slot")}`,
+        { body: patchData },
+      );
+    });
+
+    it("removes all constraints with an empty array", async () => {
+      const patchData = { uniqueConstraints: [] };
+      vi.mocked(parseJsonInput).mockResolvedValue(patchData);
+      mockClient.rawRequest.mockResolvedValue(mockResponse({ type: "Slot" }, 200));
+
+      await runCommand(program, ["models", "update", "Slot", JSON.stringify(patchData)]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith(
+        "PATCH",
+        `/custom-data-models/${encodeURIComponent("Slot")}`,
+        { body: patchData },
+      );
     });
   });
 

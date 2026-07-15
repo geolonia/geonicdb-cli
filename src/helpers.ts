@@ -201,6 +201,12 @@ export function withErrorHandler<T extends unknown[]>(fn: (...args: T) => Promis
         } else {
           printError(err.message);
         }
+      } else if (err instanceof GdbClientError && err.status === 409) {
+        // 409 AlreadyExists — サーバのメッセージに違反した一意制約名が含まれる (#136)
+        printError(err.message);
+        if (/violates unique constraint/i.test(err.message)) {
+          printWarning("Hint: inspect the model's unique constraints with `geonic models get <type>`.");
+        }
       } else if (err instanceof Error) {
         printError(err.message);
       } else {

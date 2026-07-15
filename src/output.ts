@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import type { OutputFormat } from "./types.js";
+import type { OutputFormat, UniqueConstraint } from "./types.js";
 
 export function formatOutput(data: unknown, format: OutputFormat): string {
   switch (format) {
@@ -132,12 +132,36 @@ function isGeoJSON(v: unknown): boolean {
   return typeof o.type === "string" && "coordinates" in o;
 }
 
+/**
+ * カスタムデータモデルの uniqueConstraints 形式 ({name, fields[]} の配列) か判定する (#136)
+ */
+function isUniqueConstraintArray(val: unknown): val is UniqueConstraint[] {
+  return (
+    Array.isArray(val) &&
+    val.length > 0 &&
+    val.every(
+      (v) =>
+        typeof v === "object" &&
+        v !== null &&
+        typeof (v as Record<string, unknown>).name === "string" &&
+        Array.isArray((v as Record<string, unknown>).fields) &&
+        ((v as Record<string, unknown>).fields as unknown[]).every((f) => typeof f === "string") &&
+        Object.keys(v as object).length === 2,
+    )
+  );
+}
+
 function cellValue(val: unknown): string {
   if (val === undefined || val === null) return "";
   if (typeof val !== "object") return String(val);
   if (Array.isArray(val)) {
     const scalarArray = val.every((v) => v === null || typeof v !== "object");
-    return scalarArray ? val.map(String).join(", ") : JSON.stringify(val);
+    if (scalarArray) return val.map(String).join(", ");
+    // uniqueConstraints は「制約名(フィールド, ...)」の可読形式で表示 (#136)
+    if (isUniqueConstraintArray(val)) {
+      return val.map((c) => `${c.name}(${c.fields.join(", ")})`).join("; ");
+    }
+    return JSON.stringify(val);
   }
   const obj = val as Record<string, unknown>;
   if (isGeoJSON(obj)) return formatGeoJSON(obj);

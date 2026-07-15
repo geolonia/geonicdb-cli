@@ -355,6 +355,36 @@ describe("helpers", () => {
       );
     });
 
+    it("prints server message and hint on 409 unique constraint violation (#136)", async () => {
+      const err = new GdbClientError(
+        "Entity already exists: violates unique constraint 'no-double-booking' on fields [room, date, startTime]",
+        409,
+        { error: "AlreadyExists" },
+      );
+      const fn = vi.fn().mockRejectedValue(err);
+      const wrapped = withErrorHandler(fn);
+      await expect(wrapped()).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("violates unique constraint 'no-double-booking'"),
+      );
+      expect(printWarning).toHaveBeenCalledWith(
+        expect.stringContaining("geonic models get"),
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it("prints plain message on 409 without unique constraint context", async () => {
+      const err = new GdbClientError("Entity already exists: urn:ngsi-ld:Room:001", 409, {
+        error: "AlreadyExists",
+      });
+      const fn = vi.fn().mockRejectedValue(err);
+      const wrapped = withErrorHandler(fn);
+      await expect(wrapped()).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith("Entity already exists: urn:ngsi-ld:Room:001");
+      expect(printWarning).not.toHaveBeenCalled();
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
     it("prints generic message on 403 without entity type detail", async () => {
       const err = new GdbClientError("Access denied", 403, {
         detail: "insufficient permissions",
