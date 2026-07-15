@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import type { Command, Help, Option } from "commander";
+import type { Command, Help, HelpContext, Option } from "commander";
 
 interface Example {
   description: string;
@@ -220,6 +220,12 @@ export function formatCommandDetails(
   return lines.join("\n");
 }
 
+function unknownCommandError(attempted: string): never {
+  console.error(chalk.red(`Error: '${attempted}' is not a geonic command.`));
+  console.error(`\nSee 'geonic help' for available commands.`);
+  process.exit(1);
+}
+
 function showHelp(program: Command, args: string[]): void {
   if (args.length === 0) {
     console.log(formatTopLevelHelp(program));
@@ -232,12 +238,7 @@ function showHelp(program: Command, args: string[]): void {
   for (let i = 0; i < args.length; i++) {
     const found = findCommand(current, args[i]);
     if (!found) {
-      const attempted = args.slice(0, i + 1).join(" ");
-      console.error(
-        chalk.red(`Error: '${attempted}' is not a geonic command.`),
-      );
-      console.error(`\nSee 'geonic help' for available commands.`);
-      process.exit(1);
+      unknownCommandError(args.slice(0, i + 1).join(" "));
     }
     resolved.push(found);
     current = found;
@@ -247,6 +248,62 @@ function showHelp(program: Command, args: string[]): void {
   const path = [program.name(), ...resolved.map((c) => c.name())].join(" ");
 
   console.log(formatCommandDetails(program, target, path));
+}
+
+export function enforceKnownCommandHelp(program: Command): void {
+  // Commander prints help and exits 0 when --help/-h is present, even if the
+  // remaining operand is not a known subcommand (e.g. `geonic hello --help`).
+  // Wrap outputHelp() on every command group so that case errors with exit 1,
+  // matching `geonic help <unknown>`. Call after all commands are registered.
+
+  // Token the user actually typed to invoke each command (name or alias),
+  // recorded at dispatch time so error messages echo e.g. "models" as typed,
+  // not the canonical name "custom-data-models".
+  const typedNames = new WeakMap<Command, string>();
+
+  // Path from the program down to cmd, using the recorded typed tokens.
+  const typedCommandPath = (cmd: Command): string[] => {
+    const path: string[] = [];
+    let current: Command | null = cmd;
+    while (current && current.parent) {
+      path.unshift(typedNames.get(current) ?? current.name());
+      current = current.parent;
+    }
+    return path;
+  };
+
+  const visit = (cmd: Command): void => {
+    if (cmd.commands.length > 0) {
+      // preSubcommand fires on dispatch, before commander's --help
+      // short-circuit; parent.args[0] is the operand commander resolved the
+      // subcommand from. Hooks are not inherited, so attach per group.
+      cmd.hook("preSubcommand", (parent, subCommand) => {
+        const token = parent.args[0];
+        if (token !== undefined) {
+          typedNames.set(subCommand, token);
+        }
+      });
+
+      const originalOutputHelp = cmd.outputHelp.bind(cmd);
+      // Same parameter type as Command.outputHelp (including deprecated overload)
+      cmd.outputHelp = (
+        contextOptions?: HelpContext | ((str: string) => string),
+      ): void => {
+        // cmd.args lists operands first, then unparsed options such as --help.
+        // Only a leading non-empty, non-dash token is a genuine operand — a
+        // non-dash token found later may be the value of an unrecognized option.
+        const operand = cmd.args[0];
+        if (operand && !operand.startsWith("-") && !findCommand(cmd, operand)) {
+          unknownCommandError([...typedCommandPath(cmd), operand].join(" "));
+        }
+        originalOutputHelp(contextOptions as HelpContext | undefined);
+      };
+    }
+    for (const sub of cmd.commands) {
+      visit(sub);
+    }
+  };
+  visit(program);
 }
 
 export function registerHelpCommand(program: Command): void {
