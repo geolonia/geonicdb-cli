@@ -7,11 +7,13 @@
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-07-15
+
 ### 2026-07-15
 - **Feat**: カスタムデータモデルの一意制約（複合ユニーク, geonicdb#1268）に対応 (#136)
   - `models create` / `models update` の JSON ペイロードで `uniqueConstraints` を指定可能に（本体へパススルー）。ヘルプ・examples に宣言例と全置換 (`[]` で全削除) のセマンティクスを追記
   - `models get` / `models list` の table 形式で `uniqueConstraints` を `制約名(フィールド, ...)` の可読形式で表示（json 形式は従来通りそのまま出力）
-  - 409 AlreadyExists のエラー表示を改善 — サーバーが返す違反制約名入りメッセージをそのまま表示し、一意制約違反の場合は `geonic models get <type>` で制約を確認するヒントを stderr に表示
+  - 409 AlreadyExists のエラー表示を改善 — サーバーが返す違反制約名入りメッセージをそのまま表示し、一意制約違反の場合は `geonic models get <model-id>` で制約を確認するヒントを stderr に表示
   - `UniqueConstraint` 型を `types.ts` に追加
 
 ### 2026-07-14
@@ -279,7 +281,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.2...v0.17.0
 [0.16.2]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.1...v0.16.2
 [0.16.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.0...v0.16.1
