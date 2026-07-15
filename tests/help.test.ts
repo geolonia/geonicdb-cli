@@ -26,15 +26,18 @@ async function runExpectingError(argv: string[]): Promise<string> {
     throw new Error("process.exit");
   });
   try {
-    await prog.parseAsync(["node", "geonic", ...argv]);
-  } catch {
-    // expected
+    try {
+      await prog.parseAsync(["node", "geonic", ...argv]);
+    } catch {
+      // expected
+    }
+    const output = stripAnsi(errSpy.mock.calls.map((c) => c[0]).join("\n"));
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    return output;
+  } finally {
+    errSpy.mockRestore();
+    exitSpy.mockRestore();
   }
-  const output = stripAnsi(errSpy.mock.calls.map((c) => c[0]).join("\n"));
-  expect(exitSpy).toHaveBeenCalledWith(1);
-  errSpy.mockRestore();
-  exitSpy.mockRestore();
-  return output;
 }
 
 describe("help", () => {
@@ -700,15 +703,18 @@ describe("help", () => {
       const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
       const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       try {
-        await prog.parseAsync(["node", "geonic", ...argv]);
-      } catch {
-        // exitOverride throws on help
+        try {
+          await prog.parseAsync(["node", "geonic", ...argv]);
+        } catch {
+          // exitOverride throws on help
+        }
+        const output = stripAnsi(writeSpy.mock.calls.map((c) => c[0]).join(""));
+        expect(errSpy).not.toHaveBeenCalled();
+        return output;
+      } finally {
+        writeSpy.mockRestore();
+        errSpy.mockRestore();
       }
-      const output = stripAnsi(writeSpy.mock.calls.map((c) => c[0]).join(""));
-      expect(errSpy).not.toHaveBeenCalled();
-      writeSpy.mockRestore();
-      errSpy.mockRestore();
-      return output;
     }
 
     it("errors for unknown top-level command with --help", async () => {
