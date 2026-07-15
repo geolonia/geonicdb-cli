@@ -43,7 +43,7 @@ export function registerModelsCommand(program: Command): void {
   // models get
   const get = models
     .command("get <id>")
-    .description("Get a data model's full schema including property definitions and constraints")
+    .description("Get a data model's full schema including property definitions, validation rules, and unique constraints")
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
@@ -81,7 +81,11 @@ export function registerModelsCommand(program: Command): void {
         '    "propertyDetails": {\n' +
         '      "temperature": {"ngsiType": "Property", "valueType": "Number", "example": 25}\n' +
         "    }\n" +
-        "  }",
+        "  }\n\n" +
+        "Optional uniqueConstraints (composite unique, enforced server-side):\n" +
+        '  "uniqueConstraints": [{"name": "no-double-booking", "fields": ["room", "date", "startTime"]}]\n' +
+        "  Fields must be declared in propertyDetails with a scalar valueType.\n" +
+        "  Duplicate entities are rejected with 409 AlreadyExists (constraint name in the message).",
     )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
@@ -107,6 +111,10 @@ export function registerModelsCommand(program: Command): void {
       description: "Create from stdin pipe",
       command: "cat model.json | geonic models create",
     },
+    {
+      description: "Create with a composite unique constraint (no double booking)",
+      command: `geonic models create '{"type":"RoomReservation","domain":"building","description":"Room reservation","propertyDetails":{"room":{"ngsiType":"Property","valueType":"string","example":"R1"},"date":{"ngsiType":"Property","valueType":"string","example":"2026-07-15"},"startTime":{"ngsiType":"Property","valueType":"string","example":"10:00"}},"uniqueConstraints":[{"name":"no-double-booking","fields":["room","date","startTime"]}]}'`,
+    },
   ]);
 
   // models update
@@ -116,7 +124,9 @@ export function registerModelsCommand(program: Command): void {
     .description(
       "Update a model\n\n" +
         "JSON payload: only specified fields are updated.\n" +
-        '  e.g. {"description": "Updated model"}',
+        '  e.g. {"description": "Updated model"}\n\n' +
+        "uniqueConstraints replaces the whole constraint list (send [] to remove all).\n" +
+        "Adding a constraint fails with 400 if existing entities already violate it.",
     )
     .action(
       withErrorHandler(
@@ -147,6 +157,14 @@ export function registerModelsCommand(program: Command): void {
     {
       description: "Update from stdin pipe",
       command: "cat model.json | geonic models update <model-id>",
+    },
+    {
+      description: "Replace unique constraints",
+      command: `geonic models update RoomReservation '{"uniqueConstraints":[{"name":"no-double-booking","fields":["room","date","startTime"]}]}'`,
+    },
+    {
+      description: "Remove all unique constraints",
+      command: `geonic models update RoomReservation '{"uniqueConstraints":[]}'`,
     },
   ]);
 

@@ -7,6 +7,13 @@
 
 ## [Unreleased]
 
+### 2026-07-15
+- **Feat**: カスタムデータモデルの一意制約（複合ユニーク, geonicdb#1268）に対応 (#136)
+  - `models create` / `models update` の JSON ペイロードで `uniqueConstraints` を指定可能に（本体へパススルー）。ヘルプ・examples に宣言例と全置換 (`[]` で全削除) のセマンティクスを追記
+  - `models get` / `models list` の table 形式で `uniqueConstraints` を `制約名(フィールド, ...)` の可読形式で表示（json 形式は従来通りそのまま出力）
+  - 409 AlreadyExists のエラー表示を改善 — サーバーが返す違反制約名入りメッセージをそのまま表示し、一意制約違反の場合は `geonic models get <type>` で制約を確認するヒントを stderr に表示
+  - `UniqueConstraint` 型を `types.ts` に追加
+
 ### 2026-07-14
 - **Fix**: list 系コマンドがサーバーのデフォルトページサイズ (20件) で結果を暗黙に切り捨てていた問題を修正 (#141)
   - `--limit`/`--offset` 未指定時は `X-Total-Count` に従って全ページを自動取得するように変更。対象: `admin users/tenants/policies/api-keys/oauth-clients list`, `me api-keys/oauth-clients/policies list`, `rules list`, `custom-data-models list`, `catalog datasets list`

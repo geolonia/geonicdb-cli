@@ -56,6 +56,25 @@ describe("output", () => {
       expect(result).toContain("23.5");
     });
 
+    it("renders uniqueConstraints as name(fields) (#136)", () => {
+      const data = {
+        type: "RoomReservation",
+        uniqueConstraints: [
+          { name: "no-double-booking", fields: ["room", "date", "startTime"] },
+          { name: "unique-code", fields: ["code"] },
+        ],
+      };
+      const result = formatOutput(data, "table");
+      expect(result).toContain("no-double-booking(room, date, startTime)");
+      expect(result).toContain("unique-code(code)");
+    });
+
+    it("keeps JSON rendering for non-constraint object arrays", () => {
+      const data = { items: [{ name: "x", other: true }] };
+      const result = formatOutput(data, "table");
+      expect(result).toContain(JSON.stringify([{ name: "x", other: true }]));
+    });
+
     it("returns String(data) for non-array non-object data", () => {
       const result = formatOutput("hello-string", "table");
       expect(result).toBe("hello-string");

@@ -58,6 +58,12 @@ export interface ClientResponse<T = unknown> {
   count?: number;
 }
 
+/** カスタムデータモデルの一意制約（複合ユニーク, geonicdb#1268 / #136） */
+export interface UniqueConstraint {
+  name: string;
+  fields: string[];
+}
+
 export interface NgsiError {
   error?: string;
   description?: string;

@@ -440,6 +440,40 @@ Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
 
 `models` is available as an alias for `custom-data-models`.
 
+#### 一意制約（複合ユニーク）
+
+データモデルに `uniqueConstraints` を宣言すると、指定した属性の組み合わせの一意性がサーバ側（DB レベル）で強制されます。重複するエンティティの作成・更新は `409 AlreadyExists` となり、違反した制約名がエラーメッセージに含まれます。
+
+```console
+$ geonic models create '{
+  "type": "RoomReservation",
+  "domain": "building",
+  "description": "Room reservation",
+  "propertyDetails": {
+    "room": {"ngsiType": "Property", "valueType": "string", "example": "R1"},
+    "date": {"ngsiType": "Property", "valueType": "string", "example": "2026-07-15"},
+    "startTime": {"ngsiType": "Property", "valueType": "string", "example": "10:00"}
+  },
+  "uniqueConstraints": [
+    {"name": "no-double-booking", "fields": ["room", "date", "startTime"]}
+  ]
+}'
+```
+
+- `fields` は `propertyDetails` に定義済みの scalar 型属性（string / number / integer / boolean / uri / datetime）のみ指定できます（1 制約 1〜8 個、モデルあたり最大 10 制約）
+- 制約は宣言フィールドを**すべて**持つエンティティにのみ適用されます
+- `models update` の `uniqueConstraints` は全置換です（`[]` で全削除）
+- 既存エンティティが重複している状態で制約を追加すると `400` になります（先に重複を解消してください）
+- 定義済みの制約は `geonic models get <model-id>` で確認できます（table 形式では `制約名(フィールド, ...)` 表記）
+
+重複作成時のエラー表示例:
+
+```console
+$ geonic entities create '{"id":"urn:ngsi-ld:RoomReservation:002","type":"RoomReservation","room":{"type":"Property","value":"R1"},"date":{"type":"Property","value":"2026-07-15"},"startTime":{"type":"Property","value":"10:00"}}'
+Error: Entity already exists: violates unique constraint 'no-double-booking' on fields [room, date, startTime]
+Hint: inspect the model's unique constraints with `geonic models get <model-id>`.
+```
+
 ### catalog — DCAT-AP catalog
 
 | Subcommand | Description |
