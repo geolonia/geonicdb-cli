@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-07-15
+
 ### 2026-07-15
 - **Test**: `models.feature` の @wip を解除し、一意制約（geonicdb#1268）の E2E シナリオを追加 (#148)
   - @wip の理由だった「モデル作成に tenantId が必要」は、e2e hooks の `e2e_test` テナント + tenant_admin 整備（#143）で解消済みだったため既存 6 シナリオをそのまま有効化
@@ -291,7 +293,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.18.1...HEAD
+[0.18.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.2...v0.17.0
 [0.16.2]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.1...v0.16.2
