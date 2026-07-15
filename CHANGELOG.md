@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-07-15
-- **Test**: `models.feature` の @wip を解除し、一意制約（geonicdb#1268）の E2E シナリオを追加 (#147)
+- **Test**: `models.feature` の @wip を解除し、一意制約（geonicdb#1268）の E2E シナリオを追加 (#148)
   - @wip の理由だった「モデル作成に tenantId が必要」は、e2e hooks の `e2e_test` テナント + tenant_admin 整備（#143）で解消済みだったため既存 6 シナリオをそのまま有効化
   - 新規シナリオ: 制約宣言 → `models get --format table` の可読表示確認 → 重複エンティティの exit 1 + 違反制約名 + ヒント表示 → `uniqueConstraints: []` での全削除後に重複作成可
   - 既存の get/delete シナリオが Mongo の `id` を渡していたのを type 指定に修正（API はモデルを type でキーする: `GET/DELETE /custom-data-models/{type}`）
