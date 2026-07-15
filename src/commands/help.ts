@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import type { Command, Help, Option } from "commander";
+import type { Command, Help, HelpContext, Option } from "commander";
 
 interface Example {
   description: string;
@@ -247,6 +247,42 @@ function showHelp(program: Command, args: string[]): void {
   const path = [program.name(), ...resolved.map((c) => c.name())].join(" ");
 
   console.log(formatCommandDetails(program, target, path));
+}
+
+function reportUnknownCommand(cmd: Command, operand: string): never {
+  // getCommandPath() starts with the program name ("geonic"); drop it
+  const prefix = getCommandPath(cmd).split(" ").slice(1);
+  const attempted = [...prefix, operand].join(" ");
+  console.error(chalk.red(`Error: '${attempted}' is not a geonic command.`));
+  console.error(`\nSee 'geonic help' for available commands.`);
+  process.exit(1);
+}
+
+export function enforceKnownCommandHelp(program: Command): void {
+  // Commander prints help and exits 0 when --help/-h is present, even if the
+  // remaining operand is not a known subcommand (e.g. `geonic hello --help`).
+  // Wrap outputHelp() on every command group so that case errors with exit 1,
+  // matching `geonic help <unknown>`. Call after all commands are registered.
+  const visit = (cmd: Command): void => {
+    if (cmd.commands.length > 0) {
+      const originalOutputHelp = cmd.outputHelp.bind(cmd);
+      // Same parameter type as Command.outputHelp (including deprecated overload)
+      cmd.outputHelp = (
+        contextOptions?: HelpContext | ((str: string) => string),
+      ): void => {
+        // cmd.args is operands followed by unparsed options such as --help
+        const operand = cmd.args.find((arg) => !arg.startsWith("-"));
+        if (operand !== undefined && !findCommand(cmd, operand)) {
+          reportUnknownCommand(cmd, operand);
+        }
+        originalOutputHelp(contextOptions as HelpContext | undefined);
+      };
+    }
+    for (const sub of cmd.commands) {
+      visit(sub);
+    }
+  };
+  visit(program);
 }
 
 export function registerHelpCommand(program: Command): void {

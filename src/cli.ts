@@ -15,7 +15,7 @@ import { registerRulesCommand } from "./commands/rules.js";
 import { registerModelsCommand } from "./commands/models.js";
 import { registerCatalogCommand } from "./commands/catalog.js";
 import { registerHealthCommand, registerVersionCommand } from "./commands/health.js";
-import { registerHelpCommand } from "./commands/help.js";
+import { enforceKnownCommandHelp, registerHelpCommand } from "./commands/help.js";
 import { registerCliCommand } from "./commands/cli.js";
 import { addAttrsSubcommands } from "./commands/attrs.js";
 
@@ -61,6 +61,8 @@ export function createProgram(): Command {
     .description("Manage entity attributes");
   addAttrsSubcommands(hiddenAttrs);
   program.addCommand(hiddenAttrs, { hidden: true });
+
+  enforceKnownCommandHelp(program);
 
   return program;
 }

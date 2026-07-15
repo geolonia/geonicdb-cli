@@ -683,6 +683,60 @@ describe("help", () => {
     });
   });
 
+  describe("unknown subcommand with --help", () => {
+    async function runExpectingError(argv: string[]): Promise<string> {
+      const prog = createProgram();
+      prog.exitOverride();
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+        throw new Error("process.exit");
+      });
+      try {
+        await prog.parseAsync(["node", "geonic", ...argv]);
+      } catch {
+        // expected
+      }
+      const output = stripAnsi(errSpy.mock.calls.map((c) => c[0]).join("\n"));
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      errSpy.mockRestore();
+      exitSpy.mockRestore();
+      return output;
+    }
+
+    it("errors for unknown top-level command with --help", async () => {
+      const output = await runExpectingError(["hello", "--help"]);
+      expect(output).toContain("'hello' is not a geonic command");
+      expect(output).toContain("geonic help");
+    });
+
+    it("errors for unknown top-level command with -h", async () => {
+      const output = await runExpectingError(["hello", "-h"]);
+      expect(output).toContain("'hello' is not a geonic command");
+    });
+
+    it("errors for unknown nested subcommand with --help", async () => {
+      const output = await runExpectingError(["entities", "hello", "--help"]);
+      expect(output).toContain("'entities hello' is not a geonic command");
+    });
+
+    it("still shows help for a leaf command with an argument and --help", async () => {
+      const prog = createProgram();
+      prog.exitOverride();
+      const writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        await prog.parseAsync(["node", "geonic", "entities", "get", "urn:x", "--help"]);
+      } catch {
+        // exitOverride throws on help
+      }
+      const output = stripAnsi(writeSpy.mock.calls.map((c) => c[0]).join(""));
+      expect(output).toContain("geonic entities get");
+      expect(errSpy).not.toHaveBeenCalled();
+      writeSpy.mockRestore();
+      errSpy.mockRestore();
+    });
+  });
+
   describe("no-args handler", () => {
     it("shows help when geonic is run with no arguments", async () => {
       const prog = createProgram();
