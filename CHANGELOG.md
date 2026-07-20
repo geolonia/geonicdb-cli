@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-07-20
-- **Feat**: `geonic import` — 巨大データセット向けのクライアント駆動バルクローダーを追加 (geonicdb#1409, #151)
+- **Feat**: `geonic import` — 巨大データセット向けのクライアント駆動バルクローダーを追加 (#152, closes #151, geonicdb#1409)
   - NDJSON をストリーミングで読み、件数 + バイトの両基準でチャンク分割して batch upsert に投入。API Gateway の 29 秒制限を回避
   - 429(Retry-After 尊重・プロセス全体クールダウン)/5xx/タイムアウトを指数バックオフ + jitter でリトライ
   - `--resume` によるチェックポイント再開（入力ファイル同一性 + mode/format 一致を検証、atomic write、upsert + ファイル入力限定）
