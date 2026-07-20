@@ -7,6 +7,17 @@
 
 ## [Unreleased]
 
+### 2026-07-20
+- **Feat**: `geonic import` — 巨大データセット向けのクライアント駆動バルクローダーを追加 (geonicdb#1409, #151)
+  - NDJSON をストリーミングで読み、件数 + バイトの両基準でチャンク分割して batch upsert に投入。API Gateway の 29 秒制限を回避
+  - 429(Retry-After 尊重・プロセス全体クールダウン)/5xx/タイムアウトを指数バックオフ + jitter でリトライ
+  - `--resume` によるチェックポイント再開（入力ファイル同一性 + mode/format 一致を検証、atomic write、upsert + ファイル入力限定）
+  - 失敗の 2 系統出力: `--errors-out`(再投入可能な NDJSON) と `--errors-log`(理由/ステータス/行番号)
+  - 400 chunk 失敗時の `--bisect` による不正エンティティの二分探索特定
+  - 既定はエラーで停止、`--continue-on-error` で継続。`--dry-run` で送信せず計画を表示
+  - `--mode replace` は再送で最新を上書きするため resume 非対応 + 警告表示（at-least-once の副作用を明記）
+  - `client.ts`: リクエストの `AbortSignal` タイムアウトと 429 応答の `Retry-After` パースに対応
+
 ## [0.18.1] - 2026-07-15
 
 ### 2026-07-15

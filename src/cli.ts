@@ -5,6 +5,7 @@ import { registerAuthCommands } from "./commands/auth.js";
 import { registerProfileCommands } from "./commands/profile.js";
 import { registerEntitiesCommand } from "./commands/entities.js";
 import { registerBatchCommand } from "./commands/batch.js";
+import { registerImportCommand } from "./commands/import.js";
 import { registerSubscriptionsCommand } from "./commands/subscriptions.js";
 import { registerRegistrationsCommand } from "./commands/registrations.js";
 import { registerTypesCommand } from "./commands/types.js";
@@ -43,6 +44,7 @@ export function createProgram(): Command {
   registerProfileCommands(program);
   registerEntitiesCommand(program);
   registerBatchCommand(program);
+  registerImportCommand(program);
   registerSubscriptionsCommand(program);
   registerRegistrationsCommand(program);
   registerTypesCommand(program);
