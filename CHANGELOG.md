@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-07-20
+
 ### 2026-07-20
 - **Feat**: `geonic import` — 巨大データセット向けのクライアント駆動バルクローダーを追加 (#152, closes #151, geonicdb#1409)
   - NDJSON をストリーミングで読み、件数 + バイトの両基準でチャンク分割して batch upsert に投入。API Gateway の 29 秒制限を回避
@@ -305,7 +307,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.18.1...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.18.1...v0.19.0
 [0.18.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.16.2...v0.17.0
