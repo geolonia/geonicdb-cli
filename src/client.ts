@@ -269,6 +269,7 @@ export class GdbClient {
       body?: unknown;
       params?: Record<string, string>;
       headers?: Record<string, string>;
+      signal?: AbortSignal;
     },
   ): Promise<ClientResponse<T>> {
     const url = this.buildUrl(`${this.getBasePath()}${path}`, options?.params);
@@ -277,7 +278,7 @@ export class GdbClient {
 
     this.logRequest(method, url, headers, body);
     this.handleDryRun(method, url, headers, body);
-    const response = await fetch(url, { method, headers, body });
+    const response = await fetch(url, { method, headers, body, signal: options?.signal });
     this.logResponse(response);
 
     const countHeader = response.headers.get("NGSILD-Results-Count");
@@ -297,7 +298,12 @@ export class GdbClient {
       const err = data as unknown as NgsiError;
       const message =
         err?.description || err?.detail || err?.error || err?.title || `HTTP ${response.status}`;
-      throw new GdbClientError(message, response.status, err);
+      throw new GdbClientError(
+        message,
+        response.status,
+        err,
+        parseRetryAfter(response.headers.get("retry-after")),
+      );
     }
 
     return { status: response.status, headers: response.headers, data, count };
@@ -311,6 +317,7 @@ export class GdbClient {
       params?: Record<string, string>;
       headers?: Record<string, string>;
       skipTenantHeader?: boolean;
+      signal?: AbortSignal;
     },
   ): Promise<ClientResponse<T>> {
     const url = this.buildUrl(path, options?.params);
@@ -322,7 +329,7 @@ export class GdbClient {
 
     this.logRequest(method, url, headers, body);
     this.handleDryRun(method, url, headers, body);
-    const response = await fetch(url, { method, headers, body });
+    const response = await fetch(url, { method, headers, body, signal: options?.signal });
     this.logResponse(response);
 
     let data: T;
@@ -339,7 +346,12 @@ export class GdbClient {
       const err = data as unknown as NgsiError;
       const message =
         err?.description || err?.detail || err?.error || err?.title || `HTTP ${response.status}`;
-      throw new GdbClientError(message, response.status, err);
+      throw new GdbClientError(
+        message,
+        response.status,
+        err,
+        parseRetryAfter(response.headers.get("retry-after")),
+      );
     }
 
     return { status: response.status, headers: response.headers, data };
@@ -352,6 +364,7 @@ export class GdbClient {
       body?: unknown;
       params?: Record<string, string>;
       headers?: Record<string, string>;
+      signal?: AbortSignal;
     },
   ): Promise<ClientResponse<T>> {
     await this.proactiveRefresh();
@@ -380,8 +393,9 @@ export class GdbClient {
     path: string,
     body?: unknown,
     params?: Record<string, string>,
+    options?: { signal?: AbortSignal },
   ): Promise<ClientResponse<T>> {
-    return this.request<T>("POST", path, { body, params });
+    return this.request<T>("POST", path, { body, params, signal: options?.signal });
   }
 
   async patch<T = unknown>(
@@ -416,6 +430,7 @@ export class GdbClient {
       params?: Record<string, string>;
       headers?: Record<string, string>;
       skipTenantHeader?: boolean;
+      signal?: AbortSignal;
     },
   ): Promise<ClientResponse<T>> {
     await this.proactiveRefresh();
@@ -438,8 +453,28 @@ export class GdbClientError extends Error {
     message: string,
     public readonly status: number,
     public readonly ngsiError?: NgsiError,
+    /** Parsed Retry-After (ms) from a 429/503 response, if present. */
+    public readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = "GdbClientError";
   }
+}
+
+/**
+ * Parse an HTTP `Retry-After` header into milliseconds.
+ * Supports both delta-seconds (e.g. "120") and an HTTP-date. Returns undefined
+ * when the header is absent or unparseable.
+ */
+export function parseRetryAfter(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (/^\d+$/.test(trimmed)) {
+    return Number(trimmed) * 1000;
+  }
+  const dateMs = Date.parse(trimmed);
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, dateMs - Date.now());
+  }
+  return undefined;
 }

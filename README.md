@@ -358,6 +358,54 @@ geonic me oauth-clients update <client-id> --policy-id my-readonly
 
 `batch` is available as an alias for `entityOperations`.
 
+### import — Bulk-load entities (large datasets)
+
+`entityOperations upsert` sends the whole payload in a single request, so it is bounded by the
+server's batch size and the API Gateway 29-second timeout. For nationwide-scale loads
+(hundreds of thousands to millions of entities), use `import`, which streams the input, splits it
+into batch-upsert requests (by entity count **and** byte size), retries transient failures, and
+can resume after an interruption.
+
+```bash
+# Load an NDJSON file (one entity per line)
+geonic import entities.ndjson
+
+# Resumable load with error capture
+geonic import entities.ndjson \
+  --resume .import.ckpt \
+  --errors-out failed.ndjson \
+  --errors-log errors.log
+
+# Re-submit only the entities that failed
+geonic import failed.ndjson
+
+# Preview the plan without sending anything
+geonic import entities.ndjson --dry-run
+```
+
+| Option | Description |
+|---|---|
+| `--input-format <fmt>` | `ndjson` (default, streamed) or `json` (a JSON array, loaded into memory) |
+| `--mode <mode>` | `upsert` (merge, default) or `replace` |
+| `--batch-size <n>` | Entities per request (default 100; must not exceed your plan's max batch size) |
+| `--max-bytes <n>` | Max request body bytes per chunk (default 1,000,000) |
+| `--concurrency <n>` | Concurrent requests (default 1 = sequential; a shared cooldown honors 429s) |
+| `--retries <n>` | Max retries per chunk on 429/5xx/timeout (default 5) |
+| `--timeout <ms>` | Per-request timeout (default 60,000) |
+| `--continue-on-error` | Keep going after failures (default: stop at the first failure) |
+| `--resume <checkpoint>` | Resume from a checkpoint file (upsert + file input only) |
+| `--errors-out <file>` | Write failed entities as re-submittable NDJSON |
+| `--errors-log <file>` | Write failure details (reason/status/line) as NDJSON |
+| `--bisect` / `--bisect-max <n>` | On a `400`/`413` chunk, binary-split to isolate the offending entity |
+
+Notes:
+- Input is read from a file path or, with `-` / a pipe, from stdin. **Resume is only available for
+  file input** (stdin cannot be replayed) and **only with `--mode upsert`** (replaying a `replace`
+  would overwrite newer state).
+- Retries and resume are **at-least-once**: a re-sent chunk re-runs the upsert (and its change
+  events / notifications). Upserts are idempotent in value but not in side effects — see the
+  warning printed for `--mode replace`.
+
 ### subscriptions (sub) — Manage context subscriptions
 
 | Subcommand | Description |

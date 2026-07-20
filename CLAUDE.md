@@ -49,8 +49,10 @@ src/
 ├── client.ts             # HTTP client for GeonicDB API
 ├── config.ts             # Configuration management (~/.config/geonic/config.json)
 ├── helpers.ts            # Shared utility functions
-├── input.ts              # Input parsing (JSON5, stdin auto-detect, interactive mode)
+├── input.ts              # Input parsing (JSON5, stdin auto-detect, interactive mode, NDJSON streaming)
 ├── output.ts             # Output formatting (json, table, geojson)
+├── loader.ts             # Bulk-import orchestrator (chunking, retry, resume, error sinks)
+├── retry.ts              # Exponential-backoff retry helper (429 Retry-After / 5xx / timeout)
 ├── types.ts              # Shared TypeScript types
 ├── oauth.ts              # OAuth token requests
 ├── token.ts              # Token management & refresh
@@ -60,6 +62,7 @@ src/
     ├── entities.ts       # Entity CRUD + attrs subcommand
     ├── attrs.ts          # Attribute operations (entities attrs subcommand)
     ├── batch.ts          # entityOperations (alias: batch) — batch entity operations
+    ├── import.ts         # Bulk-load entities from a file (chunked, retry, resume)
     ├── subscriptions.ts  # Subscription management
     ├── registrations.ts  # Registration management
     ├── types.ts          # Entity type queries

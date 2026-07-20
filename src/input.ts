@@ -1,6 +1,8 @@
 import JSON5 from "json5";
-import { readFileSync } from "node:fs";
+import { closeSync, createReadStream, openSync, readFileSync, readSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { createInterface } from "node:readline";
+import type { Readable } from "node:stream";
 
 /**
  * Parse JSON input from a string, file (@path), stdin (-), pipe, or interactive mode.
@@ -31,6 +33,100 @@ export async function parseJsonInput(input?: string): Promise<unknown> {
 
 function parseData(text: string): unknown {
   return JSON5.parse(text.trim());
+}
+
+/**
+ * One record produced by the streaming input readers used for bulk import.
+ * `value` holds the parsed entity; `parseError` is set instead when the line
+ * could not be parsed (the raw text is preserved either way).
+ */
+export interface EntityRecord {
+  /** 1-based position: file line number for NDJSON, array index+1 for JSON arrays. */
+  lineNumber: number;
+  raw: string;
+  value?: unknown;
+  parseError?: string;
+}
+
+/** Guard against a single pathologically long line (e.g. a file with no newlines). */
+const MAX_LINE_BYTES = 16 * 1024 * 1024;
+
+/** Stream NDJSON records from a readable stream (one JSON value per line). */
+export async function* streamNdjsonFrom(input: Readable): AsyncGenerator<EntityRecord> {
+  const rl = createInterface({ input, crlfDelay: Infinity });
+  let lineNumber = 0;
+  for await (const line of rl) {
+    lineNumber++;
+    const trimmed = line.trim();
+    if (trimmed === "") continue; // skip blank lines silently
+    if (Buffer.byteLength(line) > MAX_LINE_BYTES) {
+      yield { lineNumber, raw: "", parseError: `line exceeds max size (${MAX_LINE_BYTES} bytes)` };
+      continue;
+    }
+    try {
+      yield { lineNumber, raw: line, value: JSON.parse(trimmed) };
+    } catch (err) {
+      yield { lineNumber, raw: line, parseError: err instanceof Error ? err.message : String(err) };
+    }
+  }
+}
+
+/** Stream NDJSON records from a file path. */
+export function streamNdjsonFile(filePath: string): AsyncGenerator<EntityRecord> {
+  return streamNdjsonFrom(createReadStream(filePath, { encoding: "utf-8" }));
+}
+
+/**
+ * Turn an already-parsed JSON array into EntityRecords (for `--format json`
+ * inputs and small inline payloads). Not streaming: the whole array is in memory.
+ */
+export function recordsFromArray(data: unknown): EntityRecord[] {
+  if (!Array.isArray(data)) {
+    throw new Error("Expected a JSON array of entities.");
+  }
+  return data.map((value, i) => ({
+    lineNumber: i + 1,
+    raw: JSON.stringify(value),
+    value,
+  }));
+}
+
+/** Cheap fingerprint to detect that a resumed input file is the same file. */
+export interface FileFingerprint {
+  size: number;
+  mtimeMs: number;
+  /** sha256 of the first 64KiB — avoids a full re-read of huge files. */
+  headHash: string;
+}
+
+const FINGERPRINT_HEAD_BYTES = 65536;
+
+export function fileFingerprint(filePath: string): FileFingerprint {
+  const st = statSync(filePath);
+  const len = Math.min(FINGERPRINT_HEAD_BYTES, st.size);
+  const buf = Buffer.alloc(len);
+  const fd = openSync(filePath, "r");
+  let read = 0;
+  try {
+    // readSync may return a short read; loop until the head is fully read so the
+    // hash is deterministic (a short read would otherwise fold in zero padding).
+    while (read < len) {
+      const n = readSync(fd, buf, read, len - read, read);
+      if (n === 0) break; // unexpected EOF
+      read += n;
+    }
+  } finally {
+    closeSync(fd);
+  }
+  return {
+    size: st.size,
+    mtimeMs: st.mtimeMs,
+    headHash: createHash("sha256").update(buf.subarray(0, read)).digest("hex"),
+  };
+}
+
+export function fingerprintsMatch(a: FileFingerprint, b: FileFingerprint): boolean {
+  return a.size === b.size && a.mtimeMs === b.mtimeMs && a.headHash === b.headHash;
 }
 
 /**
