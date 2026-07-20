@@ -17,6 +17,7 @@
   - 既定はエラーで停止、`--continue-on-error` で継続。`--dry-run` で送信せず計画を表示
   - `--mode replace` は再送で最新を上書きするため resume 非対応 + 警告表示（at-least-once の副作用を明記）
   - `client.ts`: リクエストの `AbortSignal` タイムアウトと 429 応答の `Retry-After` パースに対応
+- **Fix**: 開発依存の脆弱性 7 件 (Dependabot alerts) を解消 — hono/js-yaml を `npm audit fix` で更新し、esbuild を `overrides` で `^0.28.1` に固定 (Dependabot #135 を包含)。すべて devDependency のため公開パッケージ (dist バンドル) への影響はなし。`npm audit` 0 件、build/test/e2e 全緑を確認
 
 ## [0.18.1] - 2026-07-15
 
