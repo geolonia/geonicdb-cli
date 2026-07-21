@@ -22,7 +22,10 @@ import {
   outputResponse,
   withErrorHandler,
   fetchPaginatedList,
+  parsePositiveInt,
+  surfaceNgsiWarning,
 } from "../src/helpers.js";
+import { InvalidArgumentError } from "commander";
 
 function fakeCmd(cliOpts: Partial<GlobalOptions> = {}): Command {
   return { optsWithGlobals: () => ({ ...cliOpts }) } as unknown as Command;
@@ -507,6 +510,67 @@ describe("helpers", () => {
       const client = clientWithPages(pageResponse(Array.from({ length: 20 }, (_, i) => ({ id: i }))));
       await fetchPaginatedList(client, "/admin/users", { limit: 20 });
       expect(printWarning).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("parsePositiveInt", () => {
+    it("accepts positive integers", () => {
+      expect(parsePositiveInt("1")).toBe(1);
+      expect(parsePositiveInt("1000")).toBe(1000);
+    });
+
+    it("rejects zero, negatives, and non-integers", () => {
+      expect(() => parsePositiveInt("0")).toThrow(InvalidArgumentError);
+      expect(() => parsePositiveInt("-1")).toThrow(InvalidArgumentError);
+      expect(() => parsePositiveInt("1.5")).toThrow(InvalidArgumentError);
+      expect(() => parsePositiveInt("abc")).toThrow(InvalidArgumentError);
+      expect(() => parsePositiveInt("")).toThrow(InvalidArgumentError);
+    });
+
+    it("does not enforce an upper bound (server is the source of truth)", () => {
+      expect(parsePositiveInt("5000")).toBe(5000);
+    });
+
+    it("rejects an over-long digit string that would coerce to Infinity", () => {
+      expect(() => parsePositiveInt("9".repeat(400))).toThrow(InvalidArgumentError);
+    });
+  });
+
+  describe("surfaceNgsiWarning", () => {
+    it("prints the human-readable text stripped of warn-code and quotes", () => {
+      const headers = new Headers({
+        "NGSILD-Warning":
+          '199 - "temporal history truncated to the 100 most recent instances per attribute; narrow timeAt/endTimeAt or set lastN (max 1000)"',
+      });
+      surfaceNgsiWarning(headers);
+      expect(printWarning).toHaveBeenCalledWith(
+        "Warning: temporal history truncated to the 100 most recent instances per attribute; narrow timeAt/endTimeAt or set lastN (max 1000)",
+      );
+    });
+
+    it("falls back to the raw header when it does not match the RFC 7234 shape", () => {
+      const headers = new Headers({ "NGSILD-Warning": "something unexpected" });
+      surfaceNgsiWarning(headers);
+      expect(printWarning).toHaveBeenCalledWith("Warning: something unexpected");
+    });
+
+    it("is case-insensitive on the header name", () => {
+      const headers = new Headers({ "ngsild-warning": '199 - "capped"' });
+      surfaceNgsiWarning(headers);
+      expect(printWarning).toHaveBeenCalledWith("Warning: capped");
+    });
+
+    it("does nothing when the header is absent", () => {
+      surfaceNgsiWarning(new Headers());
+      expect(printWarning).not.toHaveBeenCalled();
+    });
+
+    it("strips control characters so a hostile header can't inject ANSI escapes", () => {
+      const headers = new Headers({
+        "NGSILD-Warning": '199 - "truncated\x1b[31m\x07 evil"',
+      });
+      surfaceNgsiWarning(headers);
+      expect(printWarning).toHaveBeenCalledWith("Warning: truncated[31m evil");
     });
   });
 
