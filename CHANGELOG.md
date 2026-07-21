@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-07-21
-- **Feat**: temporal 読み取り (`temporal entities list`/`get`、`temporal entityOperations query`) で本体の履歴打ち切りを可視化 (#150, geonicdb#1437)
+- **Feat**: temporal 読み取り (`temporal entities list`/`get`、`temporal entityOperations query`) で本体の履歴打ち切りを可視化 (#157, closes #150, geonicdb#1437)
   - `lastN` 未指定時、本体は属性ごとの時系列を既定で最新 100 件にキャップする。打ち切り時に付く `NGSILD-Warning` (RFC 7234 warn-code 199) ヘッダを stderr に `Warning:` として表示し、silently drop を防ぐ
   - `--last-n` を正整数バリデーション (`>= 1`) に変更。上限 (本体 1000) は CLI にハードコードせず、超過時は本体の 400 をそのまま提示（API との乖離を避ける）
   - README に履歴打ち切りの挙動と全履歴取得の手段（`--last-n` 最大 1000 / 時間窓の絞り込み）を明記
