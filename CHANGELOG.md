@@ -12,7 +12,7 @@
   - `lastN` 未指定時、本体は属性ごとの時系列を既定で最新 100 件にキャップする。打ち切り時に付く `NGSILD-Warning` (RFC 7234 warn-code 199) ヘッダを stderr に `Warning:` として表示し、silently drop を防ぐ
   - `--last-n` を正整数バリデーション (`>= 1`) に変更。上限 (本体 1000) は CLI にハードコードせず、超過時は本体の 400 をそのまま提示（API との乖離を避ける）
   - README に履歴打ち切りの挙動と全履歴取得の手段（`--last-n` 最大 1000 / 時間窓の絞り込み）を明記
-- **CI**: devDependency の geonicdb pinned ハッシュを `913ceecf` → `4f9f72cc` に更新し、週次互換チェックの失敗を解消 (closes #155, geonicdb#1478/#1479)
+- **CI**: devDependency の geonicdb pinned ハッシュを `913ceecf` → `4f9f72cc` に更新し、週次互換チェックの失敗を解消 (#158, closes #155, geonicdb#1478/#1479)
   - 失敗の真因は本体の回帰: merge モードの batch upsert が属性なしエンティティを `attributes` フィールドなしで保存し、後段の `entities list` (`toNormalized`) が `Object.keys(undefined)` で 500。CLI は正常で、本体 #1479 で修正済み
   - 更新後の HEAD に対しローカルで build/lint/typecheck/unit (856)/E2E (149) 全緑を確認
 
