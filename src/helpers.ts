@@ -100,6 +100,43 @@ export function parseNonNegativeInt(value: string): number {
 }
 
 /**
+ * Commander.js option parser for flags that require a positive integer (>= 1),
+ * such as `--last-n`. Rejects 0, negatives, and non-integers before the request
+ * is built so garbage never reaches the server. The upper bound (e.g. the
+ * temporal lastN max) is intentionally NOT enforced here — the server is the
+ * source of truth and returns a descriptive 400, avoiding a hardcoded limit
+ * that could drift from the API.
+ */
+export function parsePositiveInt(value: string): number {
+  const n = Number(value);
+  // Number.isSafeInteger rejects non-integers, Infinity, and NaN in one check,
+  // so an over-long digit string can't slip through as `Infinity` (< 1 is false).
+  if (!/^\d+$/.test(value) || !Number.isSafeInteger(n) || n < 1) {
+    throw new InvalidArgumentError("Must be a positive integer (>= 1).");
+  }
+  return n;
+}
+
+/**
+ * Surface an `NGSILD-Warning` response header (RFC 7234 warn-code 199) on
+ * stderr. The NGSI-LD Temporal API attaches this when it truncates history to
+ * the default cap (see geonicdb#1437), which would otherwise be a silent drop.
+ * The raw header looks like `199 - "temporal history truncated to ..."`; we
+ * strip the warn-code/quotes for readability. No-op when the header is absent.
+ */
+export function surfaceNgsiWarning(headers: Headers): void {
+  const raw = headers.get("NGSILD-Warning");
+  if (!raw) return;
+  // Extract the human-readable text: `<code> - "<text>"` → `<text>`.
+  const match = raw.match(/^\s*\d+\s*-\s*"?(.*?)"?\s*$/);
+  // Strip control characters (C0/C1, incl. ESC) so a malformed or hostile
+  // server-supplied header can't inject ANSI sequences into the terminal.
+  // eslint-disable-next-line no-control-regex
+  const text = (match ? match[1] : raw).replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+  printWarning(`Warning: ${text}`);
+}
+
+/**
  * Build a pagination query-param record from parsed CLI options.
  * Centralizes the limit/offset → string conversion shared by every list command.
  */

@@ -2,13 +2,19 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createMockClient, mockResponse, createTestProgram, runCommand } from "./test-helpers.js";
 import type { MockClient } from "./test-helpers.js";
 
-vi.mock("../src/helpers.js", () => ({
-  createClient: vi.fn(),
-  getFormat: vi.fn(),
-  outputResponse: vi.fn(),
-  withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
-  resolveOptions: vi.fn(),
-}));
+vi.mock("../src/helpers.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/helpers.js")>();
+  return {
+    createClient: vi.fn(),
+    getFormat: vi.fn(),
+    outputResponse: vi.fn(),
+    withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
+    resolveOptions: vi.fn(),
+    // Use the real parser so the `--last-n` option wiring is genuinely exercised.
+    parsePositiveInt: actual.parsePositiveInt,
+    surfaceNgsiWarning: vi.fn(),
+  };
+});
 
 vi.mock("../src/input.js", () => ({
   parseJsonInput: vi.fn(),
@@ -28,7 +34,7 @@ vi.mock("../src/commands/help.js", () => ({
   addNotes: vi.fn(),
 }));
 
-import { createClient, getFormat, outputResponse } from "../src/helpers.js";
+import { createClient, getFormat, outputResponse, surfaceNgsiWarning } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
 import { printSuccess } from "../src/output.js";
 import { registerTemporalCommand } from "../src/commands/temporal.js";
@@ -54,6 +60,23 @@ describe("temporal commands", () => {
       await runCommand(program, ["temporal", "entities", "list"]);
       expect(client.get).toHaveBeenCalledWith("/temporal/entities", {});
       expect(outputResponse).toHaveBeenCalled();
+    });
+
+    it("surfaces the NGSILD-Warning header from the response", async () => {
+      const res = mockResponse([]);
+      client.get.mockResolvedValue(res);
+      const program = makeProgram();
+      await runCommand(program, ["temporal", "entities", "list"]);
+      expect(surfaceNgsiWarning).toHaveBeenCalledWith(res.headers);
+    });
+
+    it("rejects a non-positive --last-n before issuing a request", async () => {
+      client.get.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["temporal", "entities", "list", "--last-n", "0"]),
+      ).rejects.toThrow(/positive integer/);
+      expect(client.get).not.toHaveBeenCalled();
     });
 
     it("passes all filter options as params", async () => {
@@ -129,6 +152,23 @@ describe("temporal commands", () => {
         },
       );
     });
+
+    it("surfaces the NGSILD-Warning header from the response", async () => {
+      const res = mockResponse({ id: "urn:sensor:001" });
+      client.get.mockResolvedValue(res);
+      const program = makeProgram();
+      await runCommand(program, ["temporal", "entities", "get", "urn:sensor:001"]);
+      expect(surfaceNgsiWarning).toHaveBeenCalledWith(res.headers);
+    });
+
+    it("rejects a non-positive --last-n before issuing a request", async () => {
+      client.get.mockResolvedValue(mockResponse({ id: "urn:sensor:001" }));
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["temporal", "entities", "get", "urn:sensor:001", "--last-n", "0"]),
+      ).rejects.toThrow(/positive integer/);
+      expect(client.get).not.toHaveBeenCalled();
+    });
   });
 
   describe("temporal entities create", () => {
@@ -172,6 +212,15 @@ describe("temporal commands", () => {
         { aggrMethods: "totalCount,sum", aggrPeriodDuration: "PT1H" },
       );
       expect(outputResponse).toHaveBeenCalled();
+    });
+
+    it("surfaces the NGSILD-Warning header from the response", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ entities: [{ type: "Sensor" }] });
+      const res = mockResponse([]);
+      client.post.mockResolvedValue(res);
+      const program = makeProgram();
+      await runCommand(program, ["temporal", "entityOperations", "query", "{}"]);
+      expect(surfaceNgsiWarning).toHaveBeenCalledWith(res.headers);
     });
 
     it("posts body without aggr options", async () => {

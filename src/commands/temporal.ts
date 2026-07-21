@@ -4,6 +4,8 @@ import {
   createClient,
   getFormat,
   outputResponse,
+  parsePositiveInt,
+  surfaceNgsiWarning,
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
@@ -20,7 +22,11 @@ function addTemporalListOptions(cmd: Command): Command {
     .option("--time-rel <rel>", "Temporal relationship (before, after, between)")
     .option("--time-at <time>", "Temporal query start time (ISO 8601)")
     .option("--end-time-at <time>", "Temporal query end time (ISO 8601)")
-    .option("--last-n <n>", "Return last N temporal values", parseInt)
+    .option(
+      "--last-n <n>",
+      "Return last N instances per attribute (server default caps to 100; max 1000)",
+      parsePositiveInt,
+    )
     .option("--limit <n>", "Maximum number of entities to return", parseInt)
     .option("--offset <n>", "Skip first N entities", parseInt)
     .option("--count", "Include total count in response");
@@ -49,6 +55,7 @@ function createListAction() {
     if (cmdOpts.count) params["count"] = "true";
 
     const response = await client.get("/temporal/entities", params);
+    surfaceNgsiWarning(response.headers);
     outputResponse(response, format, cmdOpts.count);
   });
 }
@@ -59,7 +66,11 @@ function addTemporalGetOptions(cmd: Command): Command {
     .option("--time-rel <rel>", "Temporal relationship (before, after, between)")
     .option("--time-at <time>", "Temporal query start time (ISO 8601)")
     .option("--end-time-at <time>", "Temporal query end time (ISO 8601)")
-    .option("--last-n <n>", "Return last N temporal values", parseInt);
+    .option(
+      "--last-n <n>",
+      "Return last N instances per attribute (server default caps to 100; max 1000)",
+      parsePositiveInt,
+    );
 }
 
 function createGetAction() {
@@ -80,6 +91,7 @@ function createGetAction() {
       `/temporal/entities/${encodeURIComponent(String(id))}`,
       params,
     );
+    surfaceNgsiWarning(response.headers);
     outputResponse(response, format);
   });
 }
@@ -122,6 +134,7 @@ function createQueryAction() {
       body,
       params,
     );
+    surfaceNgsiWarning(response.headers);
     outputResponse(response, format);
   });
 }

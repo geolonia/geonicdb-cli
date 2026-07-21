@@ -446,6 +446,8 @@ Notes:
 
 Temporal entities list/get support: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`.
 
+> **History truncation**: Without `--last-n`, the server caps the returned history to the **100 most recent instances per attribute** (default). When it does, the server returns an `NGSILD-Warning` header and the CLI echoes it as a `Warning:` line on **stderr** so truncation is never a silent drop. To retrieve more, set `--last-n` (**max 1000**) or narrow the window with `--time-at`/`--end-time-at` — with an explicit `--last-n` the server does not truncate, so no warning is emitted. The CLI surfaces whatever `NGSILD-Warning` the server sends, verbatim.
+
 #### temporal entityOperations
 
 | Subcommand | Description |
