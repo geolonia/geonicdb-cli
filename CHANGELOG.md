@@ -7,11 +7,14 @@
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-07-25
+
 ### 2026-07-25
 - **Fix**: 開発依存の path traversal 脆弱性 (Dependabot #70, GHSA-frvp-7c67-39w9, CVSS 5.9) を解消 (#160) — `@hono/node-server` を `overrides` で `>=2.0.5` に固定し、脆弱な `1.19.x` を `2.0.11` に更新
   - 依存経路は `geonicdb`(devDependency) → `@modelcontextprotocol/sdk` → `@hono/node-server ^1.19.9`。1.x に修正版がなく (初回 patch は 2.0.5) メジャー跨ぎが必要なため `overrides` で強制
   - 実害はなし: (1) devDependency のみで公開パッケージ (`files: ["dist"]`) には非同梱、(2) 脆弱な `serveStatic` 経路は未使用 (MCP SDK は `getRequestListener` のみ import)、(3) Windows 限定
   - node-server 2.x の API 互換 (`getRequestListener`/`serve`) を確認。build/lint/typecheck/unit (856)/E2E (149) 全緑
+- **Fix**: 開発依存のセキュリティ更新 3 件 (Dependabot #159) — `fast-uri` 3.1.2→3.1.4 (GHSA-v2hh-gcrm-f6hx / GHSA-4c8g-83qw-93j6)、`js-yaml` 5.2.1→5.2.2 (ReDoS 対策)、`postcss` 8.5.15→8.5.23 (source-map 読み込み制限)。あわせて `eslint` を 9→10 (メジャー) に更新。すべて devDependency のため公開パッケージ (dist) への影響はなし。lint(eslint 10)/typecheck/unit (856)/E2E (149) 全緑を確認
 
 ### 2026-07-21
 - **Feat**: temporal 読み取り (`temporal entities list`/`get`、`temporal entityOperations query`) で本体の履歴打ち切りを可視化 (#157, closes #150, geonicdb#1437)
@@ -21,6 +24,8 @@
 - **CI**: devDependency の geonicdb pinned ハッシュを `913ceecf` → `4f9f72cc` に更新し、週次互換チェックの失敗を解消 (#158, closes #155, geonicdb#1478/#1479)
   - 失敗の真因は本体の回帰: merge モードの batch upsert が属性なしエンティティを `attributes` フィールドなしで保存し、後段の `entities list` (`toNormalized`) が `Object.keys(undefined)` で 500。CLI は正常で、本体 #1479 で修正済み
   - 更新後の HEAD に対しローカルで build/lint/typecheck/unit (856)/E2E (149) 全緑を確認
+
+## [0.19.0] - 2026-07-20
 
 ### 2026-07-20
 - **Feat**: `geonic import` — 巨大データセット向けのクライアント駆動バルクローダーを追加 (#152, closes #151, geonicdb#1409)
@@ -320,7 +325,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.18.1...v0.19.0
 [0.18.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.17.0...v0.18.0
