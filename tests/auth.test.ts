@@ -321,7 +321,7 @@ describe("auth commands", () => {
 
       const program = makeProgram();
       await expect(runCommand(program, ["auth", "login"])).rejects.toThrow("process.exit");
-      expect(printError).toHaveBeenCalledWith(expect.stringContaining("有効期限"));
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("expired"));
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 

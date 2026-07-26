@@ -128,7 +128,7 @@ function createLoginCommand(): Command {
             err.status === 409 &&
             err.ngsiError?.error === "PasswordResetRequired"
           ) {
-            printInfo("初回ログインです。新しいパスワードを設定してください。");
+            printInfo("First login: you must set a new password to continue.");
             const newPassword = await promptPassword("New password");
             const confirmPassword = await promptPassword("Confirm new password");
             if (newPassword !== confirmPassword) {
@@ -147,7 +147,7 @@ function createLoginCommand(): Command {
             err.ngsiError?.error === "TemporaryPasswordExpired"
           ) {
             printError(
-              "一時パスワードの有効期限が切れています。管理者に再発行を依頼してください。",
+              "Your temporary password has expired. Ask an administrator to re-issue it.",
             );
             process.exit(1);
           } else {
