@@ -68,6 +68,7 @@ import { isInteractive, promptEmail, promptPassword, promptTenantSelection } fro
 import { getTokenStatus, formatDuration } from "../src/token.js";
 import { clientCredentialsGrant } from "../src/oauth.js";
 import { registerAuthCommands } from "../src/commands/auth.js";
+import { GdbClientError } from "../src/client.js";
 
 describe("auth commands", () => {
   let client: MockClient;
@@ -256,6 +257,71 @@ describe("auth commands", () => {
       expect(printError).toHaveBeenCalledWith(
         expect.stringContaining("Interactive terminal required"),
       );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it("handles forced password change (409) by prompting for a new password and completing login (#1532)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("reset@example.com");
+      vi.mocked(promptPassword)
+        .mockResolvedValueOnce("temppass12345") // initial (temporary) password
+        .mockResolvedValueOnce("BrandNewPass123") // New password
+        .mockResolvedValueOnce("BrandNewPass123"); // Confirm new password
+      client.rawRequest
+        .mockRejectedValueOnce(
+          new GdbClientError("Password reset required", 409, { error: "PasswordResetRequired" }),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "post-reset-token", refreshToken: "ref-reset" }),
+        );
+
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+
+      // 2nd request completes the reset with newPassword in the same login call.
+      expect(client.rawRequest).toHaveBeenNthCalledWith(2, "POST", "/auth/login", {
+        body: { email: "reset@example.com", password: "temppass12345", newPassword: "BrandNewPass123" },
+        skipTenantHeader: true,
+      });
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "post-reset-token", refreshToken: "ref-reset" }),
+        "default",
+      );
+      expect(printSuccess).toHaveBeenCalledWith(expect.stringContaining("Login successful"));
+    });
+
+    it("aborts the forced password change when confirmation does not match (#1532)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("reset@example.com");
+      vi.mocked(promptPassword)
+        .mockResolvedValueOnce("temppass12345")
+        .mockResolvedValueOnce("BrandNewPass123")
+        .mockResolvedValueOnce("Mismatch99999"); // confirmation differs
+      client.rawRequest.mockRejectedValueOnce(
+        new GdbClientError("Password reset required", 409, { error: "PasswordResetRequired" }),
+      );
+
+      const program = makeProgram();
+      await expect(runCommand(program, ["auth", "login"])).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("do not match"));
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      // No second login request when confirmation fails.
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
+    });
+
+    it("prints a clear error and exits when the temporary password is expired (403) (#1532)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("reset@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("expiredtemp12");
+      client.rawRequest.mockRejectedValueOnce(
+        new GdbClientError("Temporary password expired", 403, {
+          error: "TemporaryPasswordExpired",
+        }),
+      );
+
+      const program = makeProgram();
+      await expect(runCommand(program, ["auth", "login"])).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("expired"));
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 

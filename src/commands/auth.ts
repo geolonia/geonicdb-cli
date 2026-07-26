@@ -7,6 +7,7 @@ import {
   getFormat,
   outputResponse,
 } from "../helpers.js";
+import { GdbClientError } from "../client.js";
 import { loadConfig, saveConfig, getCurrentProfile, validateUrl } from "../config.js";
 import { printSuccess, printError, printInfo, printWarning } from "../output.js";
 import { isInteractive, promptEmail, promptPassword, promptTenantSelection } from "../prompt.js";
@@ -107,12 +108,53 @@ function createLoginCommand(): Command {
 
         // Step 1: tenantless login. Server returns either a single-tenant token
         // or, for multi-tenant users, a primary-tenant token plus availableTenants.
-        const response = await client.rawRequest("POST", "/auth/login", {
-          body: { email, password },
-          skipTenantHeader: true,
-        });
+        //
+        // 初回強制パスワード変更 (単発型, geonicdb#1532): 管理者が一時パスワードを発行した
+        // ユーザーは、一時パスワードだけでは本トークンを受け取れず 409 PasswordResetRequired が返る。
+        // その場で新しいパスワードを入力させ、同じ login 呼び出し (newPassword 同梱) で設定を完了する
+        // (再ログイン不要)。一時パスワードの有効期限切れは 403 TemporaryPasswordExpired。
+        // 以降のテナント再ログインには、変更後の新パスワード (effectivePassword) を使う。
+        let effectivePassword = password;
+        let data: Record<string, unknown>;
+        try {
+          const response = await client.rawRequest("POST", "/auth/login", {
+            body: { email, password },
+            skipTenantHeader: true,
+          });
+          data = response.data as Record<string, unknown>;
+        } catch (err) {
+          if (
+            err instanceof GdbClientError &&
+            err.status === 409 &&
+            err.ngsiError?.error === "PasswordResetRequired"
+          ) {
+            printInfo("First login: you must set a new password to continue.");
+            const newPassword = await promptPassword("New password");
+            const confirmPassword = await promptPassword("Confirm new password");
+            if (newPassword !== confirmPassword) {
+              printError("Passwords do not match.");
+              process.exit(1);
+            }
+            const response = await client.rawRequest("POST", "/auth/login", {
+              body: { email, password, newPassword },
+              skipTenantHeader: true,
+            });
+            data = response.data as Record<string, unknown>;
+            effectivePassword = newPassword;
+          } else if (
+            err instanceof GdbClientError &&
+            err.status === 403 &&
+            err.ngsiError?.error === "TemporaryPasswordExpired"
+          ) {
+            printError(
+              "Your temporary password has expired. Ask an administrator to re-issue it.",
+            );
+            process.exit(1);
+          } else {
+            throw err;
+          }
+        }
 
-        const data = response.data as Record<string, unknown>;
         let token = (data.accessToken ?? data.token) as string | undefined;
         let refreshToken = data.refreshToken as string | undefined;
 
@@ -172,7 +214,9 @@ function createLoginCommand(): Command {
 
           if (selected && selected.tenantId !== finalTenantId) {
             const reloginResponse = await client.rawRequest("POST", "/auth/login", {
-              body: { email, password, tenantId: selected.tenantId },
+              // #1532: 強制パスワード変更を完了した場合、一時パスワードは失効しているため
+              // 変更後の新パスワード (effectivePassword) で再ログインする。
+              body: { email, password: effectivePassword, tenantId: selected.tenantId },
               skipTenantHeader: true,
             });
             const reloginData = reloginResponse.data as Record<string, unknown>;

@@ -7,7 +7,8 @@
 
 ## [Unreleased]
 
-## [0.20.0] - 2026-07-25
+### 2026-07-26
+- **Feat**: `auth login` が初回強制パスワード変更 (単発型, geonicdb#1532) に対応 (#164, closes #163)。管理者が一時パスワードを発行したユーザーがログインすると、本体は `409 PasswordResetRequired` を返す (本トークンは発行されない)。CLI はこれを検知して新しいパスワードを対話入力させ (確認再入力・不一致で中断)、同じ `POST /auth/login` に `newPassword` を同梱して設定を完了しトークンを取得する (再ログイン不要)。一時パスワードの有効期限切れ (`403 TemporaryPasswordExpired`) は「管理者に再発行を依頼」を促す明示メッセージで終了。マルチテナント再ログインには変更後の新パスワードを使う。email/password フローは元々 TTY 必須のため本対応も対話時のみ。CI/api-key 経路は一時パスワードを持たず影響なし。
 
 ### 2026-07-25
 - **Fix**: 開発依存の path traversal 脆弱性 (Dependabot #70, GHSA-frvp-7c67-39w9, CVSS 5.9) を解消 (#160) — `@hono/node-server` を `overrides` で `>=2.0.5` に固定し、脆弱な `1.19.x` を `2.0.11` に更新
