@@ -575,12 +575,13 @@ When combined with a JSON payload, the flag merges into `settings` without dropp
 |---|---|
 | `admin users list` | List all users |
 | `admin users get <id>` | Get a user by ID |
-| `admin users create [json]` | Create a new user |
+| `admin users create [json]` | Create a new user (add `--force-reset` to issue a temporary password and force a first-login change) |
 | `admin users update <id> [json]` | Update a user |
 | `admin users delete <id>` | Delete a user |
 | `admin users activate <id>` | Activate a user |
 | `admin users deactivate <id>` | Deactivate a user |
 | `admin users unlock <id>` | Unlock a user |
+| `admin users reset-password <id>` | Issue a one-time temporary password and force a change on next login |
 
 #### admin policies
 

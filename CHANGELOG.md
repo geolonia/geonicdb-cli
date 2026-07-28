@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-07-28
+- **Feat**: 管理者による一時パスワード発行に対応 (closes #162, geonicdb#1532)。`admin users reset-password <id>` を新設し、既存ユーザーに一時パスワードを発行して初回ログインでの強制変更 (単発型) を要求する (応答の `temporaryPassword`/`expiresAt` を stderr のボックスで一度だけ表示)。あわせて `admin users create` に `--force-reset` フラグを追加 — 本体の招待型 (`POST /admin/users` + `passwordResetRequired: true`) を使い、サーバー生成の一時パスワードで作成する (この経路では `password` を指定できない。指定時は送信前にエラー)。既定の `create`（`password` 直指定）は従来どおり非破壊。既存ユーザーへの発行 (reset-password) と作成時発行 (create --force-reset) の 2 経路。README 更新。本体は geonicdb#1567 でマージ済み。(#166)
+
 ## [0.21.0] - 2026-07-26
 
 ### 2026-07-26

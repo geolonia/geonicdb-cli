@@ -47,6 +47,38 @@ export function printApiKeyBox(key: string): void {
   console.error(chalk.yellow("⚠ この API キー値を安全に保存してください。二度と表示されません。"));
 }
 
+/**
+ * Print an admin-issued temporary password in a highlighted box.
+ *
+ * The decorative box is written to stderr (like {@link printApiKeyBox}) so it
+ * does not corrupt piped stdout (e.g. a `--format json` response). The password
+ * value itself is also emitted to stdout by the command's normal response
+ * output (so scripts can capture it, matching the API-key command); the box is
+ * a human-facing convenience, accompanied by a reminder that the user must set
+ * a new password on their next login.
+ */
+export function printTemporaryPasswordBox(password: string, expiresAt?: string): void {
+  const border = "─".repeat(password.length + 4);
+  console.error("");
+  console.error(chalk.green(`  ┌${border}┐`));
+  console.error(chalk.green(`  │  ${chalk.bold(password)}  │`));
+  console.error(chalk.green(`  └${border}┘`));
+  console.error("");
+  if (expiresAt) {
+    console.error(chalk.dim(`  有効期限: ${expiresAt}`));
+  }
+  console.error(
+    chalk.yellow(
+      "⚠ この一時パスワードを安全な経路で本人に伝えてください。二度と表示されません。",
+    ),
+  );
+  console.error(
+    chalk.yellow(
+      "  本人は次回ログイン時に新しいパスワードの設定を求められます (単発型の初回強制変更)。",
+    ),
+  );
+}
+
 export function printCount(count: number): void {
   console.log(chalk.dim(`Count: ${count}`));
 }
