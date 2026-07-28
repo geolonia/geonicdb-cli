@@ -44,6 +44,7 @@ vi.mock("../src/output.js", () => ({
   printWarning: vi.fn(),
   printOutput: vi.fn(),
   printCount: vi.fn(),
+  printTemporaryPasswordBox: vi.fn(),
 }));
 
 vi.mock("../src/commands/help.js", () => ({
@@ -54,7 +55,7 @@ vi.mock("../src/commands/help.js", () => ({
 import type { Command } from "commander";
 import { createClient, getFormat, outputResponse } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
-import { printSuccess } from "../src/output.js";
+import { printSuccess, printTemporaryPasswordBox } from "../src/output.js";
 import { addExamples } from "../src/commands/help.js";
 import { registerUsersCommand } from "../src/commands/admin/users.js";
 
@@ -111,17 +112,93 @@ describe("admin users commands", () => {
     });
   });
 
-  describe("users create", () => {
-    it("posts body and prints success", async () => {
-      const body = { email: "user@example.com" };
+  const resetPayload = {
+    userId: "u2",
+    temporaryPassword: "Tmp-Passw0rd-xyz",
+    expiresAt: "2026-08-04T00:00:00.000Z",
+    passwordResetRequired: true,
+    message: "Temporary password issued. The user must set a new password on next login.",
+  };
+
+  describe("users create (default)", () => {
+    it("posts body as-is and prints success (non-breaking)", async () => {
+      const body = { email: "user@example.com", password: "SecurePass12345!" };
       vi.mocked(parseJsonInput).mockResolvedValue(body);
       client.rawRequest.mockResolvedValue(mockResponse({ id: "u2" }, 201));
       const program = makeProgram();
-      await runCommand(program, ["admin", "users", "create", '{"email":"user@example.com"}']);
+      await runCommand(program, ["admin", "users", "create", '{"email":"user@example.com","password":"SecurePass12345!"}']);
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/users", { body });
       expect(outputResponse).toHaveBeenCalled();
       expect(printSuccess).toHaveBeenCalledWith("User created.");
+      expect(printTemporaryPasswordBox).not.toHaveBeenCalled();
     });
+  });
+
+  describe("users create --force-reset (invite)", () => {
+    it("injects passwordResetRequired and shows the temporary password", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ email: "user@example.com", role: "user" });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "u2", ...resetPayload }, 201));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin", "users", "create", "--force-reset",
+        '{"email":"user@example.com","role":"user"}',
+      ]);
+
+      // Single POST to /admin/users with passwordResetRequired: true and no password.
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
+      const [method, path, opts] = client.rawRequest.mock.calls[0];
+      expect(method).toBe("POST");
+      expect(path).toBe("/admin/users");
+      const createBody = (opts as { body: Record<string, unknown> }).body;
+      expect(createBody.passwordResetRequired).toBe(true);
+      expect(createBody.password).toBeUndefined();
+
+      expect(printSuccess).toHaveBeenCalledWith("User created (forced password reset).");
+      expect(printTemporaryPasswordBox).toHaveBeenCalledWith(
+        resetPayload.temporaryPassword,
+        resetPayload.expiresAt,
+      );
+    });
+
+    it("rejects a JSON password field before sending the request", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ email: "user@example.com", password: "ChosenPass12345!" });
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "admin", "users", "create", "--force-reset",
+          '{"email":"user@example.com","password":"ChosenPass12345!"}',
+        ]),
+      ).rejects.toThrow(/do not include a 'password' field/);
+      // No request must be sent when the input is contradictory.
+      expect(client.rawRequest).not.toHaveBeenCalled();
+    });
+
+    it("rejects a non-object JSON payload before sending the request", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue(["user@example.com"]);
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["admin", "users", "create", "--force-reset", '["user@example.com"]']),
+      ).rejects.toThrow(/must be an object/);
+      expect(client.rawRequest).not.toHaveBeenCalled();
+    });
+
+    it("errors (without printing success) when the server returns no temporary password", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ email: "user@example.com", role: "user" });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "u2" }, 201)); // no temporaryPassword
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "admin", "users", "create", "--force-reset",
+          '{"email":"user@example.com","role":"user"}',
+        ]),
+      ).rejects.toThrow(/did not return a temporary password/);
+      expect(printSuccess).not.toHaveBeenCalled();
+      expect(printTemporaryPasswordBox).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("users create (metadata)", () => {
 
     // #118: server schema accepts only `primaryTenantId`. Help and examples must reflect that.
     it("references primaryTenantId (not legacy tenantId) in description", () => {
@@ -208,6 +285,31 @@ describe("admin users commands", () => {
       await runCommand(program, ["admin", "users", "unlock", "u1"]);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/users/u1/unlock");
       expect(printSuccess).toHaveBeenCalledWith("User unlocked.");
+    });
+  });
+
+  describe("users reset-password", () => {
+    it("posts reset-password and shows the temporary password", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse(resetPayload));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "users", "reset-password", "u2"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/users/u2/reset-password");
+      expect(outputResponse).toHaveBeenCalled();
+      expect(printSuccess).toHaveBeenCalledWith("Temporary password issued.");
+      expect(printTemporaryPasswordBox).toHaveBeenCalledWith(
+        resetPayload.temporaryPassword,
+        resetPayload.expiresAt,
+      );
+    });
+
+    it("URL-encodes the user id", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse(resetPayload));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "users", "reset-password", "urn:user:1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith(
+        "POST",
+        "/admin/users/urn%3Auser%3A1/reset-password",
+      );
     });
   });
 });
