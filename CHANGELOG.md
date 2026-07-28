@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-07-28
+
 ### 2026-07-28
 - **Feat**: 管理者による一時パスワード発行に対応 (closes #162, geonicdb#1532)。`admin users reset-password <id>` を新設し、既存ユーザーに一時パスワードを発行して初回ログインでの強制変更 (単発型) を要求する (応答の `temporaryPassword`/`expiresAt` を stderr のボックスで一度だけ表示)。あわせて `admin users create` に `--force-reset` フラグを追加 — 本体の招待型 (`POST /admin/users` + `passwordResetRequired: true`) を使い、サーバー生成の一時パスワードで作成する (この経路では `password` を指定できない。指定時は送信前にエラー)。既定の `create`（`password` 直指定）は従来どおり非破壊。既存ユーザーへの発行 (reset-password) と作成時発行 (create --force-reset) の 2 経路。README 更新。本体は geonicdb#1567 でマージ済み。(#166)
 
@@ -333,7 +335,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.18.1...v0.19.0
