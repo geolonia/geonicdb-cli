@@ -744,9 +744,14 @@ curl \
   -X POST \
   -H 'Content-Type: application/ld+json' \
   -H 'Accept: application/ld+json' \
-  -d '{"id":"Room1","type":"Room"}' \
+  -d '{"id":"Room1","type":"Room","@context":"https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld"}' \
   'http://localhost:3000/ngsi-ld/v1/entities'
 ```
+
+> Entity writes are sent as `application/ld+json`, which requires an inline JSON-LD
+> `@context`. When your payload omits `@context`, the CLI injects the NGSI-LD core
+> context automatically (a `@context` you provide is preserved). Batch
+> (`entityOperations`) and other resources are not affected.
 
 ## Configuration
 

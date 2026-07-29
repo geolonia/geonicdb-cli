@@ -2,6 +2,13 @@ import type { ClientOptions, ClientResponse, NgsiError } from "./types.js";
 import { clientCredentialsGrant } from "./oauth.js";
 import { getTokenStatus } from "./token.js";
 
+/**
+ * NGSI-LD core @context. Injected into `application/ld+json` entity-write bodies
+ * that omit `@context` so writes stay spec-compliant (#168): the server requires
+ * an inline `@context` for `application/ld+json` (ETSI GS CIM 009 clause 6.3.5).
+ */
+const NGSI_LD_CORE_CONTEXT = "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld";
+
 export class DryRunSignal extends Error {
   constructor() {
     super("dry-run");
@@ -262,6 +269,36 @@ export class GdbClient {
     return false;
   }
 
+  /**
+   * #168: NGSI-LD entity writes require an inline JSON-LD `@context` under
+   * `application/ld+json` (server geolonia/geonicdb#1583). The CLI always sends
+   * `application/ld+json`, so inject the core context when an entity-write object
+   * body omits it; otherwise the server returns 400 BadRequestData. A
+   * caller-supplied `@context` is preserved (never overwritten). Arrays (batch
+   * bodies) and non-object bodies are left untouched.
+   *
+   * Scoped to the `/entities` endpoints ONLY, mirroring the exact range where the
+   * server enforces `@context` (geonicdb#1583: create/replace/append/patch-attrs).
+   * Other resources must not receive an injected `@context`:
+   *   - admin/auth/... use strict server schemas that reject the unexpected key.
+   *   - batch (`/entityOperations`, array bodies), temporal, subscriptions and
+   *     registrations are not yet `@context`-required server-side (tracked in
+   *     geonicdb#1599); extend this scope when the server does.
+   */
+  private maybeInjectCoreContext(resourcePath: string, body: unknown): unknown {
+    const isEntityWrite = resourcePath.startsWith(`${this.getBasePath()}/entities`);
+    if (
+      !isEntityWrite ||
+      body === null ||
+      typeof body !== "object" ||
+      Array.isArray(body) ||
+      "@context" in (body as Record<string, unknown>)
+    ) {
+      return body;
+    }
+    return { ...(body as Record<string, unknown>), "@context": NGSI_LD_CORE_CONTEXT };
+  }
+
   private async executeRequest<T>(
     method: string,
     path: string,
@@ -274,7 +311,10 @@ export class GdbClient {
   ): Promise<ClientResponse<T>> {
     const url = this.buildUrl(`${this.getBasePath()}${path}`, options?.params);
     const headers = this.buildHeaders(options?.headers);
-    const body = options?.body ? JSON.stringify(options.body) : undefined;
+    const injectedBody = options?.body
+      ? this.maybeInjectCoreContext(`${this.getBasePath()}${path}`, options.body)
+      : undefined;
+    const body = injectedBody ? JSON.stringify(injectedBody) : undefined;
 
     this.logRequest(method, url, headers, body);
     this.handleDryRun(method, url, headers, body);
@@ -325,7 +365,13 @@ export class GdbClient {
     if (options?.skipTenantHeader) {
       delete headers["NGSILD-Tenant"];
     }
-    const body = options?.body ? JSON.stringify(options.body) : undefined;
+    // executeRawRequest takes absolute paths (auth/admin/health). The scope check
+    // in maybeInjectCoreContext leaves non-/entities paths untouched, so this is a
+    // no-op for those; kept for consistency in case an entities path is ever routed here.
+    const injectedBody = options?.body
+      ? this.maybeInjectCoreContext(path, options.body)
+      : undefined;
+    const body = injectedBody ? JSON.stringify(injectedBody) : undefined;
 
     this.logRequest(method, url, headers, body);
     this.handleDryRun(method, url, headers, body);

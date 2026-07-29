@@ -88,7 +88,7 @@ describe("GdbClient", () => {
     await expect(client.get("/entities/missing")).rejects.toThrow("Entity not found");
   });
 
-  it("sends POST with JSON body", async () => {
+  it("sends POST with JSON body (injects core @context for entity writes, #168)", async () => {
     const client = new GdbClient({ baseUrl: "http://localhost:3000" });
     const entity = { id: "Room:001", type: "Room" };
 
@@ -101,13 +101,71 @@ describe("GdbClient", () => {
 
     await client.post("/entities", entity);
 
+    const sentBody = JSON.parse(
+      (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string,
+    );
+    // #168: entity writes get the core @context injected when the body omits it.
+    expect(sentBody).toEqual({
+      ...entity,
+      "@context": "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld",
+    });
     expect(fetch).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify(entity),
-      }),
+      expect.objectContaining({ method: "POST" }),
     );
+  });
+
+  it("preserves a caller-supplied @context on entity writes (#168)", async () => {
+    const client = new GdbClient({ baseUrl: "http://localhost:3000" });
+    const custom = "https://example.com/my-context.jsonld";
+    const entity = { id: "Room:001", type: "Room", "@context": custom };
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 201 }),
+    );
+
+    await client.put("/entities/Room:001", entity);
+
+    const sentBody = JSON.parse(
+      (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string,
+    );
+    expect(sentBody["@context"]).toBe(custom);
+  });
+
+  // Batch is excluded to match the server's current #1583 scope (entity endpoints
+  // only); server-side batch @context enforcement is tracked in geonicdb#1599.
+  it("does NOT inject @context into batch (array) bodies (#168)", async () => {
+    const client = new GdbClient({ baseUrl: "http://localhost:3000" });
+    const batch = [{ id: "Room:001", type: "Room" }];
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 201 }),
+    );
+
+    await client.post("/entityOperations/upsert", batch);
+
+    const sentBody = JSON.parse(
+      (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string,
+    );
+    expect(sentBody).toEqual(batch);
+    expect(Array.isArray(sentBody)).toBe(true);
+  });
+
+  it("does NOT inject @context into non-entity endpoints (#168)", async () => {
+    const client = new GdbClient({ baseUrl: "http://localhost:3000" });
+    const body = { description: "sub", type: "Subscription" };
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 201 }),
+    );
+
+    await client.post("/subscriptions", body);
+
+    const sentBody = JSON.parse(
+      (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string,
+    );
+    expect("@context" in sentBody).toBe(false);
+    expect(sentBody).toEqual(body);
   });
 
   it("appends query params to URL", async () => {
@@ -926,7 +984,11 @@ describe("GdbClient", () => {
       expect(fetchSpy).not.toHaveBeenCalled();
       const output = logSpy.mock.calls[0][0] as string;
       expect(output).toContain("-X POST");
-      expect(output).toContain(`-d '${JSON.stringify(entity)}'`);
+      // #168: entity-write bodies carry the injected core @context; the dry-run
+      // curl must mirror the actual request body.
+      expect(output).toContain(
+        `-d '${JSON.stringify({ ...entity, "@context": "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld" })}'`,
+      );
       logSpy.mockRestore();
     });
 
