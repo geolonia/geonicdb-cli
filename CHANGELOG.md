@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-07-29
-- **Fix**: `application/ld+json` のエンティティ書き込みで JSON-LD `@context` を自動付与するようにした (closes #168, 本体 geonicdb#1583 対応)。CLI は全リクエストを `application/ld+json` で送るため、本体が `@context` 必須化 (geonicdb#1583) された後は `@context` 無しのペイロードでの `entities create`/`entities update`/`entities attrs` 等が `400 BadRequestData` になる。エンティティ書き込みボディに `@context` が無ければ NGSI-LD core context (`https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld`) を注入して後方互換を保つ。利用者が指定した `@context` は非上書き。注入は本体 geonicdb#1583 が実際に `@context` を必須化した範囲 (`/ngsi-ld/v1/entities` のエンティティ書き込み) に合わせ、オブジェクトボディに限定する。本体が `@context` を要求しない経路 — バッチ (`entityOperations`、配列) / temporal / subscriptions / registrations / admin / auth 等 — には付与しない (これらへの必須化は本体側 geonicdb#1599 で追跡中。本体が拡張された時点で CLI も追従する)。(#PR)
+- **Fix**: `application/ld+json` のエンティティ書き込みで JSON-LD `@context` を自動付与するようにした (closes #168, 本体 geonicdb#1583 対応)。CLI は全リクエストを `application/ld+json` で送るため、本体が `@context` 必須化 (geonicdb#1583) された後は `@context` 無しのペイロードでの `entities create`/`entities update`/`entities attrs` 等が `400 BadRequestData` になる。エンティティ書き込みボディに `@context` が無ければ NGSI-LD core context (`https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld`) を注入して後方互換を保つ。利用者が指定した `@context` は非上書き。注入は本体 geonicdb#1583 が実際に `@context` を必須化した範囲 (`/ngsi-ld/v1/entities` のエンティティ書き込み) に合わせ、オブジェクトボディに限定する。本体が `@context` を要求しない経路 — バッチ (`entityOperations`、配列) / temporal / subscriptions / registrations / admin / auth 等 — には付与しない (これらへの必須化は本体側 geonicdb#1599 で追跡中。本体が拡張された時点で CLI も追従する)。(#169)
 
 ## [0.22.0] - 2026-07-28
 
