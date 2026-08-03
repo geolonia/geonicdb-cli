@@ -92,6 +92,9 @@ function formatTable(data: unknown): string {
   }
 
   if (data.length === 0) return "(empty)";
+  if (data.every((item) => item === null || typeof item !== "object")) {
+    return data.map((item) => cellValue(item)).join("\n");
+  }
 
   const items = data as Record<string, unknown>[];
   const keys = collectKeys(items);

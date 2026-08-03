@@ -430,7 +430,8 @@ Notes:
 
 | Subcommand | Description |
 |---|---|
-| `types list` | List available entity types |
+| `types list` | List available entity type names |
+| `types list --details` | Show full `EntityType` objects (typeName, attributeNames, etc.) |
 | `types get <typeName>` | Get details for a type |
 
 ### temporal — Temporal entity operations

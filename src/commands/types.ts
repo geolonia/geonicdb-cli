@@ -9,6 +9,20 @@ import {
 } from "../helpers.js";
 import { addExamples } from "./help.js";
 
+function unwrapEntityTypeList(data: unknown, details?: boolean): unknown {
+  if (details) return data;
+  if (
+    data &&
+    typeof data === "object" &&
+    !Array.isArray(data) &&
+    (data as { type?: unknown }).type === "EntityTypeList" &&
+    Array.isArray((data as { typeList?: unknown }).typeList)
+  ) {
+    return (data as { typeList: unknown[] }).typeList;
+  }
+  return data;
+}
+
 export function registerTypesCommand(program: Command): void {
   const types = program
     .command("types")
@@ -20,14 +34,27 @@ export function registerTypesCommand(program: Command): void {
     .description("List all entity types currently stored in the broker")
     .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
     .option("--offset <n>", "Skip N results", parseNonNegativeInt)
+    .option("--details", "Show full EntityType objects")
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const params = buildPaginationParams(cmd.opts());
+        const opts = cmd.opts<{
+          limit?: number;
+          offset?: number;
+          details?: boolean;
+        }>();
+        const params = buildPaginationParams(opts);
+        if (opts.details) params["details"] = "true";
 
         const response = await client.get("/types", params);
-        outputResponse(response, format);
+        outputResponse(
+          {
+            ...response,
+            data: unwrapEntityTypeList(response.data, opts.details),
+          },
+          format,
+        );
       }),
     );
 
@@ -43,6 +70,10 @@ export function registerTypesCommand(program: Command): void {
     {
       description: "List with pagination",
       command: "geonic types list --limit 50 --offset 100",
+    },
+    {
+      description: "Show full EntityType objects",
+      command: "geonic types list --details --format json",
     },
   ]);
 
