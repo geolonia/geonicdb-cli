@@ -227,3 +227,50 @@ Feature: Entity management
       """
     Then the exit code should be 0
     And the output should contain "Entity created."
+
+  @issue-171
+  Scenario: Purge entities by type selector
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:P171-1","type":"Room"}'`
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Car:P171-1","type":"Car"}'`
+    When I run `geonic entities purge --type Room --yes`
+    Then the exit code should be 0
+    And the output should contain "Purge completed."
+    And I run `geonic entities list`
+    Then the exit code should be 0
+    And the output should not contain "Room:P171-1"
+    And the output should contain "Car:P171-1"
+
+  @issue-171
+  Scenario: Purge refuses to run without confirmation in non-TTY mode
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:P171-2","type":"Room"}'`
+    When I run `geonic entities purge --type Room`
+    Then the exit code should be 1
+    And the output should contain "Refusing to purge without confirmation. Re-run with --yes."
+    And I run `geonic entities list --type Room`
+    Then the exit code should be 0
+    And the output should contain "Room:P171-2"
+
+  @issue-171
+  Scenario: Purge drop removes only selected attributes
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:P171-3","type":"Room","attrA":{"type":"Property","value":1},"attrB":{"type":"Property","value":2}}'`
+    When I run `geonic entities purge --type Room --drop attrA --yes`
+    Then the exit code should be 0
+    And the output should contain "Purge completed."
+    And I run `geonic entities get urn:ngsi-ld:Room:P171-3`
+    Then the exit code should be 0
+    And the output should contain "attrB"
+    And the output should not contain "attrA"
+
+  @issue-171
+  Scenario: Purge refuses an under-specified selector on the client (no delete)
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:P171-4","type":"Room"}'`
+    When I run `geonic entities purge --id-pattern '.*' --yes`
+    Then the exit code should be 1
+    And the output should contain "specify at least one selector"
+    And I run `geonic entities list --type Room`
+    Then the exit code should be 0
+    And the output should contain "Room:P171-4"

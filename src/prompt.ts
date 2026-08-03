@@ -16,6 +16,16 @@ export async function promptEmail(): Promise<string> {
   }
 }
 
+export async function promptConfirm(message: string): Promise<boolean> {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const answer = (await rl.question(`${message} [y/N]: `)).trim().toLowerCase();
+    return answer === "y" || answer === "yes";
+  } finally {
+    rl.close();
+  }
+}
+
 export async function promptTenantSelection(
   tenants: TenantInfo[],
 ): Promise<TenantInfo> {

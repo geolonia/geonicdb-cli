@@ -51,3 +51,19 @@ Feature: Temporal entity management
     When I run `geonic temporal entityOperations query '{"entities":[{"type":"Room"}]}'`
     Then the exit code should be 0
     And stdout should be valid JSON
+
+  @issue-171
+  Scenario: Temporal entities list accepts NGSI-LD v1.9.1 orderBy grammar
+    Given I am logged in
+    And I run `geonic temporal entities create '{"id":"urn:ngsi-ld:Room:T171-1","type":"Room","temperature":[{"type":"Property","value":21,"observedAt":"2025-01-01T00:00:00Z"}]}'`
+    And I run `geonic temporal entities create '{"id":"urn:ngsi-ld:Room:T171-2","type":"Room","temperature":[{"type":"Property","value":24,"observedAt":"2025-01-02T00:00:00Z"}]}'`
+    When I run `geonic temporal entities list --type Room --order-by observedAt;desc`
+    Then the exit code should be 0
+    And stdout should be valid JSON
+
+  @issue-171
+  Scenario: Temporal entities list actually transmits orderBy incl. direction (not silently dropped)
+    Given I am logged in
+    When I run `geonic temporal entities list --type Room --order-by observedAt;desc --dry-run`
+    Then the exit code should be 0
+    And the output should contain "orderBy=observedAt%3Bdesc"

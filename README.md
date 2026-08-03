@@ -332,8 +332,15 @@ geonic me oauth-clients update <client-id> --policy-id my-readonly
 | `entities replace <id> [json]` | Replace all attributes (PUT) |
 | `entities upsert [json]` | Create or update entities |
 | `entities delete <id>` | Delete an entity by ID |
+| `entities purge <selectors> [--keep\|--drop] --yes` | Purge entities/attributes by selector (destructive) |
 
 `entities list` supports filtering options: `--type`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`.
+
+`entities purge` requires **at least one primary selector** — `--type`, `--attrs`, `--query`, or `--georel` (the latter together with `--geometry`/`--coords`). These can be narrowed with the refinement filters `--id`, `--id-pattern`, `--scope-q`, `--local`. A refinement filter **on its own is not sufficient**: `--id`/`--id-pattern`/`--scope-q` alone are rejected by both the CLI and the server — to remove a single entity use `entities delete <id>`. Mutation flags `--keep`/`--drop` (mutually exclusive) remove/retain attributes on matched entities instead of deleting the entities. `--attrs` on purge is a selector ("entities having any listed attributes"), not an output projection.
+
+For safety, `entities purge` requires confirmation. In non-interactive contexts (CI/pipes), it refuses to run unless `--yes` is provided.
+
+`--order-by` uses NGSI-LD v1.9.1 inline direction grammar: `name`, `name;desc`, `type;asc,name;desc` (quote `;` in shell, e.g. `--order-by 'name;desc'`). There is no `--order-direction` flag. Legacy `!attr` (e.g. `--order-by '!temperature'`) is still accepted server-side but deprecated; prefer `attr;desc`.
 
 #### entities attrs — Manage entity attributes
 
@@ -445,7 +452,11 @@ Notes:
 | `temporal entities create [json]` | Create a temporal entity |
 | `temporal entities delete <id>` | Delete a temporal entity |
 
-Temporal entities list/get support: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`.
+Temporal entities list supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`, `--order-by`.
+
+Temporal entities get supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`.
+
+Temporal `--order-by` follows NGSI-LD v1.9.1 grammar (`name`, `name;desc`, composites like `a;asc,b;desc`). The server returns `400` for `dist-*`/`geo:distance`, nested paths like `a.b`, or when combined with `aggrMethods`.
 
 > **History truncation**: Without `--last-n`, the server caps the returned history to the **100 most recent instances per attribute** (default). When it does, the server returns an `NGSILD-Warning` header and the CLI echoes it as a `Warning:` line on **stderr** so truncation is never a silent drop. To retrieve more, set `--last-n` (**max 1000**) or narrow the window with `--time-at`/`--end-time-at` — with an explicit `--last-n` the server does not truncate, so no warning is emitted. The CLI surfaces whatever `NGSILD-Warning` the server sends, verbatim.
 
@@ -455,7 +466,7 @@ Temporal entities list/get support: `--time-rel`, `--time-at`, `--end-time-at`, 
 |---|---|
 | `temporal entityOperations query [json]` | Query temporal entities (POST) |
 
-Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`.
+Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`. `--order-by` is intentionally unsupported on this POST route.
 
 ### snapshots — Snapshot operations
 
