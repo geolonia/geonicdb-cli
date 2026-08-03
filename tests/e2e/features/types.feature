@@ -31,7 +31,7 @@ Feature: Entity types
   Scenario: List entity types in table without wrapper metadata
     Given I am logged in
     And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:1722","type":"Room"}'`
-    When I run `geonic types list`
+    When I run `geonic types list --format table`
     Then the exit code should be 0
     And the output should contain "Room"
     And the output should not contain "@context"
