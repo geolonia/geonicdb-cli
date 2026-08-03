@@ -201,7 +201,10 @@ export function registerEntitiesCommand(program: Command): void {
         // requests (400 requires at least one of type|attrs|q|georel), but a
         // stray `purge --yes` (or a typo that parses to no selector) must never
         // even leave the CLI as an unbounded delete. Mirror the server's
-        // sufficient-selector set exactly.
+        // sufficient-selector set exactly: only type/attrs/query/georel qualify.
+        // --id/--id-pattern/--scope-q/--local are refinements, NOT sufficient on
+        // their own (the server rejects them alone too); a single-entity delete
+        // is `entities delete <id>`. See README "entities purge".
         if (!opts.type && !opts.attrs && !opts.query && !opts.georel) {
           throw new Error(
             "Refusing to purge: specify at least one selector (--type, --attrs, --query, or --georel).",

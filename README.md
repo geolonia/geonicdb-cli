@@ -336,7 +336,7 @@ geonic me oauth-clients update <client-id> --policy-id my-readonly
 
 `entities list` supports filtering options: `--type`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`.
 
-`entities purge` supports selectors: `--type`, `--id`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--scope-q`, `--local`, and mutation flags `--keep`, `--drop`. `--attrs` on purge is a selector ("entities having any listed attributes"), not an output projection.
+`entities purge` requires **at least one primary selector** — `--type`, `--attrs`, `--query`, or `--georel` (the latter together with `--geometry`/`--coords`). These can be narrowed with the refinement filters `--id`, `--id-pattern`, `--scope-q`, `--local`. A refinement filter **on its own is not sufficient**: `--id`/`--id-pattern`/`--scope-q` alone are rejected by both the CLI and the server — to remove a single entity use `entities delete <id>`. Mutation flags `--keep`/`--drop` (mutually exclusive) remove/retain attributes on matched entities instead of deleting the entities. `--attrs` on purge is a selector ("entities having any listed attributes"), not an output projection.
 
 For safety, `entities purge` requires confirmation. In non-interactive contexts (CI/pipes), it refuses to run unless `--yes` is provided.
 

@@ -62,8 +62,8 @@ Feature: Temporal entity management
     And stdout should be valid JSON
 
   @issue-171
-  Scenario: Temporal entities list actually transmits orderBy (not silently dropped)
+  Scenario: Temporal entities list actually transmits orderBy incl. direction (not silently dropped)
     Given I am logged in
     When I run `geonic temporal entities list --type Room --order-by observedAt;desc --dry-run`
     Then the exit code should be 0
-    And the output should contain "orderBy=observedAt"
+    And the output should contain "orderBy=observedAt%3Bdesc"
