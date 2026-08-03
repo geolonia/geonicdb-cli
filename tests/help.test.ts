@@ -153,6 +153,7 @@ describe("help", () => {
       expect(output).toContain("create");
       expect(output).toContain("update");
       expect(output).toContain("delete");
+      expect(output).toContain("purge");
     });
 
     it("does not include OPTIONS section", () => {

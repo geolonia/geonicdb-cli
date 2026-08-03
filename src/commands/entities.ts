@@ -7,6 +7,7 @@ import {
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printCount, printSuccess } from "../output.js";
+import { isInteractive, promptConfirm } from "../prompt.js";
 import { registerAttrsSubcommand } from "./attrs.js";
 import { addExamples } from "./help.js";
 
@@ -149,6 +150,91 @@ export function registerEntitiesCommand(program: Command): void {
     {
       description: "Filter by scope (one level below)",
       command: "geonic entities list --scope-q '/Japan/+'",
+    },
+  ]);
+
+  // entities purge
+  const purge = entities
+    .command("purge")
+    .description(
+      "Purge entities or attributes by selector (destructive).\n\n" +
+        "Note: --attrs here selects target entities that have any of the listed attributes.\n" +
+        "This differs from `entities list --attrs`, which only selects returned fields.",
+    )
+    .option("--type <type>", "Filter target entities by type")
+    .option("--id <a,b>", "Comma-separated list of entity IDs to target")
+    .option("--id-pattern <pat>", "Filter by entity ID pattern (regex)")
+    .option("--query <q>", "NGSI query expression (q)")
+    .option("--attrs <a,b>", "Selector: target entities that have any listed attributes")
+    .option("--georel <rel>", "Geo-relationship selector")
+    .option("--geometry <geo>", "Geometry type for geo-selector (e.g. Point)")
+    .option("--coords <coords>", "Coordinates for geo-selector")
+    .option("--scope-q <expr>", "Filter by scope (scopeQ)")
+    .option("--local", "Restrict to local entities")
+    .option("--keep <a,b>", "Keep only these attributes on matched entities")
+    .option("--drop <a,b>", "Drop these attributes from matched entities")
+    .option("-y, --yes", "Skip confirmation prompt")
+    .action(
+      withErrorHandler(async (opts: Record<string, unknown>, cmd: Command) => {
+        const client = createClient(cmd);
+        const params: Record<string, string> = {};
+
+        if (opts.type) params.type = String(opts.type);
+        if (opts.id) params.id = String(opts.id);
+        if (opts.idPattern) params.idPattern = String(opts.idPattern);
+        if (opts.query) params.q = String(opts.query);
+        if (opts.attrs) params.attrs = String(opts.attrs);
+        if (opts.georel) params.georel = String(opts.georel);
+        if (opts.geometry) params.geometry = String(opts.geometry);
+        if (opts.coords) params.coordinates = String(opts.coords);
+        if (opts.scopeQ) params.scopeQ = String(opts.scopeQ);
+        if (opts.local) params.local = "true";
+        if (opts.keep) params.keep = String(opts.keep);
+        if (opts.drop) params.drop = String(opts.drop);
+
+        if (opts.keep && opts.drop) {
+          throw new Error("Cannot specify both --keep and --drop.");
+        }
+
+        // Defense-in-depth: refuse an under-specified purge on the client before
+        // any confirmation or server call. The server also rejects too-wide
+        // requests (400 requires at least one of type|attrs|q|georel), but a
+        // stray `purge --yes` (or a typo that parses to no selector) must never
+        // even leave the CLI as an unbounded delete. Mirror the server's
+        // sufficient-selector set exactly.
+        if (!opts.type && !opts.attrs && !opts.query && !opts.georel) {
+          throw new Error(
+            "Refusing to purge: specify at least one selector (--type, --attrs, --query, or --georel).",
+          );
+        }
+
+        if (!opts.yes) {
+          if (!isInteractive()) {
+            throw new Error("Refusing to purge without confirmation. Re-run with --yes.");
+          }
+          const confirmed = await promptConfirm(
+            "This operation can permanently delete entities or attributes. Continue?",
+          );
+          if (!confirmed) return;
+        }
+
+        await client.delete("/entities", params);
+        printSuccess("Purge completed.");
+      }),
+    );
+
+  addExamples(purge, [
+    {
+      description: "Purge all matching entities by type (requires explicit confirmation bypass)",
+      command: "geonic entities purge --type Sensor --yes",
+    },
+    {
+      description: "Drop selected attributes from matching entities",
+      command: "geonic entities purge --type Sensor --drop temperature,humidity --yes",
+    },
+    {
+      description: "Keep only selected attributes on matching entities",
+      command: "geonic entities purge --type Sensor --keep location,status --yes",
     },
   ]);
 

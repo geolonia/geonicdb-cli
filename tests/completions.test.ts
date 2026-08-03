@@ -66,6 +66,7 @@ describe("completions", () => {
       expect(result).toContain("create");
       expect(result).toContain("update");
       expect(result).toContain("delete");
+      expect(result).toContain("purge");
       expect(result).toContain("attrs");
     });
 

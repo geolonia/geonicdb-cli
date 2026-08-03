@@ -96,6 +96,7 @@ describe("temporal commands", () => {
         "--last-n", "5",
         "--limit", "10",
         "--offset", "20",
+        "--order-by", "observedAt;desc",
         "--count",
       ]);
 
@@ -112,6 +113,7 @@ describe("temporal commands", () => {
         lastN: "5",
         limit: "10",
         offset: "20",
+        orderBy: "observedAt;desc",
         count: "true",
       });
       expect(outputResponse).toHaveBeenCalledWith(expect.anything(), "json", true);
@@ -241,8 +243,11 @@ describe("temporal commands", () => {
     it("temporal list works as alias for temporal entities list", async () => {
       client.get.mockResolvedValue(mockResponse([]));
       const program = makeProgram();
-      await runCommand(program, ["temporal", "list", "--type", "Sensor"]);
-      expect(client.get).toHaveBeenCalledWith("/temporal/entities", { type: "Sensor" });
+      await runCommand(program, ["temporal", "list", "--type", "Sensor", "--order-by", "observedAt;desc"]);
+      expect(client.get).toHaveBeenCalledWith("/temporal/entities", {
+        type: "Sensor",
+        orderBy: "observedAt;desc",
+      });
     });
 
     it("temporal get works as alias for temporal entities get", async () => {

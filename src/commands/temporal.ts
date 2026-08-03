@@ -29,6 +29,10 @@ function addTemporalListOptions(cmd: Command): Command {
     )
     .option("--limit <n>", "Maximum number of entities to return", parseInt)
     .option("--offset <n>", "Skip first N entities", parseInt)
+    .option(
+      "--order-by <spec>",
+      "Order by NGSI-LD v1.9.1 grammar (e.g. observedAt;desc). Server rejects dist-*/geo:distance, nested paths, aggrMethods combos.",
+    )
     .option("--count", "Include total count in response");
 }
 
@@ -52,6 +56,7 @@ function createListAction() {
     if (cmdOpts.lastN !== undefined) params["lastN"] = String(cmdOpts.lastN);
     if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
     if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
+    if (cmdOpts.orderBy) params["orderBy"] = cmdOpts.orderBy;
     if (cmdOpts.count) params["count"] = "true";
 
     const response = await client.get("/temporal/entities", params);
@@ -178,6 +183,10 @@ export function registerTemporalCommand(program: Command): void {
       description: "Filter by time (after a point)",
       command:
         "geonic temporal entities list --time-rel after --time-at 2025-06-01T00:00:00Z",
+    },
+    {
+      description: "Order temporal entities (NGSI-LD v1.9.1 grammar)",
+      command: "geonic temporal entities list --type Sensor --order-by 'observedAt;desc'",
     },
   ]);
 

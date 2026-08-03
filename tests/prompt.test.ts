@@ -11,7 +11,7 @@ vi.mock("node:readline/promises", () => ({
   })),
 }));
 
-import { isInteractive, promptEmail, promptPassword, promptTenantSelection } from "../src/prompt.js";
+import { isInteractive, promptConfirm, promptEmail, promptPassword, promptTenantSelection } from "../src/prompt.js";
 
 describe("prompt", () => {
   const originalStdinIsTTY = process.stdin.isTTY;
@@ -66,6 +66,31 @@ describe("prompt", () => {
       mockQuestion.mockRejectedValue(new Error("readline error"));
 
       await expect(promptEmail()).rejects.toThrow("readline error");
+      expect(mockClose).toHaveBeenCalled();
+    });
+  });
+
+  describe("promptConfirm", () => {
+    it("returns true for y/yes answers", async () => {
+      mockQuestion.mockResolvedValueOnce("y");
+      await expect(promptConfirm("Proceed?")).resolves.toBe(true);
+
+      mockQuestion.mockResolvedValueOnce("YES");
+      await expect(promptConfirm("Proceed?")).resolves.toBe(true);
+      expect(mockQuestion).toHaveBeenCalledWith("Proceed? [y/N]: ");
+    });
+
+    it("returns false for empty or non-yes answers", async () => {
+      mockQuestion.mockResolvedValueOnce("");
+      await expect(promptConfirm("Proceed?")).resolves.toBe(false);
+
+      mockQuestion.mockResolvedValueOnce("no");
+      await expect(promptConfirm("Proceed?")).resolves.toBe(false);
+    });
+
+    it("always closes readline", async () => {
+      mockQuestion.mockRejectedValueOnce(new Error("readline failed"));
+      await expect(promptConfirm("Proceed?")).rejects.toThrow("readline failed");
       expect(mockClose).toHaveBeenCalled();
     });
   });

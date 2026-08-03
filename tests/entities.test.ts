@@ -31,9 +31,15 @@ vi.mock("../src/commands/attrs.js", () => ({
   registerAttrsSubcommand: vi.fn(),
 }));
 
+vi.mock("../src/prompt.js", () => ({
+  isInteractive: vi.fn(),
+  promptConfirm: vi.fn(),
+}));
+
 import { createClient, getFormat, outputResponse } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
 import { printCount, printSuccess } from "../src/output.js";
+import { isInteractive, promptConfirm } from "../src/prompt.js";
 import { registerEntitiesCommand } from "../src/commands/entities.js";
 
 describe("entities command", () => {
@@ -45,6 +51,8 @@ describe("entities command", () => {
     mockClient = createMockClient();
     vi.mocked(createClient).mockReturnValue(mockClient as never);
     vi.mocked(getFormat).mockReturnValue("json");
+    vi.mocked(isInteractive).mockReturnValue(false);
+    vi.mocked(promptConfirm).mockResolvedValue(false);
     program = createTestProgram(registerEntitiesCommand);
   });
 
@@ -298,6 +306,94 @@ describe("entities command", () => {
         `/entities/${encodeURIComponent("urn:ngsi-ld:Sensor:001")}`,
       );
       expect(printSuccess).toHaveBeenCalledWith("Entity deleted.");
+    });
+  });
+
+  describe("purge", () => {
+    it("deletes with assembled selector and mutation params", async () => {
+      mockClient.delete.mockResolvedValue(mockResponse(undefined, 204));
+
+      await runCommand(program, [
+        "entities", "purge",
+        "--type", "Room",
+        "--id", "urn:1,urn:2",
+        "--id-pattern", "urn:.*",
+        "--query", "temperature>30",
+        "--attrs", "temperature,humidity",
+        "--georel", "near;maxDistance==1000",
+        "--geometry", "Point",
+        "--coords", "[139.7,35.6]",
+        "--scope-q", "/Japan/#",
+        "--local",
+        "--drop", "temperature",
+        "--yes",
+      ]);
+
+      expect(mockClient.delete).toHaveBeenCalledWith("/entities", {
+        type: "Room",
+        id: "urn:1,urn:2",
+        idPattern: "urn:.*",
+        q: "temperature>30",
+        attrs: "temperature,humidity",
+        georel: "near;maxDistance==1000",
+        geometry: "Point",
+        coordinates: "[139.7,35.6]",
+        scopeQ: "/Japan/#",
+        local: "true",
+        drop: "temperature",
+      });
+      expect(printSuccess).toHaveBeenCalledWith("Purge completed.");
+      expect(promptConfirm).not.toHaveBeenCalled();
+    });
+
+    it("refuses without --yes in non-interactive mode", async () => {
+      vi.mocked(isInteractive).mockReturnValue(false);
+
+      await expect(
+        runCommand(program, ["entities", "purge", "--type", "Room"]),
+      ).rejects.toThrow("Refusing to purge without confirmation. Re-run with --yes.");
+
+      expect(mockClient.delete).not.toHaveBeenCalled();
+      expect(promptConfirm).not.toHaveBeenCalled();
+    });
+
+    it("asks for confirmation in interactive mode and aborts when declined", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptConfirm).mockResolvedValue(false);
+
+      await runCommand(program, ["entities", "purge", "--type", "Room"]);
+
+      expect(promptConfirm).toHaveBeenCalledWith(
+        "This operation can permanently delete entities or attributes. Continue?",
+      );
+      expect(mockClient.delete).not.toHaveBeenCalled();
+    });
+
+    it("proceeds after confirmation in interactive mode", async () => {
+      mockClient.delete.mockResolvedValue(mockResponse(undefined, 204));
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptConfirm).mockResolvedValue(true);
+
+      await runCommand(program, ["entities", "purge", "--type", "Room"]);
+
+      expect(mockClient.delete).toHaveBeenCalledWith("/entities", { type: "Room" });
+      expect(printSuccess).toHaveBeenCalledWith("Purge completed.");
+    });
+
+    it("rejects mutually exclusive keep and drop options", async () => {
+      await expect(
+        runCommand(program, ["entities", "purge", "--type", "Room", "--keep", "a", "--drop", "b", "--yes"]),
+      ).rejects.toThrow("Cannot specify both --keep and --drop.");
+
+      expect(mockClient.delete).not.toHaveBeenCalled();
+    });
+
+    it("refuses an under-specified purge (no type/attrs/query/georel) before any server call", async () => {
+      await expect(
+        runCommand(program, ["entities", "purge", "--id-pattern", ".*", "--yes"]),
+      ).rejects.toThrow("specify at least one selector");
+
+      expect(mockClient.delete).not.toHaveBeenCalled();
     });
   });
 });
