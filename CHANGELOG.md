@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-08-04
+- **Feat**: `types list` が本体 geonicdb#1706 (#1694) の破壊的変更に追従 (closes #172)。`GET /types` の `details` 未指定レスポンスが ETSI OpenAPI v1.8.1 準拠の `EntityTypeList` オブジェクト (`{id,type,typeList,@context}`) へ変わったため、`types list` は `typeList` (型名の配列) を unwrap して従来どおり型名一覧を表示する。応答が既に配列 (旧 backend) ならそのまま通す (shape-tolerant)。`--details` を追加し、指定時は `EntityType` オブジェクト配列をそのまま整形する。あわせて `output.formatTable` が scalar のみの配列を 1 行 1 要素で描画するよう修正 (従来はインデックス列で誤描画)。geonicdb 依存を #1706 を含む origin/main に更新。(#173)
+
 ## [0.22.1] - 2026-07-30
 
 ### 2026-07-29

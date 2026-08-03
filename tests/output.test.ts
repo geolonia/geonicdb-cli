@@ -36,6 +36,11 @@ describe("output", () => {
       expect(result).toContain("Room:002");
     });
 
+    it("renders scalar arrays as one item per line", () => {
+      const result = stripAnsi(formatOutput(["Room", "Car"], "table"));
+      expect(result).toBe("Room\nCar");
+    });
+
     it("shows (empty) for empty arrays", () => {
       const result = formatOutput([], "table");
       expect(result).toBe("(empty)");

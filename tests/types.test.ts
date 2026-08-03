@@ -66,6 +66,81 @@ describe("types command", () => {
         offset: "5",
       });
     });
+
+    it("unwraps EntityTypeList to typeList", async () => {
+      mockClient.get.mockResolvedValue(
+        mockResponse({
+          id: "urn:ngsi-ld:EntityTypeList:test",
+          type: "EntityTypeList",
+          typeList: ["Room", "Car"],
+          "@context": "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context-v1.9.jsonld",
+        }),
+      );
+
+      await runCommand(program, ["types", "list"]);
+
+      expect(outputResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ data: ["Room", "Car"] }),
+        "json",
+      );
+    });
+
+    it("passes through array responses unchanged", async () => {
+      const data = [{ typeName: "Room" }];
+      mockClient.get.mockResolvedValue(mockResponse(data));
+
+      await runCommand(program, ["types", "list"]);
+
+      expect(outputResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ data }),
+        "json",
+      );
+    });
+
+    it("passes through a non-EntityTypeList object unchanged", async () => {
+      // Only { type: "EntityTypeList", typeList: [...] } is unwrapped; any other
+      // object shape must reach outputResponse untouched (shape-tolerant).
+      const data = { id: "x", type: "SomethingElse", typeList: ["Room"] };
+      mockClient.get.mockResolvedValue(mockResponse(data));
+
+      await runCommand(program, ["types", "list"]);
+
+      expect(outputResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ data }),
+        "json",
+      );
+    });
+
+    it("passes through an EntityTypeList object whose typeList is not an array", async () => {
+      // Guards the Array.isArray(typeList) check: a malformed wrapper must not be
+      // unwrapped and must reach outputResponse unchanged.
+      const data = { id: "x", type: "EntityTypeList", typeList: "not-an-array" };
+      mockClient.get.mockResolvedValue(mockResponse(data));
+
+      await runCommand(program, ["types", "list"]);
+
+      expect(outputResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ data }),
+        "json",
+      );
+    });
+
+    it("sends details=true and does not unwrap when --details is used", async () => {
+      const wrapped = {
+        id: "urn:ngsi-ld:EntityTypeList:test",
+        type: "EntityTypeList",
+        typeList: ["Room"],
+      };
+      mockClient.get.mockResolvedValue(mockResponse(wrapped));
+
+      await runCommand(program, ["types", "list", "--details"]);
+
+      expect(mockClient.get).toHaveBeenCalledWith("/types", { details: "true" });
+      expect(outputResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ data: wrapped }),
+        "json",
+      );
+    });
   });
 
   describe("get", () => {
