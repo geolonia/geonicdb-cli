@@ -7,7 +7,8 @@ import {
   getConfigPath,
 } from "../config.js";
 import { printOutput, printSuccess, printInfo } from "../output.js";
-import { addExamples } from "./help.js";
+import { withErrorHandler } from "../helpers.js";
+import { addExamples, addNotes } from "./help.js";
 
 const SENSITIVE_CONFIG_KEYS = new Set(["token", "refreshToken", "apiKey"]);
 
@@ -21,18 +22,22 @@ export function registerConfigCommand(program: Command): void {
     .description("Save a config value")
     .argument(
       "<key>",
-      "Configuration key (url, service, token, refreshToken, format, apiKey)",
+      "Configuration key (url, service, token, refreshToken, format, apiKey, context)",
     )
     .argument("<value>", "Configuration value")
-    .action((...args: unknown[]) => {
-      const cmd = args[args.length - 1] as Command;
-      const key = args[0] as string;
-      const value = args[1] as string;
-      const profile = (cmd.optsWithGlobals() as { profile?: string }).profile;
-      setConfigValue(key, value, profile);
-      const display = SENSITIVE_CONFIG_KEYS.has(key) ? "***" : value;
-      printSuccess(`Set ${key} = ${display}`);
-    });
+    .action(
+      // Values are validated on save (url, context), so a rejection must surface
+      // as a clean error + exit 1 rather than an unhandled rejection stack trace.
+      withErrorHandler(async (...args: unknown[]) => {
+        const cmd = args[args.length - 1] as Command;
+        const key = args[0] as string;
+        const value = args[1] as string;
+        const profile = (cmd.optsWithGlobals() as { profile?: string }).profile;
+        setConfigValue(key, value, profile);
+        const display = SENSITIVE_CONFIG_KEYS.has(key) ? "***" : value;
+        printSuccess(`Set ${key} = ${display}`);
+      }),
+    );
 
   addExamples(set, [
     {
@@ -56,10 +61,26 @@ export function registerConfigCommand(program: Command): void {
       command: "geonic config set format table",
     },
     {
+      description: "Set a default JSON-LD @context for NGSI-LD requests",
+      command: "geonic config set context https://example.org/building.jsonld",
+    },
+    {
+      description: "Set several default @context URIs (comma-separated)",
+      command:
+        "geonic config set context https://example.org/a.jsonld,https://example.org/b.jsonld",
+    },
+    {
       description: "Set config for a specific profile",
       command:
         "geonic config set url https://staging.example.com --profile staging",
     },
+  ]);
+
+  addNotes(set, [
+    "context: default JSON-LD @context sent with NGSI-LD requests (stored as a list).",
+    "  Without it, responses are compacted with the NGSI-LD core context only, so",
+    "  custom vocabulary comes back as fully qualified URIs (ETSI GS CIM 009 5.5.7).",
+    "  `--context` on a command replaces this default for that invocation.",
   ]);
 
   const get = config

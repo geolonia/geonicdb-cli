@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { splitContextValues } from "./context.js";
 import type { GdbConfig, GdbConfigFile } from "./types.js";
 
 export function getConfigDir(): string {
@@ -121,6 +122,13 @@ export function setConfigValue(key: string, value: string, profileName?: string)
   const config = loadConfig(profileName);
   if (key === "url") {
     value = validateUrl(value);
+  }
+  // #177: `context` is a list, so store it as one. Validating here means a bad
+  // URI is rejected when it is saved instead of failing on every later request.
+  if (key === "context") {
+    (config as Record<string, unknown>)[key] = splitContextValues(value);
+    saveConfig(config, profileName);
+    return;
   }
   (config as Record<string, unknown>)[key] = value;
   saveConfig(config, profileName);

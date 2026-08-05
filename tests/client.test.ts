@@ -168,6 +168,185 @@ describe("GdbClient", () => {
     expect(sentBody).toEqual(body);
   });
 
+  // #177: --context must reach the server. Reads have only the Link header;
+  // ld+json writes are read from the body (the server ignores Link there).
+  describe("@context propagation (#177)", () => {
+    const CTX = "https://example.org/building.jsonld";
+    const CTX2 = "https://example.org/extra.jsonld";
+    const LINK_ONE = `<${CTX}>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"`;
+
+    function mockOk(status = 200, body: unknown = {}): void {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify(body), {
+          status,
+          headers: { "Content-Type": "application/ld+json" },
+        }),
+      );
+    }
+
+    function sentHeaders(): Record<string, string> {
+      return (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].headers as Record<
+        string,
+        string
+      >;
+    }
+
+    function sentBody(): unknown {
+      return JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string);
+    }
+
+    it("sends a Link header on reads", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+      mockOk(200, []);
+
+      await client.get("/entities", { type: "Building" });
+
+      expect(sentHeaders().Link).toBe(LINK_ONE);
+    });
+
+    it("sends a Link header on every NGSI-LD read path, not just entities", async () => {
+      for (const path of ["/types", "/temporal/entities", "/subscriptions", "/snapshots"]) {
+        vi.restoreAllMocks();
+        const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+        mockOk(200, []);
+        await client.get(path);
+        expect(sentHeaders().Link, `missing Link on ${path}`).toBe(LINK_ONE);
+      }
+    });
+
+    it("sends every context as its own link-value", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX, CTX2] });
+      mockOk(200, []);
+
+      await client.get("/entities");
+
+      expect(sentHeaders().Link).toBe(
+        `${LINK_ONE}, <${CTX2}>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"`,
+      );
+    });
+
+    it("omits the Link header when no context is configured", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000" });
+      mockOk(200, []);
+
+      await client.get("/entities");
+
+      expect("Link" in sentHeaders()).toBe(false);
+    });
+
+    it("treats an empty context list as unset", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [] });
+      mockOk(200, []);
+
+      await client.get("/entities");
+
+      expect("Link" in sentHeaders()).toBe(false);
+    });
+
+    it("does not send a Link header on raw admin/auth paths", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+      mockOk(200, []);
+
+      await client.rawRequest("GET", "/admin/tenants");
+
+      expect("Link" in sentHeaders()).toBe(false);
+    });
+
+    it("injects the context into an entity-write body instead of the core context", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+      mockOk(201);
+
+      await client.post("/entities", { id: "urn:ngsi-ld:Building:1", type: "Building" });
+
+      expect((sentBody() as Record<string, unknown>)["@context"]).toBe(CTX);
+    });
+
+    it("injects an array when several contexts are given", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX, CTX2] });
+      mockOk(201);
+
+      await client.post("/entities", { id: "urn:ngsi-ld:Building:1", type: "Building" });
+
+      expect((sentBody() as Record<string, unknown>)["@context"]).toEqual([CTX, CTX2]);
+    });
+
+    it("never overrides a caller-supplied @context", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+      mockOk(201);
+
+      await client.post("/entities", {
+        id: "urn:ngsi-ld:Building:1",
+        type: "Building",
+        "@context": "https://explicit.example/ctx.jsonld",
+      });
+
+      expect((sentBody() as Record<string, unknown>)["@context"]).toBe(
+        "https://explicit.example/ctx.jsonld",
+      );
+    });
+
+    it("injects the context into each entity of a batch write body", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+      mockOk(201);
+
+      await client.post("/entityOperations/upsert", [
+        { id: "urn:ngsi-ld:Building:1", type: "Building" },
+        { id: "urn:ngsi-ld:Building:2", type: "Building" },
+      ]);
+
+      const body = sentBody() as Record<string, unknown>[];
+      expect(body.map((e) => e["@context"])).toEqual([CTX, CTX]);
+    });
+
+    // entityOperations/delete carries an array of ID strings — injecting into it
+    // would corrupt the payload.
+    it("leaves a batch delete body of ID strings untouched", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+      mockOk(200);
+
+      const ids = ["urn:ngsi-ld:Building:1", "urn:ngsi-ld:Building:2"];
+      await client.post("/entityOperations/delete", ids);
+
+      expect(sentBody()).toEqual(ids);
+    });
+
+    // The Query body is not an entity; the server reads the Link header for it.
+    it("leaves a batch query body untouched but still sends the Link header", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+      mockOk(200, []);
+
+      const query = { type: "Building" };
+      await client.post("/entityOperations/query", query);
+
+      expect(sentBody()).toEqual(query);
+      expect(sentHeaders().Link).toBe(LINK_ONE);
+    });
+
+    it("does not inject a context into non-entity resources", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+      mockOk(201);
+
+      const sub = { type: "Subscription", description: "sub" };
+      await client.post("/subscriptions", sub);
+
+      expect(sentBody()).toEqual(sub);
+    });
+
+    it("shows the Link header in --dry-run output", async () => {
+      const logs: string[] = [];
+      vi.spyOn(console, "log").mockImplementation((msg: string) => void logs.push(msg));
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        context: [CTX],
+        dryRun: true,
+      });
+
+      await expect(client.get("/entities")).rejects.toBeInstanceOf(DryRunSignal);
+
+      expect(logs.join("\n")).toContain(`-H 'Link: ${LINK_ONE}'`);
+    });
+  });
+
   it("appends query params to URL", async () => {
     const client = new GdbClient({ baseUrl: "http://localhost:3000" });
 

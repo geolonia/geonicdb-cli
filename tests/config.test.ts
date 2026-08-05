@@ -86,6 +86,31 @@ describe("config", () => {
     expect(getConfigValue("url")).toBeUndefined();
   });
 
+  // #177: `context` is a list, and validating on save means a bad URI fails once
+  // here instead of on every later request.
+  it("stores context as a list", () => {
+    setConfigValue("context", "https://example.org/ctx.jsonld");
+    expect(getConfigValue("context")).toEqual(["https://example.org/ctx.jsonld"]);
+  });
+
+  it("splits a comma-separated context into a list", () => {
+    setConfigValue("context", "https://a.example/1.jsonld, https://b.example/2.jsonld");
+    expect(getConfigValue("context")).toEqual([
+      "https://a.example/1.jsonld",
+      "https://b.example/2.jsonld",
+    ]);
+  });
+
+  it("rejects an invalid context URI without writing it", () => {
+    expect(() => setConfigValue("context", "not-a-url")).toThrow(/absolute URL/);
+    expect(getConfigValue("context")).toBeUndefined();
+  });
+
+  it("rejects a context URI that would break the Link header", () => {
+    expect(() => setConfigValue("context", "https://example.org/a\r\nX-Injected: 1")).toThrow();
+    expect(getConfigValue("context")).toBeUndefined();
+  });
+
   it("writes valid v2 JSON to disk", () => {
     setConfigValue("service", "myTenant");
     const configPath = join(tempDir, "geonic", "config.json");
