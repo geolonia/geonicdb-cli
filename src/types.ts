@@ -17,6 +17,8 @@ export interface GdbConfig {
   apiKey?: string;
   clientId?: string;
   clientSecret?: string;
+  /** Default JSON-LD `@context` URIs sent with every NGSI-LD request (#177). */
+  context?: string[];
 }
 
 export interface GdbConfigFile {
@@ -35,6 +37,8 @@ export interface GlobalOptions {
   profile?: string;
   apiKey?: string;
   dryRun?: boolean;
+  /** JSON-LD `@context` URIs from `--context` (repeatable / comma-separated, #177). */
+  context?: string[];
 }
 
 export interface ClientOptions {
@@ -49,6 +53,8 @@ export interface ClientOptions {
   onBeforeRefresh?: () => { token?: string; refreshToken?: string };
   verbose?: boolean;
   dryRun?: boolean;
+  /** JSON-LD `@context` URIs to attach to NGSI-LD requests (#177). */
+  context?: string[];
 }
 
 export interface ClientResponse<T = unknown> {

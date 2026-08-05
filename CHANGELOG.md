@@ -8,6 +8,14 @@
 ## [Unreleased]
 
 ### 2026-08-06
+- **Fix**: 読み取り時に JSON-LD `@context` を渡せるようにした (closes #177, 本体 geonicdb#1733 / #1785 対応)。本体が ETSI GS CIM 009 clause 5.5.5 / 5.5.7 に準拠し「応答の compaction はそのリクエストが渡した `@context` だけで行う」ようになったため、`@context` を渡す手段が無い CLI では独自語彙の型名・属性名が完全修飾 URI (FQN) でしか読めなくなっていた。グローバルオプション `--context <uri>` を追加 (繰り返し指定・カンマ区切りの両方に対応)。(#178)
+  - **読み取り**: `Link: <uri>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"` を NGSI-LD の全リクエスト (`entities` / `attrs` / `types` / `temporal` / `batch` / `subscriptions` / `registrations` / `snapshots`) に付与する。GET には Link 以外に `@context` を運ぶ経路が無い。admin / auth 等の非 NGSI-LD パスには付けない
+  - **書き込み**: `application/ld+json` では本体が **body の `@context` を読み Link ヘッダーを無視する** (`extractContextRef`) ため、エンティティ書き込みボディにも注入する。対象は `/entities` (オブジェクトボディ) と `entityOperations` の `create`/`upsert`/`update`/`merge` (配列の各要素)。`entityOperations/delete` (ID 文字列の配列) と `query` (Query オブジェクト) には注入しない。利用者が明示した `@context` は非上書き。`--context` 未指定時の挙動は従来どおり (#168 の core context 注入)
+  - **既定値**: `geonic config set context <uri[,uri...]>` でプロファイルごとの既定 `@context` を保存できる。`--context` は既定値を*置換*する (マージしない)
+  - **検証**: `--context` は絶対 http/https URL のみ受理し、`<` `>` `"` / 空白 / 制御文字を含む値を拒否する (Link ヘッダーへのヘッダーインジェクション防止)。`config set context` も保存時に同じ検証を通し、手編集された `config.json` の値も使用時に同じ検証を通す (検証を迂回して `Link` ヘッダーへ到達させない)
+  - **既知の本体側ギャップ**: 本体は Link ヘッダーの link-value を 1 個目しか読まない (geonicdb#1818 として起票)。複数指定時は stderr で警告し、黙って落とさない
+  - `config set` の値検証エラー (`url` / `context`) が未処理例外のスタックトレースではなく通常のエラー + exit 1 になるよう修正
+  - E2E `tests/e2e/features/context.feature` を追加 (13 シナリオ)。Link ヘッダー除去の変異で 8 シナリオ、body 注入除去の変異で 2 シナリオが赤くなることを確認済み。geonicdb 依存を #1733 / #1775 を含む origin/main へ更新
 - **Feat**: `admin deployments` コマンド群を追加 (closes #176, 本体 geonicdb#1775 / Epic #1485 / 親 #1492)。ホスト名 → MongoDB クラスタのルーティング行 (`/admin/deployments`, super_admin 限定) を CLI から管理できるようにし、大口テナントの専用クラスタ隔離を DynamoDB コンソールの手作業から正規の監査済み API へ移す。`list` / `get` / `create` / `update` / `delete` の 5 サブコマンド。
   - **平文接続文字列を扱わない**: レスポンスは `mongodbUriConfigured` (boolean) と `mongodbUriSecretArn` のみなので出力側で `mongodbUri` を期待しない。`--mongodb-uri` は提供するが、シェル履歴・プロセス一覧に残る旨を stderr で警告する。既定の経路は `--secret`
   - **`--secret` はシークレット「名」推奨**: 完全 ARN はリージョンを埋め込むためフェイルオーバー先の Lambda が解決できない (本体 `docs/PRODUCTION_DEPLOY.md` §5)。ヘルプ・README に明記

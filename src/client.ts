@@ -1,6 +1,7 @@
 import type { ClientOptions, ClientResponse, NgsiError } from "./types.js";
 import { clientCredentialsGrant } from "./oauth.js";
 import { getTokenStatus } from "./token.js";
+import { buildContextLinkHeader, toBodyContext } from "./context.js";
 
 /**
  * NGSI-LD core @context. Injected into `application/ld+json` entity-write bodies
@@ -28,6 +29,7 @@ export class GdbClient {
   private onBeforeRefresh?: () => { token?: string; refreshToken?: string };
   private verbose: boolean;
   private dryRun: boolean;
+  private context?: string[];
   private refreshPromise?: Promise<boolean>;
 
   constructor(options: ClientOptions) {
@@ -42,14 +44,24 @@ export class GdbClient {
     this.onBeforeRefresh = options.onBeforeRefresh;
     this.verbose = options.verbose ?? false;
     this.dryRun = options.dryRun ?? false;
+    this.context = options.context && options.context.length > 0 ? options.context : undefined;
   }
 
-  private buildHeaders(extra?: Record<string, string>): Record<string, string> {
+  private buildHeaders(
+    extra?: Record<string, string>,
+    options?: { contextLink?: boolean },
+  ): Record<string, string> {
     const headers: Record<string, string> = {};
 
     headers["Content-Type"] = "application/ld+json";
     headers["Accept"] = "application/ld+json";
     if (this.service) headers["NGSILD-Tenant"] = this.service;
+    // #177: reads carry the JSON-LD @context in a Link header — it is the only
+    // channel a GET has, and the server compacts the response using exactly the
+    // context the request supplied (ETSI GS CIM 009 clause 5.5.7).
+    if (options?.contextLink && this.context) {
+      headers["Link"] = buildContextLinkHeader(this.context);
+    }
 
     if (this.token) {
       headers["Authorization"] = `Bearer ${this.token}`;
@@ -303,6 +315,61 @@ export class GdbClient {
     return { ...(body as Record<string, unknown>), "@context": NGSI_LD_CORE_CONTEXT };
   }
 
+  /**
+   * Batch endpoints whose body is an array of entity objects. Their `@context`
+   * lives on each element, not on the request: the server reads it per entity
+   * (`attachContextRef` in geonicdb's batch controller). `entityOperations/delete`
+   * is excluded because its array holds ID strings, and `entityOperations/query`
+   * because its body is a Query object — the Link header carries the context there.
+   */
+  private static readonly ENTITY_ARRAY_WRITE_PATHS = [
+    "/entityOperations/create",
+    "/entityOperations/upsert",
+    "/entityOperations/update",
+    "/entityOperations/merge",
+  ];
+
+  /**
+   * #177: apply a user-supplied `--context` to entity-write bodies.
+   *
+   * Under `application/ld+json` — which this CLI always sends — the server takes
+   * the `@context` from the **body** and ignores the Link header
+   * (`extractContextRef`, ETSI GS CIM 009 clause 6.3.5). Without this, `--context`
+   * would be accepted on a write and then silently do nothing, which is the same
+   * class of quiet failure this flag exists to remove.
+   *
+   * Scope mirrors where the server actually reads a body `@context` for entity
+   * writes: `/entities...` (object body) and the batch endpoints listed above
+   * (per-element). A caller-supplied `@context` always wins — an explicit
+   * `@context` in the payload is a deliberate choice.
+   */
+  private applyContextToBody(resourcePath: string, body: unknown): unknown {
+    if (!this.context) return body;
+    const relative = resourcePath.slice(this.getBasePath().length);
+    const injected = toBodyContext(this.context);
+
+    if (relative.startsWith("/entities")) {
+      return GdbClient.withContext(body, injected);
+    }
+    if (GdbClient.ENTITY_ARRAY_WRITE_PATHS.includes(relative) && Array.isArray(body)) {
+      return body.map((entry) => GdbClient.withContext(entry, injected));
+    }
+    return body;
+  }
+
+  /** Add `@context` to a plain-object payload, leaving anything else untouched. */
+  private static withContext(body: unknown, context: string | string[]): unknown {
+    if (
+      body === null ||
+      typeof body !== "object" ||
+      Array.isArray(body) ||
+      "@context" in (body as Record<string, unknown>)
+    ) {
+      return body;
+    }
+    return { ...(body as Record<string, unknown>), "@context": context };
+  }
+
   private async executeRequest<T>(
     method: string,
     path: string,
@@ -313,10 +380,15 @@ export class GdbClient {
       signal?: AbortSignal;
     },
   ): Promise<ClientResponse<T>> {
-    const url = this.buildUrl(`${this.getBasePath()}${path}`, options?.params);
-    const headers = this.buildHeaders(options?.headers);
+    const resourcePath = `${this.getBasePath()}${path}`;
+    const url = this.buildUrl(resourcePath, options?.params);
+    // #177: NGSI-LD requests carry the @context; raw admin/auth paths never do.
+    const headers = this.buildHeaders(options?.headers, { contextLink: true });
     const injectedBody = options?.body
-      ? this.maybeInjectCoreContext(`${this.getBasePath()}${path}`, options.body)
+      ? this.maybeInjectCoreContext(
+          resourcePath,
+          this.applyContextToBody(resourcePath, options.body),
+        )
       : undefined;
     const body = injectedBody ? JSON.stringify(injectedBody) : undefined;
 

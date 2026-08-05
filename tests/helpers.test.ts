@@ -112,6 +112,34 @@ describe("helpers", () => {
       const opts = resolveOptions(fakeCmd());
       expect(opts.dryRun).toBeUndefined();
     });
+
+    // #177
+    it("uses the profile's default @context when --context is absent", () => {
+      saveConfig({ url: "http://localhost:3000", context: ["https://a.example/1.jsonld"] });
+      expect(resolveOptions(fakeCmd()).context).toEqual(["https://a.example/1.jsonld"]);
+    });
+
+    it("--context replaces the profile default rather than merging with it", () => {
+      saveConfig({ url: "http://localhost:3000", context: ["https://saved.example/1.jsonld"] });
+      const opts = resolveOptions(fakeCmd({ context: ["https://flag.example/2.jsonld"] }));
+      expect(opts.context).toEqual(["https://flag.example/2.jsonld"]);
+    });
+
+    it("tolerates a comma-separated context in a hand-edited config", () => {
+      saveConfig({
+        url: "http://localhost:3000",
+        context: "https://a.example/1.jsonld,https://b.example/2.jsonld" as unknown as string[],
+      });
+      expect(resolveOptions(fakeCmd()).context).toEqual([
+        "https://a.example/1.jsonld",
+        "https://b.example/2.jsonld",
+      ]);
+    });
+
+    it("leaves context undefined when neither flag nor config sets it", () => {
+      saveConfig({ url: "http://localhost:3000" });
+      expect(resolveOptions(fakeCmd()).context).toBeUndefined();
+    });
   });
 
   describe("createClient", () => {
@@ -160,6 +188,22 @@ describe("helpers", () => {
       // Verify dryRun is set by triggering a request — it should throw DryRunSignal
       await expect(client.get("/entities")).rejects.toThrow(DryRunSignal);
       logSpy.mockRestore();
+    });
+
+    // #177: geonicdb only honours the first link-value (geolonia/geonicdb#1818),
+    // so extra contexts must be announced rather than silently dropped.
+    it("warns when more than one @context is supplied", () => {
+      saveConfig({ url: "http://localhost:3000" });
+      createClient(
+        fakeCmd({ context: ["https://a.example/1.jsonld", "https://b.example/2.jsonld"] }),
+      );
+      expect(printWarning).toHaveBeenCalledWith(expect.stringContaining("geonicdb#1818"));
+    });
+
+    it("does not warn for a single @context", () => {
+      saveConfig({ url: "http://localhost:3000" });
+      createClient(fakeCmd({ context: ["https://a.example/1.jsonld"] }));
+      expect(printWarning).not.toHaveBeenCalled();
     });
 
     it("sets onTokenRefresh callback when token comes from config", () => {

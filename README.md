@@ -74,6 +74,7 @@ geonic entities list --help
 | `--token <token>` | Authentication token |
 | `-p, --profile <name>` | Use a named profile |
 | `--api-key <key>` | API key for authentication |
+| `--context <uri>` | JSON-LD `@context` URI for NGSI-LD requests (repeatable, or comma-separated) |
 | `-f, --format <fmt>` | Output format: `json`, `table`, `geojson` |
 | `--no-color` | Disable color output |
 | `-v, --verbose` | Verbose output |
@@ -777,6 +778,46 @@ Specify the output format with `--format` or `geonic config set format <fmt>`.
 
 Use `--key-values` on `entities list` and `entities get` to request simplified key-value format from the API.
 
+## JSON-LD @context
+
+GeonicDB compacts a response using **only the `@context` that the request itself supplied**, and renders anything it cannot map as a fully qualified URI (ETSI GS CIM 009 [clause 5.5.5 / 5.5.7](https://cim.etsi.org/NGSI-LD/official/clause-5.html)). Read an entity written with a custom vocabulary and you get absolute URIs back:
+
+```bash
+$ geonic entities get urn:ngsi-ld:Building:v1
+{
+  "id": "urn:ngsi-ld:Building:v1",
+  "type": "https://example-vocab/ns#Building",
+  "https://example-vocab/ns#name": { "type": "Property", "value": "HQ" }
+}
+```
+
+Pass `--context` to get the short terms back:
+
+```bash
+$ geonic entities get urn:ngsi-ld:Building:v1 --context https://example.org/building.jsonld
+{
+  "id": "urn:ngsi-ld:Building:v1",
+  "type": "Building",
+  "name": { "type": "Property", "value": "HQ" }
+}
+```
+
+- Works on every NGSI-LD command — `entities`, `attrs`, `types`, `temporal`, `batch`, `subscriptions`, `registrations`, `snapshots`.
+- On reads it is sent as a `Link` header; on entity and batch writes it is placed in the request body, so the same flag also lets you **write** with a custom vocabulary.
+- Repeat the flag or separate values with commas for a context array:
+  `--context https://a.example/1.jsonld --context https://b.example/2.jsonld`.
+  Note that GeonicDB currently applies only the first one ([geolonia/geonicdb#1818](https://github.com/geolonia/geonicdb/issues/1818)); the CLI warns on stderr when you pass more.
+- Save a per-profile default so you do not have to repeat it:
+
+```bash
+geonic config set context https://example.org/building.jsonld
+geonic entities get urn:ngsi-ld:Building:v1        # uses the saved context
+```
+
+`--context` on a command **replaces** the saved default for that invocation rather than adding to it.
+
+The URI must be an absolute `http`/`https` URL that the server can resolve — either publicly reachable or registered with the tenant via `POST /ngsi-ld/v1/jsonldContexts`. An unresolvable context makes the server return `504 LdContextNotAvailable` instead of quietly falling back.
+
 ## Dry Run
 
 Use `--dry-run` on any command to print the equivalent `curl` command instead of executing the request. The output can be copied and run directly in a terminal.
@@ -817,6 +858,9 @@ geonic config set url http://localhost:3000
 
 # Set default output format
 geonic config set format table
+
+# Set a default JSON-LD @context for NGSI-LD requests (comma-separate for several)
+geonic config set context https://example.org/building.jsonld
 
 # View all settings
 geonic config list

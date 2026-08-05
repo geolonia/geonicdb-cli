@@ -2,6 +2,7 @@ import { Command, InvalidArgumentError } from "commander";
 import { loadConfig, saveConfig, validateUrl } from "./config.js";
 import { DryRunSignal, GdbClient, GdbClientError } from "./client.js";
 import { printError, printOutput, printCount, printWarning, sanitizeServerText } from "./output.js";
+import { normalizeContextConfigValue } from "./context.js";
 import type { ClientResponse, GlobalOptions, OutputFormat } from "./types.js";
 
 /**
@@ -20,6 +21,10 @@ export function resolveOptions(cmd: Command): GlobalOptions {
     profile: opts.profile,
     apiKey: opts.apiKey ?? process.env.GDB_API_KEY ?? config.apiKey,
     dryRun: opts.dryRun,
+    // #177: `--context` overrides the profile default outright rather than
+    // merging — a caller naming a vocabulary means "use this one", and silently
+    // appending the saved default would change how the response is compacted.
+    context: opts.context ?? normalizeContextConfigValue(config.context),
   };
 }
 
@@ -33,6 +38,16 @@ export function createClient(cmd: Command): GdbClient {
     process.exit(1);
   }
   opts.url = validateUrl(opts.url);
+  // #177: the CLI sends every --context as its own link-value (RFC 8288 §3), but
+  // GeonicDB only reads the first one (geolonia/geonicdb#1818). Say so rather than
+  // let the extra vocabularies vanish into a response full of absolute URIs —
+  // that silent drop is the exact failure this flag exists to remove.
+  if (opts.context && opts.context.length > 1) {
+    printWarning(
+      `Sending ${opts.context.length} @context URIs, but GeonicDB currently applies only the first ` +
+        `(geolonia/geonicdb#1818). Terms defined only in the others will be returned as full URIs.`,
+    );
+  }
   const cliOpts = cmd.optsWithGlobals() as GlobalOptions;
   const usingCliToken = !!cliOpts.token;
   const config = loadConfig(opts.profile);
@@ -60,6 +75,7 @@ export function createClient(cmd: Command): GdbClient {
         },
     verbose: opts.verbose,
     dryRun: opts.dryRun,
+    context: opts.context,
   });
 }
 
