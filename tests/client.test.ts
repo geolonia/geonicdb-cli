@@ -688,6 +688,30 @@ describe("GdbClient", () => {
       stderrSpy.mockRestore();
     });
 
+    // Response headers are server-controlled and printed as text: a hostile
+    // server must not be able to rewrite the operator terminal with ANSI escapes.
+    it("strips control characters from logged response headers", async () => {
+      const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", verbose: true });
+
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({}), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "X-Deployment-Cache-Notice": "ok\u001b[2Kinjected",
+          },
+        }),
+      );
+
+      await client.get("/entities");
+
+      const output = stderrSpy.mock.calls.map((c) => String(c[0])).join("");
+      expect(output).toContain("ok[2Kinjected");
+      expect(output).not.toContain("\u001b");
+      stderrSpy.mockRestore();
+    });
+
     it("returns raw string when body is not valid JSON (maskBodySecrets catch)", () => {
       // Test maskBodySecrets directly since JSON.stringify always produces valid JSON
       const result = (GdbClient as unknown as { maskBodySecrets(raw: string): string }).maskBodySecrets("not valid json {{{");

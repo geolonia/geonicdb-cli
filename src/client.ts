@@ -2,6 +2,7 @@ import type { ClientOptions, ClientResponse, NgsiError } from "./types.js";
 import { clientCredentialsGrant } from "./oauth.js";
 import { getTokenStatus } from "./token.js";
 import { buildContextLinkHeader, toBodyContext } from "./context.js";
+import { sanitizeServerText } from "./output.js";
 
 /**
  * NGSI-LD core @context. Injected into `application/ld+json` entity-write bodies
@@ -144,9 +145,15 @@ export class GdbClient {
 
   private logResponse(response: Response): void {
     if (!this.verbose) return;
-    process.stderr.write(`< ${response.status} ${response.statusText}\n`);
+    // Everything here is server-controlled and goes straight to the terminal as
+    // text, so strip control characters first — otherwise a hostile or
+    // compromised server could embed ANSI escapes and rewrite what the operator
+    // sees (same guard as `surfaceNgsiWarning` and the deployment notice).
+    process.stderr.write(
+      `< ${response.status} ${sanitizeServerText(response.statusText)}\n`,
+    );
     response.headers.forEach((v, k) => {
-      process.stderr.write(`< ${k}: ${v}\n`);
+      process.stderr.write(`< ${sanitizeServerText(k)}: ${sanitizeServerText(v)}\n`);
     });
     process.stderr.write("\n");
   }

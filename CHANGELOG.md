@@ -17,7 +17,8 @@
   - `config set` の値検証エラー (`url` / `context`) が未処理例外のスタックトレースではなく通常のエラー + exit 1 になるよう修正
   - E2E `tests/e2e/features/context.feature` を追加 (13 シナリオ)。Link ヘッダー除去の変異で 8 シナリオ、body 注入除去の変異で 2 シナリオが赤くなることを確認済み。geonicdb 依存を #1733 / #1775 を含む origin/main へ更新
 - **Feat**: `admin deployments` コマンド群を追加 (closes #176, 本体 geonicdb#1775 / Epic #1485 / 親 #1492)。ホスト名 → MongoDB クラスタのルーティング行 (`/admin/deployments`, super_admin 限定) を CLI から管理できるようにし、大口テナントの専用クラスタ隔離を DynamoDB コンソールの手作業から正規の監査済み API へ移す。`list` / `get` / `create` / `update` / `delete` の 5 サブコマンド。(#179)
-  - **平文接続文字列を扱わない**: レスポンスは `mongodbUriConfigured` (boolean) と `mongodbUriSecretArn` のみなので出力側で `mongodbUri` を期待しない。`--mongodb-uri` は提供するが、シェル履歴・プロセス一覧に残る旨を stderr で警告する。既定の経路は `--secret`
+  - **平文接続文字列は出力しない**: レスポンスは `mongodbUriConfigured` (boolean) と `mongodbUriSecretArn` のみなので出力フォーマッタで `mongodbUri` を期待しない。`--verbose` 時のリクエストログでも `mongodbUri` はマスクする
+  - **入力としての平文経路は残す (非本番用途)**: `--mongodb-uri` は受け付け、リクエストボディに `mongodbUri` として載せる。既定の経路は `--secret` で、`--mongodb-uri` 指定時はシェル履歴・プロセス一覧に残る旨を stderr で警告する (本体が `MONGODB_ENFORCE_SECRETS=true` なら 400 で拒否される)
   - **`--secret` はシークレット「名」推奨**: 完全 ARN はリージョンを埋め込むためフェイルオーバー先の Lambda が解決できない (本体 `docs/PRODUCTION_DEPLOY.md` §5)。ヘルプ・README に明記
   - **収束遅延を隠さない**: 書き込みレスポンスの `notice` (DELETE は `X-Deployment-Cache-Notice` ヘッダー) を必ず出力し、「成功 = 即時全台反映」と誤解させない
   - **打ち切りを隠さない**: 一覧が本体のスキャン上限に当たった場合 (`X-Deployment-List-Truncated`) は警告する。管理者の在庫確認が黙って不完全にならないようにする
@@ -29,6 +30,7 @@
 - **Fix**: security-review 指摘 2 件を修正 (#179)
   - `--verbose` 時に `mongodbUri` (DB 認証情報を含む接続文字列) が stderr へ平文で出ていた。`client.ts` の `SENSITIVE_BODY_KEYS` に `mongodbUri` を追加し `***` にマスクする。ターミナルのスクロールバックや CI ログに残る経路を塞ぐ
   - サーバー由来のテキスト (書き込み応答の `notice` / `X-Deployment-Cache-Notice` ヘッダー) を制御文字を除去せずそのまま表示していた。既存の `surfaceNgsiWarning` と同じ扱いに揃え、`output.sanitizeServerText` を共通化して両経路で C0/C1 制御文字 (ESC 含む) を除去する (侵害されたサーバーによる ANSI エスケープ注入の防止)
+  - `--verbose` の `logResponse` がレスポンスヘッダー (サーバー制御) を制御文字除去なしで stderr へ書いていた。同じく `sanitizeServerText` を通す
 - **Fix**: E2E ハーネスのローカルサーバーが `RUNTIME_MODE` 未設定で AWS モードで動いており、デプロイメントルーティング / レートリミット / トークン無効化が**実 DynamoDB を呼んでいた** (実行機の AWS 認証情報に依存し、認証情報次第では実テーブルに到達しうる)。`tests/e2e/support/env.ts` を追加し `geonicdb` の import 前に `RUNTIME_MODE=standalone` を設定する (この値はモジュール評価時に読まれるため `BeforeAll` では間に合わない)。既存 161 シナリオに回帰が無いことを確認済み (#179)
 - **Fix**: 空のホスト名 (空白のみ) を拒否する。正規化後に空文字になると `/admin/deployments/{hostname}` がコレクションパスに退化し、`get` が一覧を返し `delete` が破壊的要求をコレクションへ向けてしまうため、リクエスト前に失敗させる (#179)
 - **Test**: E2E `tests/e2e/features/deployments.feature` を追加 (22 シナリオ)。ユニット `tests/admin-deployments.test.ts` を追加 (49 ケース) (#179)
