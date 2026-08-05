@@ -59,9 +59,18 @@ interface UpdateOptions {
  * The server lowercases hostnames because routing looks up a lowercased `Host`.
  * Normalizing here too keeps the path we request identical to the row we get
  * back, so `get Tenant-A.example.com` cannot look like a missing row.
+ *
+ * An empty result is rejected rather than passed on: it would collapse
+ * `/admin/deployments/{hostname}` to the collection path, so `get "  "` would
+ * quietly return the whole listing and `delete "  "` would aim a destructive
+ * request at the collection.
  */
 function normalizeHostname(hostname: string): string {
-  return hostname.trim().toLowerCase();
+  const normalized = hostname.trim().toLowerCase();
+  if (!normalized) {
+    throw new Error("hostname must not be empty.");
+  }
+  return normalized;
 }
 
 function deploymentPath(hostname: string): string {

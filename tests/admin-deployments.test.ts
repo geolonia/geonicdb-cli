@@ -148,6 +148,27 @@ describe("admin deployments commands", () => {
     });
   });
 
+  // An empty hostname would collapse /admin/deployments/{hostname} to the
+  // collection path: `get` would return the whole listing and `delete` would
+  // aim a destructive request at the collection.
+  describe("empty hostname", () => {
+    it.each([
+      ["get", ["admin", "deployments", "get", "   "]],
+      ["update", ["admin", "deployments", "update", "   ", "--enable"]],
+      ["delete", ["admin", "deployments", "delete", "   ", "--yes"]],
+      [
+        "create",
+        [
+          "admin", "deployments", "create", "   ",
+          "--database", "db_a", "--plan", "STANDARD", "--secret", "s",
+        ],
+      ],
+    ])("%s refuses a blank hostname without calling the server", async (_label, args) => {
+      await expect(run(args)).rejects.toThrow(/hostname must not be empty/);
+      expect(client.rawRequest).not.toHaveBeenCalled();
+    });
+  });
+
   describe("create", () => {
     it("builds the request body from flags", async () => {
       client.rawRequest.mockResolvedValue(mockResponse({}, 201));
