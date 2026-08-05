@@ -8,7 +8,7 @@ import {
   fetchPaginatedList,
 } from "../../helpers.js";
 import type { ClientResponse } from "../../types.js";
-import { printSuccess, printWarning, printInfo } from "../../output.js";
+import { printSuccess, printWarning, printInfo, sanitizeServerText } from "../../output.js";
 import { isInteractive, promptConfirm } from "../../prompt.js";
 import { addExamples, addNotes } from "../help.js";
 
@@ -114,7 +114,10 @@ function printCacheNotice(response: ClientResponse): void {
       : undefined;
   const notice = fromBody ?? response.headers.get("X-Deployment-Cache-Notice");
   if (typeof notice === "string" && notice) {
-    printInfo(notice);
+    // Server-supplied text printed as text, not JSON — strip control characters
+    // so a hostile or compromised server cannot inject ANSI escapes into the
+    // operator's terminal (same guard as `surfaceNgsiWarning`).
+    printInfo(sanitizeServerText(notice));
   }
 }
 

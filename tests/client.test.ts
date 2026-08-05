@@ -481,6 +481,34 @@ describe("GdbClient", () => {
       stderrSpy.mockRestore();
     });
 
+    // #176: `admin deployments` carries a MongoDB connection string — credentials
+    // included — in the request body. Verbose output goes to terminal scrollback
+    // and CI logs, so it must never appear there.
+    it("masks a MongoDB connection string in request body", async () => {
+      const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", verbose: true });
+
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({}), {
+          status: 201,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+
+      await client.rawRequest("POST", "/admin/deployments", {
+        body: {
+          hostname: "a.example.com",
+          mongodbUri: "mongodb+srv://admin:hunter2@cluster.example.net",
+        },
+      });
+
+      const output = stderrSpy.mock.calls.map((c) => String(c[0])).join("");
+      expect(output).toContain('"mongodbUri":"***"');
+      expect(output).not.toContain("hunter2");
+      expect(output).toContain('"hostname":"a.example.com"');
+      stderrSpy.mockRestore();
+    });
+
     it("returns raw string when body is not valid JSON (maskBodySecrets catch)", () => {
       // Test maskBodySecrets directly since JSON.stringify always produces valid JSON
       const result = (GdbClient as unknown as { maskBodySecrets(raw: string): string }).maskBodySecrets("not valid json {{{");

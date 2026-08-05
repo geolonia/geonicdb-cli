@@ -89,6 +89,10 @@ export class GdbClient {
     "clientSecret",
     "key",
     "apiKey",
+    // #176: `admin deployments` sends a MongoDB connection string — credentials
+    // and all — in the body. Without this, `--verbose` would print it to stderr,
+    // straight into terminal scrollback and CI logs.
+    "mongodbUri",
   ]);
 
   private logRequest(

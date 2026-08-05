@@ -27,7 +27,11 @@ vi.mock("../src/helpers.js", () => ({
   },
 }));
 
-vi.mock("../src/output.js", () => ({
+vi.mock("../src/output.js", async () => ({
+  // Pure string helper with no console side-effects — use the real one so the
+  // control-character stripping stays under test.
+  sanitizeServerText: (await vi.importActual<typeof import("../src/output.js")>("../src/output.js"))
+    .sanitizeServerText,
   printSuccess: vi.fn(),
   printError: vi.fn(),
   printInfo: vi.fn(),
@@ -269,6 +273,19 @@ describe("admin deployments commands", () => {
     });
 
     // "Created" must not read as "live on every instance".
+    // Server-supplied text printed as text, not JSON: a hostile server must not
+    // be able to rewrite the operator terminal with ANSI escapes.
+    it("strips control characters from a server-supplied notice", async () => {
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ notice: "ok\u001b[2Kinjected\u0007" }, 201),
+      );
+      await run([
+        "admin", "deployments", "create", "a.example.com",
+        "--database", "db_a", "--plan", "STANDARD", "--secret", "geonicdb/a/uri",
+      ]);
+      expect(printInfo).toHaveBeenCalledWith("ok[2Kinjected");
+    });
+
     it("surfaces the convergence notice from the response body", async () => {
       client.rawRequest.mockResolvedValue(
         mockResponse({ hostname: "a.example.com", notice: "Routing caches are per-instance" }, 201),

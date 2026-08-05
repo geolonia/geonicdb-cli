@@ -18,6 +18,9 @@
   - **`delete` は確認必須** (`--yes` でスキップ、非 TTY で `--yes` 無しはサーバー未呼び出しで exit 1)。1 行の削除でそのホストの全 API が解決不能になるため、`entities purge` と同じ扱いにする
   - `hostname` はサーバー側で小文字化されるため、CLI 側でも要求前に正規化して「登録済みなのに get で見つからない」を防ぐ
   - `--clear-*` は明示的な `null` を送りフィールドを削除する (本体の PATCH 三値セマンティクス)
+- **Fix**: security-review 指摘 2 件を修正 (#179)
+  - `--verbose` 時に `mongodbUri` (DB 認証情報を含む接続文字列) が stderr へ平文で出ていた。`client.ts` の `SENSITIVE_BODY_KEYS` に `mongodbUri` を追加し `***` にマスクする。ターミナルのスクロールバックや CI ログに残る経路を塞ぐ
+  - サーバー由来のテキスト (書き込み応答の `notice` / `X-Deployment-Cache-Notice` ヘッダー) を制御文字を除去せずそのまま表示していた。既存の `surfaceNgsiWarning` と同じ扱いに揃え、`output.sanitizeServerText` を共通化して両経路で C0/C1 制御文字 (ESC 含む) を除去する (侵害されたサーバーによる ANSI エスケープ注入の防止)
 - **Fix**: E2E ハーネスのローカルサーバーが `RUNTIME_MODE` 未設定で AWS モードで動いており、デプロイメントルーティング / レートリミット / トークン無効化が**実 DynamoDB を呼んでいた** (実行機の AWS 認証情報に依存し、認証情報次第では実テーブルに到達しうる)。`tests/e2e/support/env.ts` を追加し `geonicdb` の import 前に `RUNTIME_MODE=standalone` を設定する (この値はモジュール評価時に読まれるため `BeforeAll` では間に合わない)。既存 161 シナリオに回帰が無いことを確認済み
 - **Test**: E2E `tests/e2e/features/deployments.feature` を追加 (22 シナリオ)。ユニット `tests/admin-deployments.test.ts` を追加 (44 ケース) (#179)
 
