@@ -90,6 +90,13 @@ export function collectContext(raw: string, previous?: string[]): string[] {
  * Coerce a persisted config value into a context list.
  * Accepts an array (canonical) or a comma-separated string (hand-edited
  * config files). Anything else is ignored rather than sent as garbage.
+ *
+ * Every entry is re-validated: `config set context` checks on the way in, but
+ * `config.json` is a plain file anyone can edit, and the value ends up verbatim
+ * in a `Link` header. Trusting it would leave the header-injection guard
+ * bypassable by editing a file. Failing loudly beats dropping the entry — a
+ * silently ignored context reads as "the server did not compact my terms".
+ * `geonic config delete context` still works, since it does not resolve options.
  */
 export function normalizeContextConfigValue(value: unknown): string[] | undefined {
   const raw = Array.isArray(value)
@@ -98,7 +105,19 @@ export function normalizeContextConfigValue(value: unknown): string[] | undefine
       ? value.split(",")
       : [];
   const uris = raw.map((s) => s.trim()).filter((s) => s.length > 0);
-  return uris.length > 0 ? uris : undefined;
+  if (uris.length === 0) {
+    return undefined;
+  }
+  return uris.map((uri) => {
+    try {
+      return validateContextUri(uri);
+    } catch (err) {
+      throw new Error(
+        `Invalid "context" in the saved config: ${err instanceof Error ? err.message : String(err)} ` +
+          `Fix it with \`geonic config set context <uri>\` or remove it with \`geonic config delete context\`.`,
+      );
+    }
+  });
 }
 
 /**

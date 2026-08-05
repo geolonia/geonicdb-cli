@@ -137,6 +137,27 @@ describe("normalizeContextConfigValue", () => {
   ])("returns undefined for %s", (_label, value) => {
     expect(normalizeContextConfigValue(value)).toBeUndefined();
   });
+
+  // config.json is a plain file: `config set` validation must not be the only gate,
+  // or editing the file by hand would bypass the Link-header injection guard.
+  it.each([
+    ["a relative URI", "./ctx.jsonld"],
+    ["a non-http scheme", "file:///etc/passwd"],
+    ["a CRLF injection attempt", "https://example.org/a\r\nX-Injected: 1"],
+    ["an angle bracket", "https://example.org/a>.jsonld"],
+  ])("rejects %s stored as a string", (_label, value) => {
+    expect(() => normalizeContextConfigValue(value)).toThrow(/saved config/);
+  });
+
+  it("rejects an invalid entry inside a stored array", () => {
+    expect(() =>
+      normalizeContextConfigValue(["https://a.example/1.jsonld", "not-a-url"]),
+    ).toThrow(/saved config/);
+  });
+
+  it("points at the commands that fix the saved value", () => {
+    expect(() => normalizeContextConfigValue("not-a-url")).toThrow(/config delete context/);
+  });
 });
 
 describe("buildContextLinkHeader", () => {
