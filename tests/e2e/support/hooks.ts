@@ -1,3 +1,6 @@
+// MUST come first: sets environment the `geonicdb` module reads while it is
+// being evaluated, which a BeforeAll hook would be too late for.
+import "./env.js";
 import { BeforeAll, AfterAll, Before, After } from "@cucumber/cucumber";
 import { createServer, type GeonicDBServer } from "geonicdb";
 import { MongoClient, type Db, type Document } from "mongodb";

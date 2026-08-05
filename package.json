@@ -63,7 +63,7 @@
     "@types/node": "^22.13.0",
     "@vitest/coverage-v8": "^4.1.8",
     "eslint": "^10.8.0",
-    "geonicdb": "github:geolonia/geonicdb#19ee77a428e3f2288ef51c3665d78d104d6ec82a",
+    "geonicdb": "github:geolonia/geonicdb#475a758969976cdcf97d9015063617cd69c6c2f5",
     "mongodb": "^7.1.0",
     "mongodb-memory-server": "^11.0.1",
     "prettier": "^3.4.2",

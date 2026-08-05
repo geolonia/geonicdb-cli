@@ -7,6 +7,20 @@
 
 ## [Unreleased]
 
+### 2026-08-06
+- **Feat**: `admin deployments` コマンド群を追加 (closes #176, 本体 geonicdb#1775 / Epic #1485 / 親 #1492)。ホスト名 → MongoDB クラスタのルーティング行 (`/admin/deployments`, super_admin 限定) を CLI から管理できるようにし、大口テナントの専用クラスタ隔離を DynamoDB コンソールの手作業から正規の監査済み API へ移す。`list` / `get` / `create` / `update` / `delete` の 5 サブコマンド。
+  - **平文接続文字列を扱わない**: レスポンスは `mongodbUriConfigured` (boolean) と `mongodbUriSecretArn` のみなので出力側で `mongodbUri` を期待しない。`--mongodb-uri` は提供するが、シェル履歴・プロセス一覧に残る旨を stderr で警告する。既定の経路は `--secret`
+  - **`--secret` はシークレット「名」推奨**: 完全 ARN はリージョンを埋め込むためフェイルオーバー先の Lambda が解決できない (本体 `docs/PRODUCTION_DEPLOY.md` §5)。ヘルプ・README に明記
+  - **収束遅延を隠さない**: 書き込みレスポンスの `notice` (DELETE は `X-Deployment-Cache-Notice` ヘッダー) を必ず出力し、「成功 = 即時全台反映」と誤解させない
+  - **打ち切りを隠さない**: 一覧が本体のスキャン上限に当たった場合 (`X-Deployment-List-Truncated`) は警告する。管理者の在庫確認が黙って不完全にならないようにする
+  - **エラーの意味を潰さない**: 400 (予約サブドメイン / 平文 URI 禁止 / 接続元なし / 形式不正) と 409 (重複 / `DEFAULT_DEPLOYMENT_HOSTNAMES` シャドウ / 楽観ロック衝突 / 自己ロックアウト拒否) はサーバーのメッセージをそのまま見せる
+  - **クライアント側ガード** (リクエスト前に失敗させる): 接続元なしの `create`、`--database` / `--plan` 欠落、未知のプラン、JSON オブジェクトでない `--metadata`、`--enable` と `--disable` の同時指定、同一フィールドの設定と `--clear-*` の同時指定
+  - **`delete` は確認必須** (`--yes` でスキップ、非 TTY で `--yes` 無しはサーバー未呼び出しで exit 1)。1 行の削除でそのホストの全 API が解決不能になるため、`entities purge` と同じ扱いにする
+  - `hostname` はサーバー側で小文字化されるため、CLI 側でも要求前に正規化して「登録済みなのに get で見つからない」を防ぐ
+  - `--clear-*` は明示的な `null` を送りフィールドを削除する (本体の PATCH 三値セマンティクス)
+- **Fix**: E2E ハーネスのローカルサーバーが `RUNTIME_MODE` 未設定で AWS モードで動いており、デプロイメントルーティング / レートリミット / トークン無効化が**実 DynamoDB を呼んでいた** (実行機の AWS 認証情報に依存し、認証情報次第では実テーブルに到達しうる)。`tests/e2e/support/env.ts` を追加し `geonicdb` の import 前に `RUNTIME_MODE=standalone` を設定する (この値はモジュール評価時に読まれるため `BeforeAll` では間に合わない)。既存 161 シナリオに回帰が無いことを確認済み
+- **Test**: E2E `tests/e2e/features/deployments.feature` を追加 (22 シナリオ)。ユニット `tests/admin-deployments.test.ts` を追加 (44 ケース) (#179)
+
 ## [0.23.0] - 2026-08-04
 
 ### 2026-08-04
