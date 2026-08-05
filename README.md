@@ -653,6 +653,48 @@ Custom `tenant_admin` policies (priority 10–99) override the user defaults. Ta
 
 **Note**: `allowedOrigins` must contain at least 1 item when specified. Use `*` to allow all origins. `admin api-keys list` / `admin api-keys get` output includes a `dpopRequired` field (boolean).
 
+#### admin deployments
+
+Hostname → MongoDB cluster routing rows, used to isolate large tenants onto dedicated clusters. **super_admin only.**
+
+| Subcommand | Description |
+|---|---|
+| `admin deployments list` | List routing rows (disabled ones included) |
+| `admin deployments get <hostname>` | Get a routing row |
+| `admin deployments create <hostname>` | Create a routing row |
+| `admin deployments update <hostname>` | Update a routing row |
+| `admin deployments delete <hostname>` | Delete a routing row |
+
+```bash
+# Point a hostname at a dedicated cluster (secret reference — recommended)
+geonic admin deployments create tenant-a.geonicdb.com \
+  --database tenant_a --plan PREMIUM --secret geonicdb/tenant-a/mongodb-uri
+
+# Create it disabled, verify, then enable
+geonic admin deployments create tenant-a.geonicdb.com \
+  --database tenant_a --plan PREMIUM --secret geonicdb/tenant-a/mongodb-uri --disabled
+geonic admin deployments update tenant-a.geonicdb.com --enable
+
+# Migrate a plaintext URI to a Secrets Manager reference
+geonic admin deployments update tenant-a.geonicdb.com \
+  --secret geonicdb/tenant-a/mongodb-uri --clear-mongodb-uri
+```
+
+`list` supports `--enabled` / `--disabled` and `--limit` / `--offset`.
+`create` supports `--database`, `--plan`, `--secret`, `--mongodb-uri`, `--rate-limit-table`, `--disabled`, `--metadata`.
+`update` supports the same fields plus `--enable` / `--disable` and `--clear-secret`, `--clear-mongodb-uri`, `--clear-rate-limit-table`, `--clear-metadata` (each sends an explicit `null`, which removes the field).
+`delete` requires confirmation; pass `--yes` in scripts.
+
+**Connection string**: prefer `--secret` with a Secrets Manager secret **name**. A full ARN pins a region, and a Lambda failing over to another region cannot resolve it; a bare name resolves to each region's own replica. `--mongodb-uri` stores the credential in plaintext, lands in your shell history, and is rejected outright when the server runs with `MONGODB_ENFORCE_SECRETS=true`.
+
+**The plaintext connection string is never returned.** Responses report `mongodbUriConfigured` (boolean) and `mongodbUriSecretArn` only.
+
+**Writes do not take effect everywhere immediately.** Other warm server instances keep routing with the previous configuration until their cache expires; the CLI prints the server's notice after each write.
+
+**Hostnames are lowercased** by the server, so the stored row may differ in case from what you typed.
+
+**Errors worth reading in full**: `400` for a reserved subdomain, a rejected plaintext URI, a row left with no connection source, or a malformed value; `409` for a duplicate hostname, a hostname shadowed by `DEFAULT_DEPLOYMENT_HOSTNAMES`, a concurrent modification, or a refusal to delete/disable the row serving your own request (run that from another hostname).
+
 #### admin cadde
 
 | Subcommand | Description |

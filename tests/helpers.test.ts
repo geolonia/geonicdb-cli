@@ -5,7 +5,11 @@ import { tmpdir } from "node:os";
 import { Command } from "commander";
 import type { GlobalOptions, ClientResponse } from "../src/types.js";
 
-vi.mock("../src/output.js", () => ({
+vi.mock("../src/output.js", async () => ({
+  // Pure string helper with no console side-effects — use the real one so the
+  // control-character stripping stays under test.
+  sanitizeServerText: (await vi.importActual<typeof import("../src/output.js")>("../src/output.js"))
+    .sanitizeServerText,
   printError: vi.fn(),
   printOutput: vi.fn(),
   printCount: vi.fn(),

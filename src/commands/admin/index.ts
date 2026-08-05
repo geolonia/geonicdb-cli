@@ -4,6 +4,7 @@ import { registerUsersCommand } from "./users.js";
 import { registerPoliciesCommand } from "./policies.js";
 import { registerOAuthClientsCommand, registerCaddeCommand } from "./oauth-clients.js";
 import { registerApiKeysCommand } from "./api-keys.js";
+import { registerDeploymentsCommand } from "./deployments.js";
 
 export function registerAdminCommand(program: Command): void {
   const admin = program
@@ -15,5 +16,6 @@ export function registerAdminCommand(program: Command): void {
   registerPoliciesCommand(admin);
   registerOAuthClientsCommand(admin);
   registerApiKeysCommand(admin);
+  registerDeploymentsCommand(admin);
   registerCaddeCommand(admin);
 }

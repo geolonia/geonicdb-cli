@@ -35,6 +35,19 @@ export function printWarning(message: string): void {
 }
 
 /**
+ * Strip C0/C1 control characters (including ESC) from server-supplied text.
+ *
+ * Anything the server puts in a header or a message field lands in the
+ * operator's terminal verbatim; a compromised or hostile server could otherwise
+ * embed ANSI escape sequences to rewrite the display. Use this on every string
+ * that comes from a response and is printed as text rather than as JSON.
+ */
+export function sanitizeServerText(text: string): string {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+}
+
+/**
  * Print an API key value in a highlighted box so it stands out.
  */
 export function printApiKeyBox(key: string): void {

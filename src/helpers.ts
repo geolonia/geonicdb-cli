@@ -1,7 +1,7 @@
 import { Command, InvalidArgumentError } from "commander";
 import { loadConfig, saveConfig, validateUrl } from "./config.js";
 import { DryRunSignal, GdbClient, GdbClientError } from "./client.js";
-import { printError, printOutput, printCount, printWarning } from "./output.js";
+import { printError, printOutput, printCount, printWarning, sanitizeServerText } from "./output.js";
 import { normalizeContextConfigValue } from "./context.js";
 import type { ClientResponse, GlobalOptions, OutputFormat } from "./types.js";
 
@@ -147,8 +147,7 @@ export function surfaceNgsiWarning(headers: Headers): void {
   const match = raw.match(/^\s*\d+\s*-\s*"?(.*?)"?\s*$/);
   // Strip control characters (C0/C1, incl. ESC) so a malformed or hostile
   // server-supplied header can't inject ANSI sequences into the terminal.
-  // eslint-disable-next-line no-control-regex
-  const text = (match ? match[1] : raw).replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+  const text = sanitizeServerText(match ? match[1] : raw);
   printWarning(`Warning: ${text}`);
 }
 
