@@ -134,10 +134,12 @@ Feature: JSON-LD @context on NGSI-LD requests
     And stderr should contain "%E6%97%A5%E6%9C%AC%E8%AA%9E"
     And stderr should not contain "ByteString"
 
-  Scenario: The percent-encoded form of the same URI is accepted and sent
-    When I run `geonic entities list --context https://example.org/%E6%97%A5.jsonld --dry-run`
+  # Exactly the URI the rejection above tells the user to use, so the error
+  # message and the accepted form cannot drift apart.
+  Scenario: The percent-encoded form the error suggests is accepted and sent
+    When I run `geonic entities list --context https://example.org/%E6%97%A5%E6%9C%AC%E8%AA%9E.jsonld --dry-run`
     Then the exit code should be 0
-    And stdout should contain "%E6%97%A5.jsonld"
+    And stdout should contain "%E6%97%A5%E6%9C%AC%E8%AA%9E.jsonld"
     And stdout should contain "json-ld#context"
 
   Scenario: config set rejects an invalid @context instead of saving it
