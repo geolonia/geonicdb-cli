@@ -58,6 +58,40 @@ describe("validateContextUri", () => {
   });
 });
 
+// #183: header values are ByteStrings. Without this check the URI reached fetch
+// and threw "Cannot convert argument to a ByteString", long after it could have
+// been rejected with a message the user could act on.
+describe("validateContextUri — non-ASCII (#183)", () => {
+  it.each([
+    ["a non-ASCII path", "https://example.org/\u65e5\u672c\u8a9e.jsonld"],
+    ["an IDN host", "https://\u65e5\u672c\u8a9e.example/ctx.jsonld"],
+  ])("rejects %s", (_label, uri) => {
+    expect(() => validateContextUri(uri)).toThrow(/must be ASCII/);
+  });
+
+  it("names the ASCII form the user should use instead", () => {
+    expect(() => validateContextUri("https://example.org/\u65e5\u672c\u8a9e.jsonld")).toThrow(
+      /%E6%97%A5%E6%9C%AC%E8%AA%9E\.jsonld/,
+    );
+    expect(() => validateContextUri("https://\u65e5\u672c\u8a9e.example/ctx.jsonld")).toThrow(
+      /xn--wgv71a119e\.example/,
+    );
+  });
+
+  it("still accepts the percent-encoded and punycode forms", () => {
+    const encoded = "https://example.org/%E6%97%A5%E6%9C%AC%E8%AA%9E.jsonld";
+    const puny = "https://xn--wgv71a119e.example/ctx.jsonld";
+    expect(validateContextUri(encoded)).toBe(encoded);
+    expect(validateContextUri(puny)).toBe(puny);
+  });
+
+  // A rejected URI must never be constructible into a header at all.
+  it("accepted URIs are always usable as a header value", () => {
+    const uri = validateContextUri("https://example.org/%E6%97%A5.jsonld");
+    expect(() => new Headers({ Link: buildContextLinkHeader([uri]) })).not.toThrow();
+  });
+});
+
 describe("splitContextValues", () => {
   it("splits comma-separated URIs", () => {
     expect(splitContextValues("https://a.example/1.jsonld,https://b.example/2.jsonld")).toEqual([

@@ -2,7 +2,8 @@ import type { ClientOptions, ClientResponse, NgsiError } from "./types.js";
 import { clientCredentialsGrant } from "./oauth.js";
 import { getTokenStatus } from "./token.js";
 import { buildContextLinkHeader, toBodyContext } from "./context.js";
-import { sanitizeServerText } from "./output.js";
+import { printWarning } from "./output.js";
+import { sanitizeServerText } from "./sanitize.js";
 
 /**
  * NGSI-LD core @context. Injected into `application/ld+json` entity-write bodies
@@ -31,6 +32,7 @@ export class GdbClient {
   private verbose: boolean;
   private dryRun: boolean;
   private context?: string[];
+  private contextWarningEmitted = false;
   private refreshPromise?: Promise<boolean>;
 
   constructor(options: ClientOptions) {
@@ -62,6 +64,7 @@ export class GdbClient {
     // context the request supplied (ETSI GS CIM 009 clause 5.5.7).
     if (options?.contextLink && this.context) {
       headers["Link"] = buildContextLinkHeader(this.context);
+      this.warnOnceAboutMultipleContexts(this.context.length);
     }
 
     if (this.token) {
@@ -75,6 +78,27 @@ export class GdbClient {
     }
 
     return headers;
+  }
+
+  /**
+   * #177/#183: the CLI sends every `--context` as its own link-value
+   * (RFC 8288 §3), but GeonicDB reads only the first (geolonia/geonicdb#1818).
+   * Announce the drop rather than let the extra vocabularies vanish into a
+   * response full of absolute URIs — that silence is the exact failure the flag
+   * exists to remove.
+   *
+   * Emitted from here, not from client construction, so it fires only when a
+   * Link header is genuinely attached: `admin` and `auth` go through raw paths
+   * that carry no context, and warning there would claim something untrue.
+   * Once per client, so a paginated command does not repeat it per page.
+   */
+  private warnOnceAboutMultipleContexts(count: number): void {
+    if (count <= 1 || this.contextWarningEmitted) return;
+    this.contextWarningEmitted = true;
+    printWarning(
+      `Sending ${count} @context URIs, but GeonicDB currently applies only the first ` +
+        `(geolonia/geonicdb#1818). Terms defined only in the others will be returned as full URIs.`,
+    );
   }
 
   private buildUrl(path: string, params?: Record<string, string>): string {
@@ -585,7 +609,14 @@ export class GdbClientError extends Error {
     /** Parsed Retry-After (ms) from a 429/503 response, if present. */
     public readonly retryAfterMs?: number,
   ) {
-    super(message);
+    // #183: the message is built from the server's error body and is printed
+    // verbatim — deliberately so, since flattening a 400/409 into a generic
+    // string would destroy the reason the operator needs. Sanitizing in the
+    // constructor closes the ANSI-injection route at the single point every
+    // construction passes through, so no future call site can reopen it.
+    // Only control characters are removed, so the substring matching in
+    // `isTokenError` and the 403/409 hint checks keeps working.
+    super(sanitizeServerText(message));
     this.name = "GdbClientError";
   }
 }

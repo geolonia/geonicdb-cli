@@ -58,6 +58,17 @@ export function validateContextUri(value: string): string {
       `Invalid @context URI: "${uri}". Only http:// and https:// URLs are supported — the server dereferences it.`,
     );
   }
+  // #183: header values are ByteStrings, so a non-ASCII URI throws deep inside
+  // fetch ("Cannot convert argument to a ByteString...") — a useless message
+  // arriving long after the input could have been rejected. The URI is not
+  // rewritten to its ASCII form here because @context URLs are compared by
+  // exact string; the caller is told which form to use instead.
+  if (!/^[\u0020-\u007E]*$/.test(uri)) {
+    throw new InvalidArgumentError(
+      `Invalid @context URI: "${uri}". It must be ASCII — use the percent-encoded path and ` +
+        `punycode host instead (e.g. "${parsed.toString()}").`,
+    );
+  }
   return uri;
 }
 

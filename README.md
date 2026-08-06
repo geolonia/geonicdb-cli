@@ -816,7 +816,7 @@ geonic entities get urn:ngsi-ld:Building:v1        # uses the saved context
 
 `--context` on a command **replaces** the saved default for that invocation rather than adding to it.
 
-The URI must be an absolute `http`/`https` URL that the server can resolve — either publicly reachable or registered with the tenant via `POST /ngsi-ld/v1/jsonldContexts`. An unresolvable context makes the server return `504 LdContextNotAvailable` instead of quietly falling back.
+The URI must be an ASCII, absolute `http`/`https` URL that the server can resolve — either publicly reachable or registered with the tenant via `POST /ngsi-ld/v1/jsonldContexts`. An unresolvable context makes the server return `504 LdContextNotAvailable` instead of quietly falling back. Non-ASCII URIs are rejected up front — HTTP headers cannot carry them — so pass the percent-encoded path and punycode host (the error message shows the form to use).
 
 ## Dry Run
 

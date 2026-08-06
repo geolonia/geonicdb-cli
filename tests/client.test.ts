@@ -1,5 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("../src/output.js", () => ({
+  printWarning: vi.fn(),
+  printError: vi.fn(),
+  printInfo: vi.fn(),
+  printSuccess: vi.fn(),
+  printOutput: vi.fn(),
+  printCount: vi.fn(),
+}));
+
 import { DryRunSignal, GdbClient, GdbClientError } from "../src/client.js";
+import { printWarning } from "../src/output.js";
 
 function createJwt(payload: Record<string, unknown>): string {
   const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
@@ -10,6 +21,7 @@ function createJwt(payload: Record<string, unknown>): string {
 describe("GdbClient", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.mocked(printWarning).mockClear();
   });
 
   it("constructs correct NGSI-LD headers", async () => {
@@ -332,6 +344,43 @@ describe("GdbClient", () => {
       expect(sentBody()).toEqual(sub);
     });
 
+    // #183: warn where the header is actually attached, not at client
+    // construction — admin/auth use raw paths that carry no context.
+    it("warns once when several contexts are actually sent", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX, CTX2] });
+      // A fresh Response per call: a body can only be read once.
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { "Content-Type": "application/ld+json" },
+        }),
+      );
+
+      await client.get("/entities");
+      await client.get("/types");
+
+      expect(printWarning).toHaveBeenCalledTimes(1);
+      expect(printWarning).toHaveBeenCalledWith(expect.stringContaining("geonicdb#1818"));
+    });
+
+    it("does not warn for a single context", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+      mockOk(200, []);
+
+      await client.get("/entities");
+
+      expect(printWarning).not.toHaveBeenCalled();
+    });
+
+    it("does not warn on raw paths, which never carry a Link header", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX, CTX2] });
+      mockOk(200, []);
+
+      await client.rawRequest("GET", "/admin/deployments");
+
+      expect(printWarning).not.toHaveBeenCalled();
+    });
+
     it("shows the Link header in --dry-run output", async () => {
       const logs: string[] = [];
       vi.spyOn(console, "log").mockImplementation((msg: string) => void logs.push(msg));
@@ -344,6 +393,68 @@ describe("GdbClient", () => {
       await expect(client.get("/entities")).rejects.toBeInstanceOf(DryRunSignal);
 
       expect(logs.join("\n")).toContain(`-H 'Link: ${LINK_ONE}'`);
+    });
+  });
+
+  // #183: `admin deployments` deliberately shows the server 400/409 text, so
+  // this is the most-travelled path for server-controlled text reaching the
+  // terminal. Sanitizing in the constructor covers every construction site.
+  describe("GdbClientError message sanitization (#183)", () => {
+    it("strips ANSI escapes from a server error message", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000" });
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(
+          JSON.stringify({ detail: "Deployment already exists\u001b[2K\u001b[1Gspoofed" }),
+          { status: 409, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+
+      await expect(client.rawRequest("POST", "/admin/deployments", { body: {} })).rejects.toThrow(
+        "Deployment already exists[2K[1Gspoofed",
+      );
+    });
+
+    it("keeps the message readable across lines and tabs", () => {
+      const err = new GdbClientError("line one\\nline two\\tcolumn", 400);
+      expect(err.message).toBe("line one\\nline two\\tcolumn");
+    });
+
+    it("removes a carriage return, which can overwrite the printed line", () => {
+      const err = new GdbClientError("real message\rfake message", 400);
+      expect(err.message).toBe("real messagefake message");
+    });
+
+    // Sanitization must not break the substring checks that drive retry/hints.
+    it("leaves token-error detection working", async () => {
+      const client = new GdbClient({
+        baseUrl: "http://localhost:3000",
+        token: "t",
+        refreshToken: "r",
+      });
+      const calls: string[] = [];
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+        calls.push(String(url));
+        if (String(url).includes("/auth/refresh")) {
+          return new Response(JSON.stringify({ accessToken: "new" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        if (calls.filter((c) => c.includes("/entities")).length === 1) {
+          return new Response(JSON.stringify({ detail: "invalid token" }), {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+      const res = await client.get("/entities");
+      expect(res.status).toBe(200);
+      expect(calls.some((c) => c.includes("/auth/refresh"))).toBe(true);
     });
   });
 
