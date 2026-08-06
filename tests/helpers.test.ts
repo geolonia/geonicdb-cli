@@ -5,11 +5,7 @@ import { tmpdir } from "node:os";
 import { Command } from "commander";
 import type { GlobalOptions, ClientResponse } from "../src/types.js";
 
-vi.mock("../src/output.js", async () => ({
-  // Pure string helper with no console side-effects — use the real one so the
-  // control-character stripping stays under test.
-  sanitizeServerText: (await vi.importActual<typeof import("../src/output.js")>("../src/output.js"))
-    .sanitizeServerText,
+vi.mock("../src/output.js", () => ({
   printError: vi.fn(),
   printOutput: vi.fn(),
   printCount: vi.fn(),
@@ -27,6 +23,7 @@ import {
   withErrorHandler,
   fetchPaginatedList,
   parsePositiveInt,
+  parseNonNegativeInt,
   surfaceNgsiWarning,
 } from "../src/helpers.js";
 import { InvalidArgumentError } from "commander";
@@ -142,6 +139,31 @@ describe("helpers", () => {
     });
   });
 
+  // #183: parseNonNegativeInt let an over-long digit string through as Infinity,
+  // which was sent as limit=Infinity. parsePositiveInt already guarded this.
+  describe("parseNonNegativeInt", () => {
+    it("accepts zero and ordinary values", () => {
+      expect(parseNonNegativeInt("0")).toBe(0);
+      expect(parseNonNegativeInt("100")).toBe(100);
+    });
+
+    it.each([
+      ["a non-numeric string", "abc"],
+      ["a negative number", "-1"],
+      ["a decimal", "1.5"],
+    ])("rejects %s", (_label, value) => {
+      expect(() => parseNonNegativeInt(value)).toThrow(InvalidArgumentError);
+    });
+
+    it("rejects a digit string too long to be a safe integer", () => {
+      expect(() => parseNonNegativeInt("9".repeat(400))).toThrow(InvalidArgumentError);
+    });
+
+    it("rejects a value just past Number.MAX_SAFE_INTEGER", () => {
+      expect(() => parseNonNegativeInt("9007199254740993")).toThrow(InvalidArgumentError);
+    });
+  });
+
   describe("createClient", () => {
     it("exits with code 1 when no URL is configured", () => {
       const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
@@ -188,22 +210,6 @@ describe("helpers", () => {
       // Verify dryRun is set by triggering a request — it should throw DryRunSignal
       await expect(client.get("/entities")).rejects.toThrow(DryRunSignal);
       logSpy.mockRestore();
-    });
-
-    // #177: geonicdb only honours the first link-value (geolonia/geonicdb#1818),
-    // so extra contexts must be announced rather than silently dropped.
-    it("warns when more than one @context is supplied", () => {
-      saveConfig({ url: "http://localhost:3000" });
-      createClient(
-        fakeCmd({ context: ["https://a.example/1.jsonld", "https://b.example/2.jsonld"] }),
-      );
-      expect(printWarning).toHaveBeenCalledWith(expect.stringContaining("geonicdb#1818"));
-    });
-
-    it("does not warn for a single @context", () => {
-      saveConfig({ url: "http://localhost:3000" });
-      createClient(fakeCmd({ context: ["https://a.example/1.jsonld"] }));
-      expect(printWarning).not.toHaveBeenCalled();
     });
 
     it("sets onTokenRefresh callback when token comes from config", () => {

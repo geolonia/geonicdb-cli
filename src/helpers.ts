@@ -1,7 +1,8 @@
 import { Command, InvalidArgumentError } from "commander";
 import { loadConfig, saveConfig, validateUrl } from "./config.js";
 import { DryRunSignal, GdbClient, GdbClientError } from "./client.js";
-import { printError, printOutput, printCount, printWarning, sanitizeServerText } from "./output.js";
+import { printError, printOutput, printCount, printWarning } from "./output.js";
+import { sanitizeServerText } from "./sanitize.js";
 import { normalizeContextConfigValue } from "./context.js";
 import type { ClientResponse, GlobalOptions, OutputFormat } from "./types.js";
 
@@ -38,16 +39,6 @@ export function createClient(cmd: Command): GdbClient {
     process.exit(1);
   }
   opts.url = validateUrl(opts.url);
-  // #177: the CLI sends every --context as its own link-value (RFC 8288 §3), but
-  // GeonicDB only reads the first one (geolonia/geonicdb#1818). Say so rather than
-  // let the extra vocabularies vanish into a response full of absolute URIs —
-  // that silent drop is the exact failure this flag exists to remove.
-  if (opts.context && opts.context.length > 1) {
-    printWarning(
-      `Sending ${opts.context.length} @context URIs, but GeonicDB currently applies only the first ` +
-        `(geolonia/geonicdb#1818). Terms defined only in the others will be returned as full URIs.`,
-    );
-  }
   const cliOpts = cmd.optsWithGlobals() as GlobalOptions;
   const usingCliToken = !!cliOpts.token;
   const config = loadConfig(opts.profile);
@@ -109,10 +100,15 @@ export function outputResponse(
  * Commander surfaces a clear failure before the request is built.
  */
 export function parseNonNegativeInt(value: string): number {
-  if (!/^\d+$/.test(value)) {
+  const n = Number(value);
+  // #183: the digit test alone let an over-long digit string through as
+  // `Infinity`, which was then sent as `limit=Infinity`. Number.isSafeInteger
+  // closes that in one check, matching `parsePositiveInt` below — the two
+  // parsers guarding the same kind of flag should not differ in strictness.
+  if (!/^\d+$/.test(value) || !Number.isSafeInteger(n)) {
     throw new InvalidArgumentError("Must be a non-negative integer.");
   }
-  return Number(value);
+  return n;
 }
 
 /**

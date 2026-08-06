@@ -27,11 +27,7 @@ vi.mock("../src/helpers.js", () => ({
   },
 }));
 
-vi.mock("../src/output.js", async () => ({
-  // Pure string helper with no console side-effects — use the real one so the
-  // control-character stripping stays under test.
-  sanitizeServerText: (await vi.importActual<typeof import("../src/output.js")>("../src/output.js"))
-    .sanitizeServerText,
+vi.mock("../src/output.js", () => ({
   printSuccess: vi.fn(),
   printError: vi.fn(),
   printInfo: vi.fn(),

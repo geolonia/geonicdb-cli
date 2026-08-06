@@ -8,6 +8,13 @@
 ## [Unreleased]
 
 ### 2026-08-06
+- **Fix**: #178 / #179 のマージ後レビュー (Cursor CLI の別系統 2 モデル) で検出した 5 件を修正 (closes #183) (#184)
+  - **非 ASCII の `--context` が実行時 TypeError になっていた**。`Link` ヘッダーは ByteString 制約があるため、`https://example.org/日本語.jsonld` のような URI は fetch の深部で `Cannot convert argument to a ByteString...` を投げていた。検証境界で拒否し、percent-encoded / punycode 形式を案内する。`@context` URL は完全一致で比較されるため、正規化して送るのではなく拒否する (#178 の設計を維持)
+  - **サーバー由来のエラーメッセージが制御文字未除去だった**。`admin deployments` は「エラーの意味を潰さない」方針で 400/409 のサーバーメッセージをそのまま表示するため、この経路が ANSI エスケープ注入 (CWE-150) に最も晒されていた。`GdbClientError` の構築時点でサニタイズし、全構築箇所を一箇所で塞ぐ。`isTokenError` 等の部分文字列マッチは制御文字除去では壊れない
+  - **`sanitizeServerText` がタブ・改行まで消していた**。複数行のサーバーメッセージが単語連結して読めなくなるため `\t` と `\n` は残す。`\r` は行の上書きによる表示偽装に使えるため引き続き除去する
+  - **複数 `@context` の警告が Link を送らないコマンドでも出ていた**。`createClient` ではなく実際に Link ヘッダーを付ける時点へ移し、クライアントごとに 1 回だけ警告する (ページングで繰り返さない)
+  - **`parseNonNegativeInt` が安全整数を保証していなかった**。極端に長い数字列が `Infinity` になり `limit=Infinity` として送られていた。`Number.isSafeInteger` を追加し `parsePositiveInt` と strictness を揃える
+- **Refactor**: `sanitizeServerText` を `src/output.ts` から `src/sanitize.ts` へ切り出し (#184)。副作用のない純粋な文字列関数である一方、`output.ts` は大半のコマンドテストで丸ごとモックされるため、新しい呼び出し元が増えるたびに無関係なテストのモックを壊していた (実際に `auth.test.ts` が落ちた)。誰もモックしないモジュールへ移して構造的に解消する
 - **Fix**: 読み取り時に JSON-LD `@context` を渡せるようにした (closes #177, 本体 geonicdb#1733 / #1785 対応)。本体が ETSI GS CIM 009 clause 5.5.5 / 5.5.7 に準拠し「応答の compaction はそのリクエストが渡した `@context` だけで行う」ようになったため、`@context` を渡す手段が無い CLI では独自語彙の型名・属性名が完全修飾 URI (FQN) でしか読めなくなっていた。グローバルオプション `--context <uri>` を追加 (繰り返し指定・カンマ区切りの両方に対応)。(#178)
   - **読み取り**: `Link: <uri>; rel="http://www.w3.org/ns/json-ld#context"; type="application/ld+json"` を NGSI-LD の全リクエスト (`entities` / `attrs` / `types` / `temporal` / `batch` / `subscriptions` / `registrations` / `snapshots`) に付与する。GET には Link 以外に `@context` を運ぶ経路が無い。admin / auth 等の非 NGSI-LD パスには付けない
   - **書き込み**: `application/ld+json` では本体が **body の `@context` を読み Link ヘッダーを無視する** (`extractContextRef`) ため、エンティティ書き込みボディにも注入する。対象は `/entities` (オブジェクトボディ) と `entityOperations` の `create`/`upsert`/`update`/`merge` (配列の各要素)。`entityOperations/delete` (ID 文字列の配列) と `query` (Query オブジェクト) には注入しない。利用者が明示した `@context` は非上書き。`--context` 未指定時の挙動は従来どおり (#168 の core context 注入)

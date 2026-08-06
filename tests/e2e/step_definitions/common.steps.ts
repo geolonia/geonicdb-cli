@@ -92,6 +92,10 @@ Then("stderr should contain {string}", function (this: GdbWorld, text: string) {
   assert.ok(this.lastResult.stderr.includes(text), `Expected stderr to contain "${text}".\nstderr: ${this.lastResult.stderr}`);
 });
 
+Then("stderr should not contain {string}", function (this: GdbWorld, text: string) {
+  assert.ok(!this.lastResult.stderr.includes(text), `Expected stderr NOT to contain "${text}".\nstderr: ${this.lastResult.stderr}`);
+});
+
 Then("stdout should be valid JSON", function (this: GdbWorld) {
   const json = extractJson(this.lastResult.stdout);
   assert.ok(json !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);

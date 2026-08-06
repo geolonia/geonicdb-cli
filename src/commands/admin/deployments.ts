@@ -8,7 +8,8 @@ import {
   fetchPaginatedList,
 } from "../../helpers.js";
 import type { ClientResponse } from "../../types.js";
-import { printSuccess, printWarning, printInfo, sanitizeServerText } from "../../output.js";
+import { printSuccess, printWarning, printInfo } from "../../output.js";
+import { sanitizeServerText } from "../../sanitize.js";
 import { isInteractive, promptConfirm } from "../../prompt.js";
 import { addExamples, addNotes } from "../help.js";
 
