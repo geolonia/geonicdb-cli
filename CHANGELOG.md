@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-08-13
+
 ### 2026-08-13
 - **Feat**: NGSI-LD temporal の表現パラメータに対応した (closes #181, closes #188, 本体 geolonia/geonicdb#1804 / #1814 / #1816 / #1817 対応) (#194)
   - `temporal entities list` / `get` に `--options` (`temporalValues` (alias `simplified`) | `aggregatedValues` | `sysAttrs`) と `--aggr-methods` / `--aggr-period` を追加 (ETSI GS CIM 009 clause 6.3.11 / 6.3.12)
@@ -396,7 +398,9 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.22.1...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.24.0...HEAD
+[0.24.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.23.0...v0.24.0
+[0.23.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.22.1...v0.23.0
 [0.22.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.20.0...v0.21.0
