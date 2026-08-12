@@ -95,7 +95,7 @@ export function registerImportCommand(program: Command): void {
     // (T0/T5 100, T30 500, T40 1,000; absolute max 1,000). The default stays 100
     // so it works on every plan; the CLI does not hard-cap the value — the server
     // owns the limit and its 400 names the plan limit explicitly.
-    .option("--batch-size <n>", "Entities per request (default 100 = safe on every plan; plan limits: T0/T5 100, T30 500, T40 1,000)", parsePositiveInt, 100)
+    .option("--batch-size <n>", "Entities per request (default 100 = safe on every plan; plan limits: T0/T5 100, T30 500, T40 1,000; the server rejects values over your plan limit, absolute max 1,000)", parsePositiveInt, 100)
     .option("--max-bytes <n>", "Max request body bytes per chunk", parsePositiveInt, 1_000_000)
     .option("--concurrency <n>", "Concurrent requests (default 1 = sequential)", parsePositiveInt, 1)
     .option("--retries <n>", "Max retries per chunk on 429/5xx/timeout", parsePositiveInt, 5)

@@ -414,7 +414,9 @@ Notes:
   entity, so the total cost is unchanged). Exceeding your plan's limit fails the chunk with
   `400` `"Batch size N cannot exceed the plan limit of M entities per batch"` — the CLI shows the
   server message as-is, so the remedy is to lower `--batch-size` (or raise the plan). With
-  `--bisect`, an oversized chunk is split instead of being lost.
+  `--bisect`, a `400`/`413` chunk is binary-split (up to `--bisect-max`) to isolate the
+  offending entities; anything that still fails is recorded as failed (use `--errors-out`
+  to capture it for re-submission).
 - Input is read from a file path or, with `-` / a pipe, from stdin. **Resume is only available for
   file input** (stdin cannot be replayed) and **only with `--mode upsert`** (replaying a `replace`
   would overwrite newer state).
