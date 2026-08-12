@@ -2,7 +2,6 @@ import type { ClientOptions, ClientResponse, NgsiError } from "./types.js";
 import { clientCredentialsGrant } from "./oauth.js";
 import { getTokenStatus } from "./token.js";
 import { buildContextLinkHeader, toBodyContext } from "./context.js";
-import { printWarning } from "./output.js";
 import { sanitizeServerText } from "./sanitize.js";
 
 /**
@@ -32,7 +31,6 @@ export class GdbClient {
   private verbose: boolean;
   private dryRun: boolean;
   private context?: string[];
-  private contextWarningEmitted = false;
   private refreshPromise?: Promise<boolean>;
 
   constructor(options: ClientOptions) {
@@ -61,10 +59,11 @@ export class GdbClient {
     if (this.service) headers["NGSILD-Tenant"] = this.service;
     // #177: reads carry the JSON-LD @context in a Link header — it is the only
     // channel a GET has, and the server compacts the response using exactly the
-    // context the request supplied (ETSI GS CIM 009 clause 5.5.7).
+    // context the request supplied (ETSI GS CIM 009 clause 5.5.7). Every value
+    // is applied: the server merges all link-values (geolonia/geonicdb#1818 is
+    // fixed), so no "only the first is used" warning is needed anymore.
     if (options?.contextLink && this.context) {
       headers["Link"] = buildContextLinkHeader(this.context);
-      this.warnOnceAboutMultipleContexts(this.context.length);
     }
 
     if (this.token) {
@@ -78,27 +77,6 @@ export class GdbClient {
     }
 
     return headers;
-  }
-
-  /**
-   * #177/#183: the CLI sends every `--context` as its own link-value
-   * (RFC 8288 §3), but GeonicDB reads only the first (geolonia/geonicdb#1818).
-   * Announce the drop rather than let the extra vocabularies vanish into a
-   * response full of absolute URIs — that silence is the exact failure the flag
-   * exists to remove.
-   *
-   * Emitted from here, not from client construction, so it fires only when a
-   * Link header is genuinely attached: `admin` and `auth` go through raw paths
-   * that carry no context, and warning there would claim something untrue.
-   * Once per client, so a paginated command does not repeat it per page.
-   */
-  private warnOnceAboutMultipleContexts(count: number): void {
-    if (count <= 1 || this.contextWarningEmitted) return;
-    this.contextWarningEmitted = true;
-    printWarning(
-      `Sending ${count} @context URIs, but GeonicDB currently applies only the first ` +
-        `(geolonia/geonicdb#1818). Terms defined only in the others will be returned as full URIs.`,
-    );
   }
 
   private buildUrl(path: string, params?: Record<string, string>): string {
@@ -358,7 +336,11 @@ export class GdbClient {
   private prepareNgsiLdWriteBody(method: string, resourcePath: string, body: unknown): unknown {
     if (!this.isContextSourceVerb(method)) return body;
     if (!resourcePath.startsWith(`${this.getBasePath()}/`)) return body;
-    if (resourcePath.startsWith(`${this.getBasePath()}/jsonldContexts`)) return body;
+    // Exact match, mirroring the server's CONTEXT_DOCUMENT_PATHS: only the
+    // collection body IS a context document. A future /jsonldContexts/{id}
+    // write would fall under the normal clause 6.3.5 rule on the server, so a
+    // prefix match here would withhold the @context it requires.
+    if (resourcePath === `${this.getBasePath()}/jsonldContexts`) return body;
 
     const context = this.context ? toBodyContext(this.context) : NGSI_LD_CORE_CONTEXT;
     if (Array.isArray(body)) {

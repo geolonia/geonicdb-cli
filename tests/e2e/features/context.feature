@@ -130,6 +130,15 @@ Feature: JSON-LD @context on NGSI-LD requests
     Then the exit code should be 0
     And stderr should contain "ngsi-ld-core-context.jsonld"
 
+  # temporal entityOperations query is a POST too — its Query body carries the
+  # @context (no Link header), same clause 6.3.5 rule as the entity paths.
+  Scenario: --context applies to temporal batch query reads
+    Given a temporal entity "urn:ngsi-ld:Vehicle:e2e14" exists using the custom vocabulary
+    When I run `geonic temporal entityOperations query '{"entities":[{"type":"Vehicle"}]}' --context https://example.org/e2e-vocab.jsonld --verbose`
+    Then the exit code should be 0
+    And stderr should not contain "> Link:"
+    And the output should not contain "example-vocab/ns#plateNumber"
+
   # The over-injection guard: entityOperations/delete sends bare ID strings that
   # have no place for a @context (clause 5.6.10.3) — wrapping them would make
   # the server reject the whole request.
@@ -149,18 +158,25 @@ Feature: JSON-LD @context on NGSI-LD requests
     Then the exit code should be 1
     And stderr should contain "must not contain"
 
-  # geolonia/geonicdb#1818: the server reads only the first link-value, so the
-  # dropped vocabularies must be announced rather than silently lost.
-  Scenario: Supplying several contexts warns that only the first is applied
+  # geolonia/geonicdb#1818 is fixed: the server merges every supplied @context,
+  # so the CLI no longer warns when several are passed. The two vocabularies
+  # below each define only ONE of the entity's terms — both terms coming back
+  # compacted proves both contexts were applied (not just the first).
+  Scenario: Several contexts are all applied, without a warning
     Given an entity "urn:ngsi-ld:Vehicle:e2e10" exists using the custom vocabulary
-    And a JSON-LD context "https://example.org/e2e-second.jsonld" is registered with:
+    And a JSON-LD context "https://example.org/e2e-type-only.jsonld" is registered with:
       """
-      { "Unrelated": "https://example-vocab/ns#Unrelated" }
+      { "Vehicle": "https://example-vocab/ns#Vehicle" }
       """
-    When I run `geonic entities get urn:ngsi-ld:Vehicle:e2e10 --context https://example.org/e2e-vocab.jsonld --context https://example.org/e2e-second.jsonld`
+    And a JSON-LD context "https://example.org/e2e-attr-only.jsonld" is registered with:
+      """
+      { "plateNumber": "https://example-vocab/ns#plateNumber" }
+      """
+    When I run `geonic entities get urn:ngsi-ld:Vehicle:e2e10 --context https://example.org/e2e-type-only.jsonld --context https://example.org/e2e-attr-only.jsonld`
     Then the exit code should be 0
-    And stderr should contain "geonicdb#1818"
+    And stderr should not contain "geonicdb#1818"
     And the JSON output key "type" should be "Vehicle"
+    And the JSON output should have key "plateNumber"
 
   # A non-ASCII URI cannot go into a header (ByteString), and used to surface as
   # an unreadable TypeError from deep inside fetch.

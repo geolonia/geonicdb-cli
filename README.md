@@ -806,7 +806,7 @@ $ geonic entities get urn:ngsi-ld:Building:v1 --context https://example.org/buil
 - On reads (`GET`/`DELETE`) it is sent as a `Link` header; on writes (`POST`/`PATCH`/`PUT`) it is placed in the request body (per element for batch arrays), so the same flag also lets you **write** with a custom vocabulary. Writes never carry a `Link` header — combining one with `Content-Type: application/ld+json` is rejected by the server (ETSI GS CIM 009 [clause 6.3.5](https://cim.etsi.org/NGSI-LD/official/clause-6.html), "no mixes").
 - Repeat the flag or separate values with commas for a context array:
   `--context https://a.example/1.jsonld --context https://b.example/2.jsonld`.
-  Note that GeonicDB currently applies only the first one ([geolonia/geonicdb#1818](https://github.com/geolonia/geonicdb/issues/1818)); the CLI warns on stderr when you pass more.
+  Every supplied context is applied — the server merges them all.
 - Save a per-profile default so you do not have to repeat it:
 
 ```bash
@@ -846,8 +846,8 @@ curl \
 > All NGSI-LD writes are sent as `application/ld+json`, which requires an inline
 > JSON-LD `@context` in the body (ETSI GS CIM 009 clause 6.3.5). When your payload
 > omits `@context`, the CLI injects the NGSI-LD core context automatically — into
-> object bodies (entities, subscriptions, registrations, temporal, query bodies)
-> and into each object element of batch arrays. A `@context` you provide is
+> object bodies (entities, subscriptions, registrations, temporal, snapshots,
+> query bodies) and into each object element of batch arrays. A `@context` you provide is
 > preserved, and `--context` takes precedence over the core context. ID-string
 > arrays (`entityOperations/delete`) and `/jsonldContexts` registrations are left
 > untouched.

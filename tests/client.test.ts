@@ -328,6 +328,35 @@ describe("GdbClient", () => {
       expect((sentBody() as Record<string, unknown>)["@context"]).toEqual([CTX, CTX2]);
     });
 
+    // Precedence: an explicit @context in the payload beats --context.
+    it("keeps a payload @context even when --context is configured", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+      mockOk(201);
+
+      await client.post("/entities", {
+        id: "urn:ngsi-ld:Building:1",
+        type: "Building",
+        "@context": "https://explicit.example/ctx.jsonld",
+      });
+
+      expect((sentBody() as Record<string, unknown>)["@context"]).toBe(
+        "https://explicit.example/ctx.jsonld",
+      );
+    });
+
+    // Several --context values on a WRITE go into the body as an array and,
+    // unlike the old Link-header path, warrant no warning — the server reads
+    // the whole body array.
+    it("injects all contexts into a write body without warning", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX, CTX2] });
+      mockOk(201);
+
+      await client.post("/subscriptions", { type: "Subscription" });
+
+      expect((sentBody() as Record<string, unknown>)["@context"]).toEqual([CTX, CTX2]);
+      expect(printWarning).not.toHaveBeenCalled();
+    });
+
     it("never overrides a caller-supplied @context", async () => {
       const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
       mockOk(201);
@@ -436,39 +465,14 @@ describe("GdbClient", () => {
       ]);
     });
 
-    // #183: warn where the header is actually attached, not at client
-    // construction — admin/auth use raw paths that carry no context.
-    it("warns once when several contexts are actually sent", async () => {
-      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX, CTX2] });
-      // A fresh Response per call: a body can only be read once.
-      vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
-        new Response(JSON.stringify([]), {
-          status: 200,
-          headers: { "Content-Type": "application/ld+json" },
-        }),
-      );
-
-      await client.get("/entities");
-      await client.get("/types");
-
-      expect(printWarning).toHaveBeenCalledTimes(1);
-      expect(printWarning).toHaveBeenCalledWith(expect.stringContaining("geonicdb#1818"));
-    });
-
-    it("does not warn for a single context", async () => {
-      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
-      mockOk(200, []);
-
-      await client.get("/entities");
-
-      expect(printWarning).not.toHaveBeenCalled();
-    });
-
-    it("does not warn on raw paths, which never carry a Link header", async () => {
+    // geolonia/geonicdb#1818 is fixed — the server merges every link-value, so
+    // the old "only the first is applied" warning is gone. Passing several
+    // contexts is a silent, fully-working operation now.
+    it("does not warn when several contexts are sent (#1818 is fixed)", async () => {
       const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX, CTX2] });
       mockOk(200, []);
 
-      await client.rawRequest("GET", "/admin/deployments");
+      await client.get("/entities");
 
       expect(printWarning).not.toHaveBeenCalled();
     });
