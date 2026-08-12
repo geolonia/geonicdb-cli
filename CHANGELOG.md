@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-08-13
+- **Docs**: バッチ件数上限のプラン別化 (本体 geolonia/geonicdb#2082: T0/T5 100, T30 500, T40 1,000) に合わせて `import --batch-size` のヘルプと README を更新した (closes #190) (#193)。CLI 側に 100 のハードコードや上限超過メッセージの文字列照合が無いことを実測で確認し、`--batch-size 1000` が CLI 側で cap されない回帰ガードを追加
+
 ### 2026-08-06
 - **Fix**: #178 / #179 のマージ後レビュー (Cursor CLI の別系統 2 モデル) で検出した 5 件を修正 (closes #183) (#184)
   - **非 ASCII の `--context` が実行時 TypeError になっていた**。`Link` ヘッダーは ByteString 制約があるため、`https://example.org/日本語.jsonld` のような URI は fetch の深部で `Cannot convert argument to a ByteString...` を投げていた。検証境界で拒否し、percent-encoded / punycode 形式を案内する。`@context` URL は完全一致で比較されるため、正規化して送るのではなく拒否する (#178 の設計を維持)
