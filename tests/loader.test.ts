@@ -323,6 +323,25 @@ describe("BulkImporter", () => {
     expect(client.post).toHaveBeenCalledTimes(1);
   });
 
+  // #182: a 504 LdContextNotAvailable is a permanent input error (the @context
+  // URL is the same on every attempt) — the chunk must fail once, not burn the
+  // retry budget with backoff.
+  it("does not retry a 504 LdContextNotAvailable (#182)", async () => {
+    const client = {
+      post: vi.fn().mockRejectedValue(
+        new GdbClientError("Could not resolve @context", 504, {
+          type: "https://uri.etsi.org/ngsi-ld/errors/LdContextNotAvailable",
+        }),
+      ),
+    };
+    const onRetry = vi.fn();
+    const importer = new BulkImporter(client as never, baseOpts({ onRetry }));
+    const result = await importer.run(fromArray(records(["a"])));
+    expect(result.failed).toBe(1);
+    expect(client.post).toHaveBeenCalledTimes(1);
+    expect(onRetry).not.toHaveBeenCalled();
+  });
+
   it("retries a 429 then succeeds", async () => {
     const client = {
       post: vi

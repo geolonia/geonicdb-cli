@@ -23,12 +23,29 @@ const DEFAULT_BASE_DELAY_MS = 500;
 const DEFAULT_MAX_DELAY_MS = 30_000;
 
 /**
+ * #182: the NGSI-LD error type for a `@context` the server could not dereference.
+ * GeonicDB returns it as 504 (ETSI GS CIM 009 clause 6.3.2 Table 6.3.2-1,
+ * geolonia/geonicdb#1801), which the status-based rule below would retry.
+ */
+const LD_CONTEXT_NOT_AVAILABLE = "https://uri.etsi.org/ngsi-ld/errors/LdContextNotAvailable";
+
+/**
  * Determine whether an error is worth retrying: server-side transient failures
  * (429 / 5xx), network errors, and request timeouts (AbortError). Client input
  * errors (4xx other than 429) are NOT retryable — retrying won't help.
+ *
+ * #182: `504 LdContextNotAvailable` is excluded from the 5xx rule. The 504 says
+ * the server could not resolve the request's `@context` URL — for a bulk import
+ * that URL is identical on every chunk and every attempt, so the dominant cause
+ * (a mistyped or unregistered context) can never succeed on retry; backing off
+ * just makes an input error look like a slow server. The cost of this choice is
+ * that a genuinely transient DNS failure fails fast too — acceptable, because
+ * the failed entities land in `--errors-out` and are re-submittable, while the
+ * status quo (retrying a typo to exhaustion) has no such recovery.
  */
 export function isRetryableError(err: unknown): boolean {
   if (err instanceof GdbClientError) {
+    if (err.ngsiError?.type === LD_CONTEXT_NOT_AVAILABLE) return false;
     return err.status === 429 || err.status >= 500;
   }
   if (err instanceof Error) {
