@@ -144,9 +144,10 @@ describe("GdbClient", () => {
     expect(sentBody["@context"]).toBe(custom);
   });
 
-  // Batch is excluded to match the server's current #1583 scope (entity endpoints
-  // only); server-side batch @context enforcement is tracked in geonicdb#1599.
-  it("does NOT inject @context into batch (array) bodies (#168)", async () => {
+  // #189: the server enforces clause 6.3.5 on every NGSI-LD write path
+  // (geonicdb#2065) and batch elements are independent JSON-LD documents
+  // (clause 5.6.7.3), so each object element gets the core context.
+  it("injects the core @context into each element of a batch (array) body (#189)", async () => {
     const client = new GdbClient({ baseUrl: "http://localhost:3000" });
     const batch = [{ id: "Room:001", type: "Room" }];
 
@@ -159,19 +160,64 @@ describe("GdbClient", () => {
     const sentBody = JSON.parse(
       (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string,
     );
-    expect(sentBody).toEqual(batch);
-    expect(Array.isArray(sentBody)).toBe(true);
+    expect(sentBody).toEqual([
+      {
+        id: "Room:001",
+        type: "Room",
+        "@context": "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld",
+      },
+    ]);
   });
 
-  it("does NOT inject @context into non-entity endpoints (#168)", async () => {
+  // #189: subscriptions/registrations/temporal are NGSI-LD writes too — the
+  // server 400s them without a body @context (geonicdb#1599/#2065).
+  it("injects the core @context into every NGSI-LD write body, not just entities (#189)", async () => {
+    for (const path of ["/subscriptions", "/csourceRegistrations", "/temporal/entities", "/entityOperations/query"]) {
+      vi.restoreAllMocks();
+      const client = new GdbClient({ baseUrl: "http://localhost:3000" });
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({}), { status: 201 }),
+      );
+
+      await client.post(path, { type: "Anything" });
+
+      const sentBody = JSON.parse(
+        (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string,
+      );
+      expect(sentBody["@context"], `missing @context on ${path}`).toBe(
+        "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld",
+      );
+    }
+  });
+
+  // The /jsonldContexts body IS a context document — injecting a @context term
+  // into it would corrupt the registration (the server excludes it the same way).
+  it("does NOT inject @context into a /jsonldContexts registration body (#189)", async () => {
     const client = new GdbClient({ baseUrl: "http://localhost:3000" });
-    const body = { description: "sub", type: "Subscription" };
+    const body = { url: "https://example.org/ctx.jsonld", kind: "cached" };
 
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({}), { status: 201 }),
     );
 
-    await client.post("/subscriptions", body);
+    await client.post("/jsonldContexts", body);
+
+    const sentBody = JSON.parse(
+      (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string,
+    );
+    expect("@context" in sentBody).toBe(false);
+    expect(sentBody).toEqual(body);
+  });
+
+  it("does NOT inject @context into raw (non-NGSI-LD) write bodies (#189)", async () => {
+    const client = new GdbClient({ baseUrl: "http://localhost:3000" });
+    const body = { name: "a-rule" };
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 201 }),
+    );
+
+    await client.rawRequest("POST", "/rules", { body });
 
     const sentBody = JSON.parse(
       (fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string,
@@ -322,26 +368,72 @@ describe("GdbClient", () => {
       expect(sentBody()).toEqual(ids);
     });
 
-    // The Query body is not an entity; the server reads the Link header for it.
-    it("leaves a batch query body untouched but still sends the Link header", async () => {
+    // #186: the Query operation is a POST, so its @context must travel in the
+    // body — a Link header alongside application/ld+json is a 400 (clause 6.3.5).
+    it("puts the context into a batch query body and sends no Link header", async () => {
       const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
       mockOk(200, []);
 
-      const query = { type: "Building" };
-      await client.post("/entityOperations/query", query);
+      await client.post("/entityOperations/query", { type: "Building" });
 
-      expect(sentBody()).toEqual(query);
-      expect(sentHeaders().Link).toBe(LINK_ONE);
+      expect(sentBody()).toEqual({ type: "Building", "@context": CTX });
+      expect("Link" in sentHeaders()).toBe(false);
     });
 
-    it("does not inject a context into non-entity resources", async () => {
+    it("injects the context into every NGSI-LD write body, not just entities (#189)", async () => {
       const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
       mockOk(201);
 
       const sub = { type: "Subscription", description: "sub" };
       await client.post("/subscriptions", sub);
 
-      expect(sentBody()).toEqual(sub);
+      expect(sentBody()).toEqual({ ...sub, "@context": CTX });
+    });
+
+    // #186: clause 6.3.5 "No mixes" — a JSON-LD Link header on a POST/PATCH/PUT
+    // under application/ld+json is rejected with 400 by the server.
+    it("never sends a Link header on writes, even with a context configured", async () => {
+      const calls: Array<() => Promise<unknown>> = [];
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+      calls.push(
+        () => client.post("/entities", { id: "urn:x", type: "T" }),
+        () => client.patch("/entities/urn:x/attrs", { a: { type: "Property", value: 1 } }),
+        () => client.put("/entities/urn:x", { id: "urn:x", type: "T" }),
+        () => client.post("/subscriptions", { type: "Subscription" }),
+        () => client.post("/entityOperations/upsert", [{ id: "urn:x", type: "T" }]),
+      );
+      for (const call of calls) {
+        vi.restoreAllMocks();
+        mockOk(201);
+        await call();
+        expect("Link" in sentHeaders()).toBe(false);
+      }
+    });
+
+    it("still sends the Link header on DELETE, which has no body channel", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+
+      await client.delete("/entities/urn:x");
+
+      expect(sentHeaders().Link).toBe(LINK_ONE);
+    });
+
+    // Mixed-shape array: exclusion is decided by element shape, not by path —
+    // ID strings (entityOperations/delete) must never gain a @context wrapper.
+    it("injects into object elements only, leaving non-object elements alone", async () => {
+      const client = new GdbClient({ baseUrl: "http://localhost:3000", context: [CTX] });
+      mockOk(200);
+
+      await client.post("/entityOperations/create", [
+        { id: "urn:ngsi-ld:Building:1", type: "Building" },
+        "urn:ngsi-ld:Building:2",
+      ]);
+
+      expect(sentBody()).toEqual([
+        { id: "urn:ngsi-ld:Building:1", type: "Building", "@context": CTX },
+        "urn:ngsi-ld:Building:2",
+      ]);
     });
 
     // #183: warn where the header is actually attached, not at client
