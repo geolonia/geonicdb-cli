@@ -374,13 +374,15 @@ export class GdbClient {
   ): Promise<ClientResponse<T>> {
     const resourcePath = `${this.getBasePath()}${path}`;
     const url = this.buildUrl(resourcePath, options?.params);
-    // #177/#186: NGSI-LD READS carry the @context in a Link header; raw
-    // admin/auth paths never do. Writes must NOT — under application/ld+json a
-    // JSON-LD Link header on POST/PATCH/PUT is a 400 (clause 6.3.5 "No mixes",
-    // geolonia/geonicdb#1924); their @context travels in the body instead
-    // (`prepareNgsiLdWriteBody`).
+    // #177/#186: NGSI-LD READS (GET/DELETE) carry the @context in a Link
+    // header; raw admin/auth paths never do. Writes must NOT — under
+    // application/ld+json a JSON-LD Link header on POST/PATCH/PUT is a 400
+    // (clause 6.3.5 "No mixes", geolonia/geonicdb#1924); their @context travels
+    // in the body instead (`prepareNgsiLdWriteBody`). An allowlist, not
+    // !isContextSourceVerb: other verbs (HEAD/OPTIONS) have no compaction to
+    // steer, so they get no Link either.
     const headers = this.buildHeaders(options?.headers, {
-      contextLink: !this.isContextSourceVerb(method),
+      contextLink: ["GET", "DELETE"].includes(method.toUpperCase()),
     });
     const injectedBody = options?.body
       ? this.prepareNgsiLdWriteBody(method, resourcePath, options.body)
