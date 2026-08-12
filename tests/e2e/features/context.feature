@@ -102,6 +102,52 @@ Feature: JSON-LD @context on NGSI-LD requests
     Then the exit code should be 0
     And the JSON output key "type" should be "Vehicle"
 
+  # geonicdb-cli#186: clause 6.3.5 "No mixes" — under application/ld+json (which
+  # the CLI always sends) a POST/PATCH/PUT must take its @context from the body,
+  # and a JSON-LD Link header on such a request is rejected with 400 by the
+  # server (geolonia/geonicdb#1924). The Link channel is for reads only.
+  # https://cim.etsi.org/NGSI-LD/official/clause-6.html
+  Scenario: A write sends the @context in the body, never as a Link header
+    When I run `geonic entities create '{"id":"urn:ngsi-ld:Vehicle:e2e11","type":"Vehicle","plateNumber":{"type":"Property","value":"LNK-000"}}' --context https://example.org/e2e-vocab.jsonld --verbose`
+    Then the exit code should be 0
+    And stderr should not contain "> Link:"
+    And stderr should contain "e2e-vocab.jsonld"
+
+  Scenario: A read still sends the @context as a Link header
+    Given an entity "urn:ngsi-ld:Vehicle:e2e12" exists using the custom vocabulary
+    When I run `geonic entities get urn:ngsi-ld:Vehicle:e2e12 --context https://example.org/e2e-vocab.jsonld --verbose`
+    Then the exit code should be 0
+    And stderr should contain "> Link:"
+    And the JSON output key "type" should be "Vehicle"
+
+  # geonicdb-cli#189: every NGSI-LD write body must carry a @context inline —
+  # since geolonia/geonicdb#2065 the server rejects a bare body with 400 (or a
+  # per-element 207 for batches). The core context is injected when the user
+  # supplies none; the body assertion below is deliberate, because a green
+  # status alone could come from a server that stopped enforcing the rule.
+  Scenario: A write without --context gets the core @context injected into the body
+    When I run `geonic subscriptions create '{"type":"Subscription","entities":[{"type":"Vehicle"}],"notification":{"endpoint":{"uri":"http://localhost:3000/notify"}}}' --verbose`
+    Then the exit code should be 0
+    And stderr should contain "ngsi-ld-core-context.jsonld"
+
+  # temporal entityOperations query is a POST too — its Query body carries the
+  # @context (no Link header), same clause 6.3.5 rule as the entity paths.
+  Scenario: --context applies to temporal batch query reads
+    Given a temporal entity "urn:ngsi-ld:Vehicle:e2e14" exists using the custom vocabulary
+    When I run `geonic temporal entityOperations query '{"entities":[{"type":"Vehicle"}]}' --context https://example.org/e2e-vocab.jsonld --verbose`
+    Then the exit code should be 0
+    And stderr should not contain "> Link:"
+    And the output should not contain "example-vocab/ns#plateNumber"
+
+  # The over-injection guard: entityOperations/delete sends bare ID strings that
+  # have no place for a @context (clause 5.6.10.3) — wrapping them would make
+  # the server reject the whole request.
+  Scenario: Batch delete ID strings are not wrapped with a @context
+    Given an entity "urn:ngsi-ld:Vehicle:e2e13" exists using the custom vocabulary
+    When I run `geonic batch delete '["urn:ngsi-ld:Vehicle:e2e13"]' --verbose`
+    Then the exit code should be 0
+    And stderr should not contain "@context"
+
   Scenario: An invalid @context URI is rejected before any request is made
     When I run `geonic entities list --context not-a-url`
     Then the exit code should be 1
@@ -112,18 +158,25 @@ Feature: JSON-LD @context on NGSI-LD requests
     Then the exit code should be 1
     And stderr should contain "must not contain"
 
-  # geolonia/geonicdb#1818: the server reads only the first link-value, so the
-  # dropped vocabularies must be announced rather than silently lost.
-  Scenario: Supplying several contexts warns that only the first is applied
+  # geolonia/geonicdb#1818 is fixed: the server merges every supplied @context,
+  # so the CLI no longer warns when several are passed. The two vocabularies
+  # below each define only ONE of the entity's terms — both terms coming back
+  # compacted proves both contexts were applied (not just the first).
+  Scenario: Several contexts are all applied, without a warning
     Given an entity "urn:ngsi-ld:Vehicle:e2e10" exists using the custom vocabulary
-    And a JSON-LD context "https://example.org/e2e-second.jsonld" is registered with:
+    And a JSON-LD context "https://example.org/e2e-type-only.jsonld" is registered with:
       """
-      { "Unrelated": "https://example-vocab/ns#Unrelated" }
+      { "Vehicle": "https://example-vocab/ns#Vehicle" }
       """
-    When I run `geonic entities get urn:ngsi-ld:Vehicle:e2e10 --context https://example.org/e2e-vocab.jsonld --context https://example.org/e2e-second.jsonld`
+    And a JSON-LD context "https://example.org/e2e-attr-only.jsonld" is registered with:
+      """
+      { "plateNumber": "https://example-vocab/ns#plateNumber" }
+      """
+    When I run `geonic entities get urn:ngsi-ld:Vehicle:e2e10 --context https://example.org/e2e-type-only.jsonld --context https://example.org/e2e-attr-only.jsonld`
     Then the exit code should be 0
-    And stderr should contain "geonicdb#1818"
+    And stderr should not contain "geonicdb#1818"
     And the JSON output key "type" should be "Vehicle"
+    And the JSON output should have key "plateNumber"
 
   # A non-ASCII URI cannot go into a header (ByteString), and used to surface as
   # an unreadable TypeError from deep inside fetch.

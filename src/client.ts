@@ -2,7 +2,6 @@ import type { ClientOptions, ClientResponse, NgsiError } from "./types.js";
 import { clientCredentialsGrant } from "./oauth.js";
 import { getTokenStatus } from "./token.js";
 import { buildContextLinkHeader, toBodyContext } from "./context.js";
-import { printWarning } from "./output.js";
 import { sanitizeServerText } from "./sanitize.js";
 
 /**
@@ -32,7 +31,6 @@ export class GdbClient {
   private verbose: boolean;
   private dryRun: boolean;
   private context?: string[];
-  private contextWarningEmitted = false;
   private refreshPromise?: Promise<boolean>;
 
   constructor(options: ClientOptions) {
@@ -61,10 +59,11 @@ export class GdbClient {
     if (this.service) headers["NGSILD-Tenant"] = this.service;
     // #177: reads carry the JSON-LD @context in a Link header — it is the only
     // channel a GET has, and the server compacts the response using exactly the
-    // context the request supplied (ETSI GS CIM 009 clause 5.5.7).
+    // context the request supplied (ETSI GS CIM 009 clause 5.5.7). Every value
+    // is applied: the server merges all link-values (geolonia/geonicdb#1818 is
+    // fixed), so no "only the first is used" warning is needed anymore.
     if (options?.contextLink && this.context) {
       headers["Link"] = buildContextLinkHeader(this.context);
-      this.warnOnceAboutMultipleContexts(this.context.length);
     }
 
     if (this.token) {
@@ -78,27 +77,6 @@ export class GdbClient {
     }
 
     return headers;
-  }
-
-  /**
-   * #177/#183: the CLI sends every `--context` as its own link-value
-   * (RFC 8288 §3), but GeonicDB reads only the first (geolonia/geonicdb#1818).
-   * Announce the drop rather than let the extra vocabularies vanish into a
-   * response full of absolute URIs — that silence is the exact failure the flag
-   * exists to remove.
-   *
-   * Emitted from here, not from client construction, so it fires only when a
-   * Link header is genuinely attached: `admin` and `auth` go through raw paths
-   * that carry no context, and warning there would claim something untrue.
-   * Once per client, so a paginated command does not repeat it per page.
-   */
-  private warnOnceAboutMultipleContexts(count: number): void {
-    if (count <= 1 || this.contextWarningEmitted) return;
-    this.contextWarningEmitted = true;
-    printWarning(
-      `Sending ${count} @context URIs, but GeonicDB currently applies only the first ` +
-        `(geolonia/geonicdb#1818). Terms defined only in the others will be returned as full URIs.`,
-    );
   }
 
   private buildUrl(path: string, params?: Record<string, string>): string {
@@ -316,76 +294,59 @@ export class GdbClient {
     return false;
   }
 
-  /**
-   * #168: NGSI-LD entity writes require an inline JSON-LD `@context` under
-   * `application/ld+json` (server geolonia/geonicdb#1583). The CLI always sends
-   * `application/ld+json`, so inject the core context when an entity-write object
-   * body omits it; otherwise the server returns 400 BadRequestData. A
-   * caller-supplied `@context` is preserved (never overwritten). Arrays (batch
-   * bodies) and non-object bodies are left untouched.
-   *
-   * Scoped to the `/entities` endpoints ONLY, mirroring the exact range where the
-   * server enforces `@context` (geonicdb#1583: create/replace/append/patch-attrs).
-   * Other resources must not receive an injected `@context`:
-   *   - admin/auth/... use strict server schemas that reject the unexpected key.
-   *   - batch (`/entityOperations`, array bodies), temporal, subscriptions and
-   *     registrations are not yet `@context`-required server-side (tracked in
-   *     geonicdb#1599); extend this scope when the server does.
-   */
-  private maybeInjectCoreContext(resourcePath: string, body: unknown): unknown {
-    const isEntityWrite = resourcePath.startsWith(`${this.getBasePath()}/entities`);
-    if (
-      !isEntityWrite ||
-      body === null ||
-      typeof body !== "object" ||
-      Array.isArray(body) ||
-      "@context" in (body as Record<string, unknown>)
-    ) {
-      return body;
-    }
-    return { ...(body as Record<string, unknown>), "@context": NGSI_LD_CORE_CONTEXT };
+  /** Verbs whose `@context` must come from the body under `application/ld+json` (clause 6.3.5). */
+  private static readonly CONTEXT_SOURCE_VERBS = new Set(["POST", "PATCH", "PUT"]);
+
+  private isContextSourceVerb(method: string): boolean {
+    return GdbClient.CONTEXT_SOURCE_VERBS.has(method.toUpperCase());
   }
 
   /**
-   * Batch endpoints whose body is an array of entity objects. Their `@context`
-   * lives on each element, not on the request: the server reads it per entity
-   * (`attachContextRef` in geonicdb's batch controller). `entityOperations/delete`
-   * is excluded because its array holds ID strings, and `entityOperations/query`
-   * because its body is a Query object — the Link header carries the context there.
-   */
-  private static readonly ENTITY_ARRAY_WRITE_PATHS = [
-    "/entityOperations/create",
-    "/entityOperations/upsert",
-    "/entityOperations/update",
-    "/entityOperations/merge",
-  ];
-
-  /**
-   * #177: apply a user-supplied `--context` to entity-write bodies.
+   * #186/#189: make every NGSI-LD write body carry its JSON-LD `@context` inline.
    *
-   * Under `application/ld+json` — which this CLI always sends — the server takes
-   * the `@context` from the **body** and ignores the Link header
-   * (`extractContextRef`, ETSI GS CIM 009 clause 6.3.5). Without this, `--context`
-   * would be accepted on a write and then silently do nothing, which is the same
-   * class of quiet failure this flag exists to remove.
+   * Under `Content-Type: application/ld+json` — which this CLI always sends —
+   * ETSI GS CIM 009 clause 6.3.5 requires the `@context` of a POST/PATCH/PUT to
+   * come from the request body itself, and GeonicDB enforces this on every
+   * NGSI-LD write path (geolonia/geonicdb#1924, #2065): a body without `@context`
+   * is 400 BadRequestData (batch elements: a per-element 207 error). So the
+   * `@context` is resolved per JSON-LD document, in this order:
    *
-   * Scope mirrors where the server actually reads a body `@context` for entity
-   * writes: `/entities...` (object body) and the batch endpoints listed above
-   * (per-element). A caller-supplied `@context` always wins — an explicit
-   * `@context` in the payload is a deliberate choice.
+   *   1. an explicit `@context` already in the payload (a deliberate choice — never overwritten),
+   *   2. the user-supplied `--context` (without this the flag would be accepted
+   *      on a write and silently do nothing),
+   *   3. the NGSI-LD core context (so a plain payload stays valid, #168).
+   *
+   * Array bodies are handled per element, because each element is an independent
+   * JSON-LD document (clause 5.6.7.3). Non-object elements are left untouched —
+   * `entityOperations/delete` sends ID strings that have no place for a
+   * `@context`. Exclusion is decided by the SHAPE of the data, not by path,
+   * mirroring the server (`contextComplianceErrorForElement`).
+   *
+   * Out of scope, and deliberately untouched:
+   *   - GET/DELETE — clause 6.3.5 covers POST/PATCH/PUT only; reads carry their
+   *     context in the Link header (see `buildHeaders`).
+   *   - `/jsonldContexts` — its body IS a context document, not a JSON-LD
+   *     document with a `@context` term (the server excludes it the same way).
+   *   - non-NGSI-LD paths (admin/auth/rules/...) — they go through
+   *     `executeRawRequest` with absolute paths that never match the base path,
+   *     and their strict server schemas would reject the unexpected key.
+   *
+   * https://cim.etsi.org/NGSI-LD/official/clause-6.html
    */
-  private applyContextToBody(resourcePath: string, body: unknown): unknown {
-    if (!this.context) return body;
-    const relative = resourcePath.slice(this.getBasePath().length);
-    const injected = toBodyContext(this.context);
+  private prepareNgsiLdWriteBody(method: string, resourcePath: string, body: unknown): unknown {
+    if (!this.isContextSourceVerb(method)) return body;
+    if (!resourcePath.startsWith(`${this.getBasePath()}/`)) return body;
+    // Exact match, mirroring the server's CONTEXT_DOCUMENT_PATHS: only the
+    // collection body IS a context document. A future /jsonldContexts/{id}
+    // write would fall under the normal clause 6.3.5 rule on the server, so a
+    // prefix match here would withhold the @context it requires.
+    if (resourcePath === `${this.getBasePath()}/jsonldContexts`) return body;
 
-    if (relative.startsWith("/entities")) {
-      return GdbClient.withContext(body, injected);
+    const context = this.context ? toBodyContext(this.context) : NGSI_LD_CORE_CONTEXT;
+    if (Array.isArray(body)) {
+      return body.map((element) => GdbClient.withContext(element, context));
     }
-    if (GdbClient.ENTITY_ARRAY_WRITE_PATHS.includes(relative) && Array.isArray(body)) {
-      return body.map((entry) => GdbClient.withContext(entry, injected));
-    }
-    return body;
+    return GdbClient.withContext(body, context);
   }
 
   /** Add `@context` to a plain-object payload, leaving anything else untouched. */
@@ -413,13 +374,18 @@ export class GdbClient {
   ): Promise<ClientResponse<T>> {
     const resourcePath = `${this.getBasePath()}${path}`;
     const url = this.buildUrl(resourcePath, options?.params);
-    // #177: NGSI-LD requests carry the @context; raw admin/auth paths never do.
-    const headers = this.buildHeaders(options?.headers, { contextLink: true });
+    // #177/#186: NGSI-LD READS (GET/DELETE) carry the @context in a Link
+    // header; raw admin/auth paths never do. Writes must NOT — under
+    // application/ld+json a JSON-LD Link header on POST/PATCH/PUT is a 400
+    // (clause 6.3.5 "No mixes", geolonia/geonicdb#1924); their @context travels
+    // in the body instead (`prepareNgsiLdWriteBody`). An allowlist, not
+    // !isContextSourceVerb: other verbs (HEAD/OPTIONS) have no compaction to
+    // steer, so they get no Link either.
+    const headers = this.buildHeaders(options?.headers, {
+      contextLink: ["GET", "DELETE"].includes(method.toUpperCase()),
+    });
     const injectedBody = options?.body
-      ? this.maybeInjectCoreContext(
-          resourcePath,
-          this.applyContextToBody(resourcePath, options.body),
-        )
+      ? this.prepareNgsiLdWriteBody(method, resourcePath, options.body)
       : undefined;
     const body = injectedBody ? JSON.stringify(injectedBody) : undefined;
 
@@ -473,10 +439,10 @@ export class GdbClient {
       delete headers["NGSILD-Tenant"];
     }
     // executeRawRequest takes absolute paths (auth/admin/health). The scope check
-    // in maybeInjectCoreContext leaves non-/entities paths untouched, so this is a
-    // no-op for those; kept for consistency in case an entities path is ever routed here.
+    // in prepareNgsiLdWriteBody leaves non-NGSI-LD paths untouched, so this is a
+    // no-op for those; kept for consistency in case an NGSI-LD path is ever routed here.
     const injectedBody = options?.body
-      ? this.maybeInjectCoreContext(path, options.body)
+      ? this.prepareNgsiLdWriteBody(method, path, options.body)
       : undefined;
     const body = injectedBody ? JSON.stringify(injectedBody) : undefined;
 
