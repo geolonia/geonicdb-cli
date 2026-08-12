@@ -198,22 +198,18 @@ describe("temporal commands", () => {
   });
 
   describe("temporal entityOperations query", () => {
-    it("posts body with aggr options to /temporal/entityOperations/query", async () => {
-      const body = { entities: [{ type: "Sensor" }] };
-      vi.mocked(parseJsonInput).mockResolvedValue(body);
-      client.post.mockResolvedValue(mockResponse([]));
+    // #188: the server implements no aggregation on the POST query path — these
+    // flags were a silent no-op there, so they now fail loudly as unknown options.
+    it("rejects --aggr-methods / --aggr-period as unknown options (#188)", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({});
       const program = makeProgram();
-      await runCommand(program, [
-        "temporal", "entityOperations", "query", '{}',
-        "--aggr-methods", "totalCount,sum",
-        "--aggr-period", "PT1H",
-      ]);
-      expect(client.post).toHaveBeenCalledWith(
-        "/temporal/entityOperations/query",
-        body,
-        { aggrMethods: "totalCount,sum", aggrPeriodDuration: "PT1H" },
-      );
-      expect(outputResponse).toHaveBeenCalled();
+      await expect(
+        runCommand(program, [
+          "temporal", "entityOperations", "query", '{}',
+          "--aggr-methods", "totalCount,sum",
+        ]),
+      ).rejects.toThrow(/unknown option/i);
+      expect(client.post).not.toHaveBeenCalled();
     });
 
     it("surfaces the NGSILD-Warning header from the response", async () => {
@@ -234,8 +230,100 @@ describe("temporal commands", () => {
       expect(client.post).toHaveBeenCalledWith(
         "/temporal/entityOperations/query",
         body,
-        {},
       );
+    });
+  });
+
+  // #181/#188: NGSI-LD representation parameters on the GET retrieval paths.
+  // https://cim.etsi.org/NGSI-LD/official/clause-6.html (clause 6.3.11 / 6.3.12)
+  describe("temporal representation options (#181/#188)", () => {
+    it("passes --options through as the options query parameter", async () => {
+      client.get.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "list", "--options", "temporalValues,sysAttrs",
+      ]);
+      expect(client.get).toHaveBeenCalledWith("/temporal/entities", {
+        options: "temporalValues,sysAttrs",
+      });
+    });
+
+    it("passes aggregation params on list", async () => {
+      client.get.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "list",
+        "--options", "aggregatedValues",
+        "--aggr-methods", "avg,sum",
+        "--aggr-period", "PT1H",
+      ]);
+      expect(client.get).toHaveBeenCalledWith("/temporal/entities", {
+        options: "aggregatedValues",
+        aggrMethods: "avg,sum",
+        aggrPeriodDuration: "PT1H",
+      });
+    });
+
+    it("passes representation params on get", async () => {
+      client.get.mockResolvedValue(mockResponse({}));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "get", "urn:sensor:001",
+        "--options", "aggregatedValues", "--aggr-methods", "avg",
+      ]);
+      expect(client.get).toHaveBeenCalledWith("/temporal/entities/urn%3Asensor%3A001", {
+        options: "aggregatedValues",
+        aggrMethods: "avg",
+      });
+    });
+
+    // Table 6.19.3.1-1: aggrMethods "shall be 1 if aggregatedValues is present".
+    it("rejects --options aggregatedValues without --aggr-methods before any request", async () => {
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "temporal", "entities", "list", "--options", "aggregatedValues",
+        ]),
+      ).rejects.toThrow(/requires --aggr-methods/);
+      expect(client.get).not.toHaveBeenCalled();
+    });
+
+    // clause 6.3.12: only one representation keyword may be present.
+    it("rejects combining temporalValues with aggregatedValues before any request", async () => {
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "temporal", "entities", "list",
+          "--options", "temporalValues,aggregatedValues",
+          "--aggr-methods", "avg",
+        ]),
+      ).rejects.toThrow(/only one representation keyword/i);
+      expect(client.get).not.toHaveBeenCalled();
+    });
+
+    // near-miss: `simplified` is an alias of temporalValues and must trip the
+    // same exclusivity rule.
+    it("rejects combining simplified with aggregatedValues", async () => {
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "temporal", "entities", "get", "urn:sensor:001",
+          "--options", "simplified,aggregatedValues",
+          "--aggr-methods", "avg",
+        ]),
+      ).rejects.toThrow(/only one representation keyword/i);
+      expect(client.get).not.toHaveBeenCalled();
+    });
+
+    it("allows --aggr-methods without --options (server aggregates on its presence)", async () => {
+      client.get.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "list", "--aggr-methods", "totalCount",
+      ]);
+      expect(client.get).toHaveBeenCalledWith("/temporal/entities", {
+        aggrMethods: "totalCount",
+      });
     });
   });
 
@@ -285,7 +373,6 @@ describe("temporal commands", () => {
       await runCommand(program, ["temporal", "query", '{}']);
       expect(client.post).toHaveBeenCalledWith(
         "/temporal/entityOperations/query",
-        {},
         {},
       );
     });

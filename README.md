@@ -453,11 +453,13 @@ Notes:
 | `temporal entities create [json]` | Create a temporal entity |
 | `temporal entities delete <id>` | Delete a temporal entity |
 
-Temporal entities list supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`, `--order-by`.
+Temporal entities list supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`, `--order-by`, `--options`, `--aggr-methods`, `--aggr-period`.
 
-Temporal entities get supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`.
+Temporal entities get supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`, `--options`, `--aggr-methods`, `--aggr-period`.
 
 Temporal `--order-by` follows NGSI-LD v1.9.1 grammar (`name`, `name;desc`, composites like `a;asc,b;desc`). The server returns `400` for `dist-*`/`geo:distance`, nested paths like `a.b`, or when combined with `aggrMethods`.
+
+`--options` selects the NGSI-LD temporal representation (ETSI GS CIM 009 clause 6.3.11): `temporalValues` (alias `simplified`) for `[value, timestamp]` pairs, `aggregatedValues` for aggregations, `sysAttrs` to include `createdAt`/`modifiedAt`. It maps to the NGSI-LD `options` query parameter — unrelated to the CLI's own `--format` (json/table). Only one of `temporalValues`/`aggregatedValues` may be present (clause 6.3.12), and `aggregatedValues` requires `--aggr-methods` (e.g. `--aggr-methods avg --aggr-period PT1H`); the CLI rejects both misuses before sending a request.
 
 > **History truncation**: Without `--last-n`, the server caps the returned history to the **100 most recent instances per attribute** (default). When it does, the server returns an `NGSILD-Warning` header and the CLI echoes it as a `Warning:` line on **stderr** so truncation is never a silent drop. To retrieve more, set `--last-n` (**max 1000**) or narrow the window with `--time-at`/`--end-time-at` — with an explicit `--last-n` the server does not truncate, so no warning is emitted. The CLI surfaces whatever `NGSILD-Warning` the server sends, verbatim.
 
@@ -467,7 +469,7 @@ Temporal `--order-by` follows NGSI-LD v1.9.1 grammar (`name`, `name;desc`, compo
 |---|---|
 | `temporal entityOperations query [json]` | Query temporal entities (POST) |
 
-Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`. `--order-by` is intentionally unsupported on this POST route.
+Aggregation is not available on this POST route (the server does not implement it there); use `temporal entities list --options aggregatedValues` instead. `--order-by` is intentionally unsupported on this POST route.
 
 ### snapshots — Snapshot operations
 
