@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-08-13
+- **Fix**: bulk import のリトライ判定で `504 LdContextNotAvailable` を非リトライにした (closes #182, 本体 geolonia/geonicdb#1801 対応) (#192)。`@context` URL の打ち間違いのような恒久エラーがリトライ回数を使い切るまでバックオフし続けていた。判定はステータスでなくエラーボディの `type` (`https://uri.etsi.org/ngsi-ld/errors/LdContextNotAvailable`) で行い、type を持たない素の 504 (ゲートウェイタイムアウト等) は従来どおりリトライする
+
 ### 2026-08-06
 - **Fix**: #178 / #179 のマージ後レビュー (Cursor CLI の別系統 2 モデル) で検出した 5 件を修正 (closes #183) (#184)
   - **非 ASCII の `--context` が実行時 TypeError になっていた**。`Link` ヘッダーは ByteString 制約があるため、`https://example.org/日本語.jsonld` のような URI は fetch の深部で `Cannot convert argument to a ByteString...` を投げていた。検証境界で拒否し、percent-encoded / punycode 形式を案内する。`@context` URL は完全一致で比較されるため、正規化して送るのではなく拒否する (#178 の設計を維持)
