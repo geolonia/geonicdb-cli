@@ -89,7 +89,12 @@ export function registerSnapshotsCommand(program: Command): void {
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
 
-        await client.post("/snapshots");
+        // The server requires a body for snapshot creation ("Request body is
+        // required") — a body-less POST only ever appeared to work against
+        // `createServer`, which fabricated `{}` for it (geolonia/geonicdb#2118).
+        // An explicit `{}` works everywhere, and the client injects the JSON-LD
+        // `@context` clause 6.3.5 demands of an ld+json object body.
+        await client.post("/snapshots", {});
         printSuccess("Snapshot created.");
       }),
     );
