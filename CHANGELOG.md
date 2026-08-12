@@ -8,6 +8,11 @@
 ## [Unreleased]
 
 ### 2026-08-13
+- **Feat**: NGSI-LD temporal の表現パラメータに対応した (closes #181, closes #188, 本体 geolonia/geonicdb#1804 / #1814 / #1816 / #1817 対応) (#194)
+  - `temporal entities list` / `get` に `--options` (`temporalValues` (alias `simplified`) | `aggregatedValues` | `sysAttrs`) と `--aggr-methods` / `--aggr-period` を追加 (ETSI GS CIM 009 clause 6.3.11 / 6.3.12)
+  - `temporal entityOperations query` (POST) の `--aggr-methods` / `--aggr-period` を**実際に効く配線にした** (#188)。従来は本体が POST 経路の集約を未実装で silent no-op だったが、本体 #1816 が CLI の送る形 (クエリ文字列) を `temporalQ` body の fallback として受理し集約を実行するようになった。`--options` も同経路に追加。**#1816 以前の本体 (≤ v0.16.0) は POST 経路の集約を黙って無視する**ため、その場合は GET 経路 (`temporal entities list --options aggregatedValues`) を使う (README に明記)
+  - 決定的に 400 / silent no-op になる組合せはリクエスト前に CLI で loud に拒否する: `temporalValues`/`simplified` × `aggregatedValues` の併用 (clause 6.3.12)、`aggregatedValues` で `--aggr-methods` 欠落 (Table 6.19.3.1-1)、`--aggr-methods` と `--aggr-period` の片方だけの指定、`--order-by` × `--aggr-methods`。空白のみのフラグ値は本体と同じく未指定扱い
+  - NGSI-LD の `format` パラメータには専用フラグを設けない (`--options` で表現可能で、CLI 自身の出力フラグ `--format` と紛らわしいため)
 - **Docs**: バッチ件数上限のプラン別化 (本体 geolonia/geonicdb#2082: T0/T5 100, T30 500, T40 1,000) に合わせて `import --batch-size` のヘルプと README を更新した (closes #190) (#193)。CLI 側に 100 のハードコードや上限超過メッセージの文字列照合が無いことを実測で確認し、`--batch-size 1000` が CLI 側で cap されない回帰ガードを追加
 - **Fix**: bulk import のリトライ判定で `504 LdContextNotAvailable` を非リトライにした (closes #182, 本体 geolonia/geonicdb#1801 対応) (#192)。`@context` URL の打ち間違いのような恒久エラーがリトライ回数を使い切るまでバックオフし続けていた。判定はステータスでなくエラーボディの `type` (`https://uri.etsi.org/ngsi-ld/errors/LdContextNotAvailable`) で行い、type を持たない素の 504 (ゲートウェイタイムアウト等) は従来どおりリトライする
 - **Fix**: ETSI GS CIM 009 clause 6.3.5 の `@context` 供給元規則へ全面的に揃えた (closes #186, closes #189, closes #187, 本体 geolonia/geonicdb#1924 / #2065 対応) (#191)

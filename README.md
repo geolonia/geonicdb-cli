@@ -463,11 +463,13 @@ Notes:
 | `temporal entities create [json]` | Create a temporal entity |
 | `temporal entities delete <id>` | Delete a temporal entity |
 
-Temporal entities list supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`, `--order-by`.
+Temporal entities list supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`, `--order-by`, `--options`, `--aggr-methods`, `--aggr-period`.
 
-Temporal entities get supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`.
+Temporal entities get supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`, `--options`, `--aggr-methods`, `--aggr-period`.
 
-Temporal `--order-by` follows NGSI-LD v1.9.1 grammar (`name`, `name;desc`, composites like `a;asc,b;desc`). The server returns `400` for `dist-*`/`geo:distance`, nested paths like `a.b`, or when combined with `aggrMethods`.
+Temporal `--order-by` follows NGSI-LD v1.9.1 grammar (`name`, `name;desc`, composites like `a;asc,b;desc`). The server returns `400` for `dist-*`/`geo:distance` and nested paths like `a.b`; combining it with `--aggr-methods` is rejected by the CLI before a request is sent (aggregations are sorted by entity ID server-side).
+
+`--options` selects the NGSI-LD temporal representation (ETSI GS CIM 009 clause 6.3.12): `temporalValues` (alias `simplified`) for `[value, timestamp]` pairs, `aggregatedValues` for aggregations, `sysAttrs` (clause 6.3.11) to include `createdAt`/`modifiedAt` (and `expiresAt` where set). It maps to the NGSI-LD `options` query parameter — unrelated to the CLI's own `--format` (json/table). The CLI rejects the deterministic server-side `400`s before sending a request: only one of `temporalValues`/`aggregatedValues` may be present (clause 6.3.12); `aggregatedValues` requires `--aggr-methods`; and `--aggr-methods` / `--aggr-period` must be given together (e.g. `--aggr-methods avg --aggr-period PT1H` — a period alone would be silently ignored by the server, methods alone is a server 400).
 
 > **History truncation**: Without `--last-n`, the server caps the returned history to the **100 most recent instances per attribute** (default). When it does, the server returns an `NGSILD-Warning` header and the CLI echoes it as a `Warning:` line on **stderr** so truncation is never a silent drop. To retrieve more, set `--last-n` (**max 1000**) or narrow the window with `--time-at`/`--end-time-at` — with an explicit `--last-n` the server does not truncate, so no warning is emitted. The CLI surfaces whatever `NGSILD-Warning` the server sends, verbatim.
 
@@ -477,7 +479,7 @@ Temporal `--order-by` follows NGSI-LD v1.9.1 grammar (`name`, `name;desc`, compo
 |---|---|
 | `temporal entityOperations query [json]` | Query temporal entities (POST) |
 
-Temporal entityOperations query supports: `--aggr-methods`, `--aggr-period`. `--order-by` is intentionally unsupported on this POST route.
+Supports the same representation flags as the GET paths: `--options`, `--aggr-methods`, `--aggr-period` (same fail-fast guards). The flags are sent in the query string; the server also accepts the spec-canonical `temporalQ` object in the request body (ETSI GS CIM 009 Table 5.2.21-1), which takes precedence over the flags. Aggregation on this POST route requires a GeonicDB with geolonia/geonicdb#1816 (after v0.16.0) — older servers silently ignore it here, so use `temporal entities list --options aggregatedValues` against those. `--order-by` is intentionally unsupported on this POST route.
 
 ### snapshots — Snapshot operations
 
