@@ -78,6 +78,15 @@ describe("import command", () => {
     expect(output.printSuccess).toHaveBeenCalled();
   });
 
+  // #190: batch limits are plan-based (T30 500 / T40 1,000; geolonia/geonicdb#2082).
+  // The CLI must not hard-cap --batch-size at the lowest plan's 100 — the server
+  // owns the limit and reports overruns with an explicit 400.
+  it("accepts a plan-level --batch-size up to 1000 without a client-side cap (#190)", async () => {
+    await runCommand(program, ["import", "data.ndjson", "--batch-size", "1000"]);
+    const opts = ctorSpy.mock.calls[0][1] as Record<string, unknown>;
+    expect(opts).toMatchObject({ batchSize: 1000 });
+  });
+
   it("uses stdin (no fingerprint) for '-'", async () => {
     await runCommand(program, ["import", "-"]);
     const opts = ctorSpy.mock.calls[0][1] as Record<string, unknown>;
