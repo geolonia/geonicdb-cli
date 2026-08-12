@@ -395,7 +395,7 @@ geonic import entities.ndjson --dry-run
 |---|---|
 | `--input-format <fmt>` | `ndjson` (default, streamed) or `json` (a JSON array, loaded into memory) |
 | `--mode <mode>` | `upsert` (merge, default) or `replace` |
-| `--batch-size <n>` | Entities per request (default 100; must not exceed your plan's max batch size) |
+| `--batch-size <n>` | Entities per request (default 100 = safe on every plan; raise it up to your plan's batch limit — T30 500, T40 1,000, absolute max 1,000) |
 | `--max-bytes <n>` | Max request body bytes per chunk (default 1,000,000) |
 | `--concurrency <n>` | Concurrent requests (default 1 = sequential; a shared cooldown honors 429s) |
 | `--retries <n>` | Max retries per chunk on 429/5xx/timeout (default 5) |
@@ -407,6 +407,14 @@ geonic import entities.ndjson --dry-run
 | `--bisect` / `--bisect-max <n>` | On a `400`/`413` chunk, binary-split to isolate the offending entity |
 
 Notes:
+- **Batch size is plan-dependent** (geolonia/geonicdb#2082): T0/T5 plans allow 100 entities per
+  batch request, T30 500, T40 1,000 (1,000 is also the absolute ceiling; a tenant-specific
+  `maxBatchSize` quota overrides the plan value). The default `--batch-size 100` works on every
+  plan; on a higher plan, raising it reduces HTTP round-trips (the rate-quota weight is per
+  entity, so the total cost is unchanged). Exceeding your plan's limit fails the chunk with
+  `400` `"Batch size N cannot exceed the plan limit of M entities per batch"` — the CLI shows the
+  server message as-is, so the remedy is to lower `--batch-size` (or raise the plan). With
+  `--bisect`, an oversized chunk is split instead of being lost.
 - Input is read from a file path or, with `-` / a pipe, from stdin. **Resume is only available for
   file input** (stdin cannot be replayed) and **only with `--mode upsert`** (replaying a `replace`
   would overwrite newer state).
