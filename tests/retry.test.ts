@@ -28,6 +28,29 @@ describe("isRetryableError", () => {
     expect(isRetryableError("nope")).toBe(false);
     expect(isRetryableError(new Error("plain"))).toBe(false);
   });
+
+  // #182: 504 LdContextNotAvailable = the request's @context could not be
+  // resolved. The URL is the same on every attempt, so retrying cannot help.
+  it("treats 504 LdContextNotAvailable as non-retryable (#182)", () => {
+    const err = new GdbClientError("Could not resolve @context", 504, {
+      type: "https://uri.etsi.org/ngsi-ld/errors/LdContextNotAvailable",
+      title: "LD Context Not Available",
+    });
+    expect(isRetryableError(err)).toBe(false);
+  });
+
+  // near-miss: a 504 WITHOUT that error type (e.g. a gateway timeout) must stay
+  // retryable — the exclusion keys on the NGSI-LD error type, not the status.
+  it("keeps a plain 504 (no LdContextNotAvailable type) retryable", () => {
+    expect(isRetryableError(new GdbClientError("upstream timeout", 504))).toBe(true);
+    expect(
+      isRetryableError(
+        new GdbClientError("boom", 504, {
+          type: "https://uri.etsi.org/ngsi-ld/errors/InternalError",
+        }),
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("withRetry", () => {
