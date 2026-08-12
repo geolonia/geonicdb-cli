@@ -67,3 +67,40 @@ Feature: Temporal entity management
     When I run `geonic temporal entities list --type Room --order-by observedAt;desc --dry-run`
     Then the exit code should be 0
     And the output should contain "orderBy=observedAt%3Bdesc"
+
+  # #181/#188: NGSI-LD temporal representation parameters.
+  # https://cim.etsi.org/NGSI-LD/official/clause-6.html (clause 6.3.12, Table 6.19.3.1-1)
+  @issue-181
+  Scenario: Aggregated representation on the GET list path
+    Given I am logged in
+    And I run `geonic temporal entities create '{"id":"urn:ngsi-ld:Room:T181-1","type":"Room","temperature":[{"type":"Property","value":10,"observedAt":"2025-01-01T00:00:00Z"},{"type":"Property","value":20,"observedAt":"2025-01-01T00:30:00Z"}]}'`
+    When I run `geonic temporal entities list --type Room --options aggregatedValues --aggr-methods avg --aggr-period PT1H`
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the output should contain "avg"
+
+  # #188 → geolonia/geonicdb#1816: the POST batch query aggregates for real now
+  # (clause 6.24.3.1 mirrors 6.18.3.2); before, these flags were a silent no-op.
+  @issue-188
+  Scenario: Aggregated representation on the POST entityOperations query path
+    Given I am logged in
+    And I run `geonic temporal entities create '{"id":"urn:ngsi-ld:Room:T188-1","type":"Room","temperature":[{"type":"Property","value":10,"observedAt":"2025-01-01T00:00:00Z"},{"type":"Property","value":30,"observedAt":"2025-01-01T00:30:00Z"}]}'`
+    When I run `geonic temporal entityOperations query '{"entities":[{"type":"Room"}]}' --aggr-methods avg --aggr-period PT1H`
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the output should contain "avg"
+
+  @issue-188
+  Scenario: POST query actually transmits the aggregation params (not silently dropped)
+    Given I am logged in
+    When I run `geonic temporal entityOperations query '{"entities":[{"type":"Room"}]}' --aggr-methods avg --aggr-period PT1H --dry-run`
+    Then the exit code should be 0
+    And the output should contain "aggrMethods=avg"
+    And the output should contain "aggrPeriodDuration=PT1H"
+
+  @issue-188
+  Scenario: Aggregation without a period fails fast before any request
+    Given I am logged in
+    When I run `geonic temporal entities list --aggr-methods avg`
+    Then the exit code should be 1
+    And stderr should contain "requires --aggr-period"

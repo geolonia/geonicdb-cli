@@ -8,6 +8,11 @@
 ## [Unreleased]
 
 ### 2026-08-13
+- **Feat**: NGSI-LD temporal の表現パラメータに対応した (closes #181, closes #188, 本体 geolonia/geonicdb#1804 / #1814 / #1816 / #1817 対応) (#194)
+  - `temporal entities list` / `get` に `--options` (`temporalValues` (alias `simplified`) | `aggregatedValues` | `sysAttrs`) と `--aggr-methods` / `--aggr-period` を追加 (ETSI GS CIM 009 clause 6.3.11 / 6.3.12)
+  - `temporal entityOperations query` (POST) の `--aggr-methods` / `--aggr-period` を**実際に効く配線にした** (#188)。従来は本体が POST 経路の集約を未実装で silent no-op だったが、本体 #1816 が CLI の送る形 (クエリ文字列) を `temporalQ` body の fallback として受理し集約を実行するようになった。`--options` も同経路に追加。**#1816 以前の本体 (≤ v0.16.0) は POST 経路の集約を黙って無視する**ため、その場合は GET 経路 (`temporal entities list --options aggregatedValues`) を使う (README に明記)
+  - 決定的に 400 / silent no-op になる組合せはリクエスト前に CLI で loud に拒否する: `temporalValues`/`simplified` × `aggregatedValues` の併用 (clause 6.3.12)、`aggregatedValues` で `--aggr-methods` 欠落 (Table 6.19.3.1-1)、`--aggr-methods` と `--aggr-period` の片方だけの指定、`--order-by` × `--aggr-methods`。空白のみのフラグ値は本体と同じく未指定扱い
+  - NGSI-LD の `format` パラメータには専用フラグを設けない (`--options` で表現可能で、CLI 自身の出力フラグ `--format` と紛らわしいため)
 - **Fix**: ETSI GS CIM 009 clause 6.3.5 の `@context` 供給元規則へ全面的に揃えた (closes #186, closes #189, closes #187, 本体 geolonia/geonicdb#1924 / #2065 対応) (#191)
   - **書き込み (POST/PATCH/PUT) では JSON-LD `Link` ヘッダーを送らない** — `application/ld+json` との併用は本体がリクエスト単位の 400 で拒否する ("No mixes")。`Link` は読み取り (GET/DELETE) 専用のチャネルにした。`--context` 付きの書き込みが全て 400 になっていた #186 の修正
   - **core `@context` / `--context` の本文注入を NGSI-LD 全書き込み経路へ拡張** — 対象は object ボディ (entities / subscriptions / registrations / temporal / query / snapshots) と配列ボディの各 object 要素。`entityOperations/delete` の ID 文字列のような非 object 要素は**要素の形**で除外し (本体の判定と同じ軸)、`/jsonldContexts` は完全一致で除外。優先順は payload 明示 > `--context` > core context。`--context` 無しの batch / subscriptions / registrations / temporal 書き込みが 400/207 になっていた #189 の修正

@@ -198,9 +198,44 @@ describe("temporal commands", () => {
   });
 
   describe("temporal entityOperations query", () => {
-    // #188: the server implements no aggregation on the POST query path — these
-    // flags were a silent no-op there, so they now fail loudly as unknown options.
-    it("rejects --aggr-methods / --aggr-period as unknown options (#188)", async () => {
+    // #188 → geolonia/geonicdb#1816: the flags used to be a silent no-op here;
+    // the server now accepts them in the query string (fallback for the body's
+    // temporalQ object, clause 6.24.3.1 mirrors 6.18.3.2), so they are wired
+    // for real and share the GET-path guards.
+    it("passes --aggr-methods / --aggr-period as query params (#188)", async () => {
+      const body = { entities: [{ type: "Sensor" }] };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.post.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entityOperations", "query", '{}',
+        "--aggr-methods", "totalCount,sum",
+        "--aggr-period", "PT1H",
+      ]);
+      expect(client.post).toHaveBeenCalledWith(
+        "/temporal/entityOperations/query",
+        body,
+        { aggrMethods: "totalCount,sum", aggrPeriodDuration: "PT1H" },
+      );
+    });
+
+    it("passes --options through on the POST path", async () => {
+      const body = { entities: [{ type: "Sensor" }] };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.post.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entityOperations", "query", '{}',
+        "--options", "temporalValues",
+      ]);
+      expect(client.post).toHaveBeenCalledWith(
+        "/temporal/entityOperations/query",
+        body,
+        { options: "temporalValues" },
+      );
+    });
+
+    it("rejects --aggr-methods without --aggr-period before any request", async () => {
       vi.mocked(parseJsonInput).mockResolvedValue({});
       const program = makeProgram();
       await expect(
@@ -208,7 +243,21 @@ describe("temporal commands", () => {
           "temporal", "entityOperations", "query", '{}',
           "--aggr-methods", "totalCount,sum",
         ]),
-      ).rejects.toThrow(/unknown option/i);
+      ).rejects.toThrow(/requires --aggr-period/);
+      expect(client.post).not.toHaveBeenCalled();
+    });
+
+    // A period without methods is silently ignored server-side — the exact
+    // class #188 exists to eliminate, so the CLI refuses to send it.
+    it("rejects --aggr-period without --aggr-methods before any request", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({});
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "temporal", "entityOperations", "query", '{}',
+          "--aggr-period", "PT1H",
+        ]),
+      ).rejects.toThrow(/requires --aggr-methods/);
       expect(client.post).not.toHaveBeenCalled();
     });
 
@@ -269,11 +318,12 @@ describe("temporal commands", () => {
       const program = makeProgram();
       await runCommand(program, [
         "temporal", "entities", "get", "urn:sensor:001",
-        "--options", "aggregatedValues", "--aggr-methods", "avg",
+        "--options", "aggregatedValues", "--aggr-methods", "avg", "--aggr-period", "PT1H",
       ]);
       expect(client.get).toHaveBeenCalledWith("/temporal/entities/urn%3Asensor%3A001", {
         options: "aggregatedValues",
         aggrMethods: "avg",
+        aggrPeriodDuration: "PT1H",
       });
     });
 
@@ -315,15 +365,80 @@ describe("temporal commands", () => {
       expect(client.get).not.toHaveBeenCalled();
     });
 
-    it("allows --aggr-methods without --options (server aggregates on its presence)", async () => {
+    // The server aggregates on the mere presence of aggrMethods (no --options
+    // needed) but rejects aggregation without a period on every route — so the
+    // pair is sendable, either half alone is not.
+    it("allows --aggr-methods with --aggr-period without --options", async () => {
       client.get.mockResolvedValue(mockResponse([]));
       const program = makeProgram();
       await runCommand(program, [
-        "temporal", "entities", "list", "--aggr-methods", "totalCount",
+        "temporal", "entities", "list", "--aggr-methods", "totalCount", "--aggr-period", "PT1H",
       ]);
       expect(client.get).toHaveBeenCalledWith("/temporal/entities", {
         aggrMethods: "totalCount",
+        aggrPeriodDuration: "PT1H",
       });
+    });
+
+    it("rejects --aggr-methods without --aggr-period before any request", async () => {
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "temporal", "entities", "list", "--aggr-methods", "totalCount",
+        ]),
+      ).rejects.toThrow(/requires --aggr-period/);
+      expect(client.get).not.toHaveBeenCalled();
+    });
+
+    it("rejects --aggr-period without --aggr-methods before any request", async () => {
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "temporal", "entities", "get", "urn:sensor:001", "--aggr-period", "PT1H",
+        ]),
+      ).rejects.toThrow(/requires --aggr-methods/);
+      expect(client.get).not.toHaveBeenCalled();
+    });
+
+    // near-miss for the token normalization: the exclusivity guard must still
+    // fire when the operator writes a space after the comma.
+    it("rejects 'temporalValues, aggregatedValues' with a space after the comma", async () => {
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "temporal", "entities", "list",
+          "--options", "temporalValues, aggregatedValues",
+          "--aggr-methods", "avg", "--aggr-period", "PT1H",
+        ]),
+      ).rejects.toThrow(/only one representation keyword/i);
+      expect(client.get).not.toHaveBeenCalled();
+    });
+
+    // Whitespace-only values are "not specified" server-side; the guards must
+    // agree instead of letting the request through to a server 400.
+    it("treats a whitespace-only --aggr-methods as absent", async () => {
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "temporal", "entities", "list", "--options", "aggregatedValues",
+          "--aggr-methods", "   ", "--aggr-period", "PT1H",
+        ]),
+      ).rejects.toThrow(/requires --aggr-methods/);
+      expect(client.get).not.toHaveBeenCalled();
+    });
+
+    // The aggregation pipeline sorts by entityId; the server 400s on orderBy +
+    // aggrMethods, so the CLI fails fast like the other deterministic 400s.
+    it("rejects --order-by combined with --aggr-methods before any request", async () => {
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "temporal", "entities", "list",
+          "--order-by", "observedAt;desc",
+          "--aggr-methods", "avg", "--aggr-period", "PT1H",
+        ]),
+      ).rejects.toThrow(/--order-by cannot be combined/);
+      expect(client.get).not.toHaveBeenCalled();
     });
   });
 
@@ -374,6 +489,22 @@ describe("temporal commands", () => {
       expect(client.post).toHaveBeenCalledWith(
         "/temporal/entityOperations/query",
         {},
+      );
+    });
+
+    // Parity: the aggregation flags must reach the alias too, not just the
+    // canonical command.
+    it("temporal query alias carries the aggregation flags", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({});
+      client.post.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "query", '{}', "--aggr-methods", "avg", "--aggr-period", "PT1H",
+      ]);
+      expect(client.post).toHaveBeenCalledWith(
+        "/temporal/entityOperations/query",
+        {},
+        { aggrMethods: "avg", aggrPeriodDuration: "PT1H" },
       );
     });
   });
