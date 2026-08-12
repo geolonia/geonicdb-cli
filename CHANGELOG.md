@@ -9,6 +9,12 @@
 
 ### 2026-08-13
 - **Fix**: bulk import のリトライ判定で `504 LdContextNotAvailable` を非リトライにした (closes #182, 本体 geolonia/geonicdb#1801 対応) (#192)。`@context` URL の打ち間違いのような恒久エラーがリトライ回数を使い切るまでバックオフし続けていた。判定はステータスでなくエラーボディの `type` (`https://uri.etsi.org/ngsi-ld/errors/LdContextNotAvailable`) で行い、type を持たない素の 504 (ゲートウェイタイムアウト等) は従来どおりリトライする
+- **Fix**: ETSI GS CIM 009 clause 6.3.5 の `@context` 供給元規則へ全面的に揃えた (closes #186, closes #189, closes #187, 本体 geolonia/geonicdb#1924 / #2065 対応) (#191)
+  - **書き込み (POST/PATCH/PUT) では JSON-LD `Link` ヘッダーを送らない** — `application/ld+json` との併用は本体がリクエスト単位の 400 で拒否する ("No mixes")。`Link` は読み取り (GET/DELETE) 専用のチャネルにした。`--context` 付きの書き込みが全て 400 になっていた #186 の修正
+  - **core `@context` / `--context` の本文注入を NGSI-LD 全書き込み経路へ拡張** — 対象は object ボディ (entities / subscriptions / registrations / temporal / query / snapshots) と配列ボディの各 object 要素。`entityOperations/delete` の ID 文字列のような非 object 要素は**要素の形**で除外し (本体の判定と同じ軸)、`/jsonldContexts` は完全一致で除外。優先順は payload 明示 > `--context` > core context。`--context` 無しの batch / subscriptions / registrations / temporal 書き込みが 400/207 になっていた #189 の修正
+  - **`snapshots create` はボディ `{}` を明示送信する** — 本体はボディ必須で、従来は local server のボディ捏造 (geolonia/geonicdb#2118、修正済み) で偶然通っていた
+  - **複数 `--context` の「1 個目しか適用されない」警告を削除** — 本体 geolonia/geonicdb#1818 は解消済みで、全 link-value がマージされる (README も追従)
+  - devDependency の geonicdb を `1e6c983d` (clause 6.3.5 全経路 enforcement + #2118 修正込み) へ更新し、週次互換性チェック #187 を解消
 
 ### 2026-08-06
 - **Fix**: #178 / #179 のマージ後レビュー (Cursor CLI の別系統 2 モデル) で検出した 5 件を修正 (closes #183) (#184)

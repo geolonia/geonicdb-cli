@@ -72,11 +72,13 @@ describe("snapshots command", () => {
   });
 
   describe("create", () => {
-    it("posts to /snapshots with no body", async () => {
+    // #189: the server requires a body ("Request body is required"); the client
+    // layer turns the explicit {} into {"@context": core} under ld+json.
+    it("posts an explicit empty body to /snapshots", async () => {
       mockClient.post.mockResolvedValue(mockResponse(undefined, 201));
       await runCommand(program, ["snapshots", "create"]);
 
-      expect(mockClient.post).toHaveBeenCalledWith("/snapshots");
+      expect(mockClient.post).toHaveBeenCalledWith("/snapshots", {});
       expect(printSuccess).toHaveBeenCalledWith("Snapshot created.");
     });
   });
