@@ -26,6 +26,7 @@ describe("registrations command", () => {
         /Too wide query.*clause 5\.10\.2\.4/,
       );
 
+      expect(createClient).not.toHaveBeenCalled();
       expect(mockClient.get).not.toHaveBeenCalled();
     });
 
@@ -34,6 +35,7 @@ describe("registrations command", () => {
         runCommand(program, ["registrations", "list", "--limit", "10", "--offset", "5", "--count"]),
       ).rejects.toThrow(/Too wide query.*clause 5\.10\.2\.4/);
 
+      expect(createClient).not.toHaveBeenCalled();
       expect(mockClient.get).not.toHaveBeenCalled();
     });
 

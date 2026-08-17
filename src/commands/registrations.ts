@@ -34,16 +34,17 @@ export function registerRegistrationsCommand(program: Command): void {
     .option("--count", "Include total count in response")
     .action(
       withErrorHandler(async (opts: Record<string, unknown>, cmd: Command) => {
-        const client = createClient(cmd);
-        const format = getFormat(cmd);
-
         // Mirror assertRegistrationQueryRestrictionPresent (geonicdb#2304):
         // type | attrs | q | (georel|geometry|coordinates). Pagination alone is not enough.
+        // Validate before createClient so a missing URL does not mask the too-wide message.
         if (!opts.type && !opts.attrs && !opts.query && !opts.georel && !opts.geometry && !opts.coords) {
           throw new Error(
             "Too wide query (ETSI GS CIM 009 clause 5.10.2.4): specify at least one of --type, --attrs, --query, or a geoquery (--georel / --geometry / --coords).",
           );
         }
+
+        const client = createClient(cmd);
+        const format = getFormat(cmd);
 
         const params: Record<string, string> = {};
         if (opts.type) params.type = String(opts.type);
