@@ -293,8 +293,31 @@ function createLoginCommand(): Command {
           delete config.refreshToken;
         }
         if (finalTenantId) {
-          config.service = finalTenantId;
+          // Capture association before overwriting tenantId (#213 CodeRabbit).
+          const previousTenantId = config.tenantId;
+          const previousService = config.service;
           config.tenantId = finalTenantId;
+          // NGSILD-Tenant must be a tenant *name* (`^[a-z0-9_]+$`). Saving the
+          // UUID tenantId as config.service makes every subsequent command 400
+          // (closes #213). Prefer availableTenants[].tenantName when it passes
+          // the name regex; if unresolved, keep an existing name-shaped service
+          // only when it still belongs to finalTenantId; otherwise clear.
+          const rawName = availableTenants?.find((t) => t.tenantId === finalTenantId)
+            ?.tenantName;
+          const previousServiceBelongsToFinal =
+            !!previousService &&
+            TENANT_SERVICE_NAME_RE.test(previousService) &&
+            (previousTenantId === finalTenantId ||
+              availableTenants?.some(
+                (t) => t.tenantId === finalTenantId && t.tenantName === previousService,
+              ) === true);
+          if (rawName && TENANT_SERVICE_NAME_RE.test(rawName)) {
+            config.service = rawName;
+          } else if (previousServiceBelongsToFinal) {
+            config.service = previousService;
+          } else {
+            delete config.service;
+          }
         } else {
           delete config.service;
           delete config.tenantId;
