@@ -1,8 +1,53 @@
 import type { Command } from "commander";
 import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, fetchPaginatedList } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
-import { printSuccess } from "../output.js";
+import { printSuccess, printWarning } from "../output.js";
 import { addExamples } from "./help.js";
+
+/** Shape of PATCH /custom-data-models/{type}?dryRun=true (GeonicDB #2098). */
+export type ModelUpdateDryRunConformance = {
+  scanned?: number;
+  violating?: number;
+  undetermined?: number;
+  truncated?: boolean;
+  maxScan?: number;
+  scopeLimited?: boolean;
+  samples?: unknown[];
+};
+
+export type ModelUpdateDryRunResponse = {
+  type?: string;
+  dryRun?: boolean;
+  conformance?: ModelUpdateDryRunConformance;
+};
+
+/**
+ * Apply dry-run side effects: warn on truncated / scopeLimited, and fail the
+ * process when any existing entity would violate the updated model.
+ * Returns the exit code that was set (0 or 1) for testability.
+ */
+export function applyModelUpdateDryRunResult(data: unknown): number {
+  const body = (data ?? {}) as ModelUpdateDryRunResponse;
+  const conformance = body.conformance ?? {};
+
+  if (conformance.truncated) {
+    printWarning(
+      `Dry-run scan truncated at maxScan=${conformance.maxScan ?? "?"}; scanned/violating counts are lower bounds.`,
+    );
+  }
+  if (conformance.scopeLimited) {
+    printWarning(
+      "Dry-run scan was limited to entities readable by the caller (scopeLimited); counts may under-report.",
+    );
+  }
+
+  const violating = conformance.violating ?? 0;
+  if (violating > 0) {
+    process.exitCode = 1;
+    return 1;
+  }
+  return 0;
+}
 
 export function registerModelsCommand(program: Command): void {
   const models = program
@@ -126,20 +171,32 @@ export function registerModelsCommand(program: Command): void {
         "JSON payload: only specified fields are updated.\n" +
         '  e.g. {"description": "Updated model"}\n\n' +
         "uniqueConstraints replaces the whole constraint list (send [] to remove all).\n" +
-        "Adding a constraint fails with 400 if existing entities already violate it.",
+        "Adding a constraint fails with 400 if existing entities already violate it.\n\n" +
+        "--api-dry-run sends PATCH ?dryRun=true (GeonicDB extension): the update is NOT\n" +
+        "applied; the response is a conformance report for existing entities. Exit code is\n" +
+        "non-zero when conformance.violating > 0. Distinct from the global --dry-run (curl).",
+    )
+    .option(
+      "--api-dry-run",
+      "Preview update without applying it (PATCH ?dryRun=true); report entity conformance",
     )
     .action(
       withErrorHandler(
-        async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
+        async (id: unknown, json: unknown, opts: { apiDryRun?: boolean }, cmd: Command) => {
           const body = await parseJsonInput(json as string | undefined);
           const client = createClient(cmd);
           const format = getFormat(cmd);
+          const apiDryRun = !!opts.apiDryRun;
           const response = await client.rawRequest(
             "PATCH",
             `/custom-data-models/${encodeURIComponent(String(id))}`,
-            { body },
+            apiDryRun ? { body, params: { dryRun: "true" } } : { body },
           );
           outputResponse(response, format);
+          if (apiDryRun) {
+            applyModelUpdateDryRunResult(response.data);
+            return;
+          }
           printSuccess("Model updated.");
         },
       ),
@@ -165,6 +222,10 @@ export function registerModelsCommand(program: Command): void {
     {
       description: "Remove all unique constraints",
       command: `geonic models update RoomReservation '{"uniqueConstraints":[]}'`,
+    },
+    {
+      description: "Preview a tightening update without applying it (API dry-run)",
+      command: `geonic models update TemperatureSensor '{"propertyDetails":{"temperature":{"ngsiType":"Property","valueType":"Number","validation":{"maximum":30}}}}' --api-dry-run`,
     },
   ]);
 
