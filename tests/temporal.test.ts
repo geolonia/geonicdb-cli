@@ -149,6 +149,20 @@ describe("temporal commands", () => {
       const params = client.get.mock.calls[0]?.[1] as Record<string, string>;
       expect(params).not.toHaveProperty("timeproperty");
     });
+
+    // Empty string is an explicit (invalid) value — forward it so the server
+    // can 400, rather than treating it as "flag absent → observedAt default".
+    it("forwards empty --time-property so the server can reject it", async () => {
+      client.get.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "list",
+        "--time-property", "",
+      ]);
+      expect(client.get).toHaveBeenCalledWith("/temporal/entities", {
+        timeproperty: "",
+      });
+    });
   });
 
   describe("temporal entities get", () => {
@@ -202,6 +216,19 @@ describe("temporal commands", () => {
           timeAt: "2025-06-01T00:00:00Z",
           timeproperty: "createdAt",
         },
+      );
+    });
+
+    it("forwards empty --time-property so the server can reject it", async () => {
+      client.get.mockResolvedValue(mockResponse({ id: "urn:sensor:001" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "get", "urn:sensor:001",
+        "--time-property", "",
+      ]);
+      expect(client.get).toHaveBeenCalledWith(
+        "/temporal/entities/urn%3Asensor%3A001",
+        { timeproperty: "" },
       );
     });
 

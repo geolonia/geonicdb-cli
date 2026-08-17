@@ -145,7 +145,11 @@ function createListAction() {
     if (cmdOpts.timeRel) params["timerel"] = cmdOpts.timeRel;
     if (cmdOpts.timeAt) params["timeAt"] = cmdOpts.timeAt;
     if (cmdOpts.endTimeAt) params["endTimeAt"] = cmdOpts.endTimeAt;
-    if (cmdOpts.timeProperty) params["timeproperty"] = cmdOpts.timeProperty;
+    // undefined only = flag absent (server default observedAt). Empty string is
+    // forwarded so the server can 400 BadRequestData on unknown values (#202).
+    if (cmdOpts.timeProperty !== undefined) {
+      params["timeproperty"] = cmdOpts.timeProperty;
+    }
     if (cmdOpts.lastN !== undefined) params["lastN"] = String(cmdOpts.lastN);
     if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
     if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
@@ -197,7 +201,11 @@ function createGetAction() {
     if (cmdOpts.timeRel) params["timerel"] = cmdOpts.timeRel;
     if (cmdOpts.timeAt) params["timeAt"] = cmdOpts.timeAt;
     if (cmdOpts.endTimeAt) params["endTimeAt"] = cmdOpts.endTimeAt;
-    if (cmdOpts.timeProperty) params["timeproperty"] = cmdOpts.timeProperty;
+    // undefined only = flag absent (server default observedAt). Empty string is
+    // forwarded so the server can 400 BadRequestData on unknown values (#202).
+    if (cmdOpts.timeProperty !== undefined) {
+      params["timeproperty"] = cmdOpts.timeProperty;
+    }
     if (cmdOpts.lastN !== undefined) params["lastN"] = String(cmdOpts.lastN);
     Object.assign(params, buildRepresentationParams(cmdOpts));
 
