@@ -14,6 +14,7 @@
 - **Fix**: POST `/jsonldContexts` の E2E フィクスチャ登録からクライアント指定 `kind` を外した (closes #203, 本体 geolonia/geonicdb#2297) (#208)。Add @context は常に Hosted で、`kind` 指定は 400 になるため、本体取り込み後に context E2E が落ちるのを防ぐ。unit の `/jsonldContexts` 登録例も追随
 - **Fix**: `registrations list` がセレクタ無しの `GET /csourceRegistrations` を呼ばないようにした (closes #201, 本体 geolonia/geonicdb#2304 対応)。ETSI GS CIM 009 clause 5.10.2.4 の too wide query に合わせ、`--type` / `--attrs` / `--query` / geoquery (`--georel` / `--geometry` / `--coords`) のいずれかを必須にし、無指定時はサーバへ送らず CLI 側で拒否する。フラグ名は既存の entities/temporal と同じ `--query` / `--coords`（クエリ param は `q` / `coordinates`）(#209)
 - **Docs** / **Feat**: 本体 geolonia/geonicdb#2290 (#2308) の POST query too-wide 検証に追従 (closes #200)。`batch query` / `temporal entityOperations query` のヘルプと README に「`id` / `idPattern` だけでは 400 BadRequestData。`type` / 非システム `attrs` / 非システム `q` / `geoQ`、または `--local`」を明記し、両コマンドに `--local` (`?local=true`) を追加 (#207)
+- **Feat**: `models update` に `--api-dry-run` を追加した (closes #198, 本体 geolonia/geonicdb#2098 / #2207 対応)。`PATCH /custom-data-models/{type}?dryRun=true` を送り、更新を適用せず既存エンティティの適合性レポートを返す。グローバル `--dry-run`（curl 表示）とは別フラグ。`conformance.violating > 0` または非空の `uniqueConstraintViolations` のとき非 0 終了、`truncated` / `scopeLimited` / `undetermined` は警告のみ。グローバル `--dry-run` との併用は拒否する (#210)
 
 ## [0.24.0] - 2026-08-13
 
