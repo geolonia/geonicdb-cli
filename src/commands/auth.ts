@@ -20,6 +20,15 @@ import { addMeApiKeysSubcommand } from "./me-api-keys.js";
 import { addMePasswordSubcommand } from "./me-password.js";
 import { addMePoliciesSubcommand } from "./me-policies.js";
 
+/** 本体 TENANT.NAME_REGEX と同じ。--tenant の name|id 判定に使う (#217)。 */
+const TENANT_SERVICE_NAME_RE = /^[a-z0-9_]+$/;
+
+function loginResponseTenantId(data: Record<string, unknown>): string | undefined {
+  // LoginResponse の tenantId は top-level ではなく user 配下 (#213 / #217)。
+  const user = data.user as { tenantId?: string | null } | undefined;
+  return user?.tenantId ?? undefined;
+}
+
 function createLoginCommand(): Command {
   return new Command("login")
     .description("Authenticate and save token")
@@ -102,8 +111,10 @@ function createLoginCommand(): Command {
 
         // --tenant-id matches by ID only. --tenant and -s/--service match by name or ID.
         // --tenant-id wins when both are supplied.
+        // config.service の back-fill (resolveOptions) は使わない — 明示フラグのみ (#217)。
+        const cliGlobals = cmd.optsWithGlobals() as { service?: string };
         const tenantIdFlag = loginOpts.tenantId;
-        const tenantNameOrIdFlag = loginOpts.tenant ?? globalOpts.service;
+        const tenantNameOrIdFlag = loginOpts.tenant ?? cliGlobals.service;
         const tenantFlag = tenantIdFlag ?? tenantNameOrIdFlag;
 
         // Step 1: tenantless login. Server returns either a single-tenant token
@@ -164,10 +175,11 @@ function createLoginCommand(): Command {
         }
 
         const availableTenants = data.availableTenants as TenantInfo[] | undefined;
-        let finalTenantId = data.tenantId as string | undefined;
+        let finalTenantId = loginResponseTenantId(data);
 
-        // Multi-tenant: require an explicit tenant flag (or saved config.service via resolveOptions).
+        // Multi-tenant: require an explicit CLI tenant flag (--tenant / --tenant-id / -s).
         // No interactive picker — Enter-default would silently bind the primary tenant (#215 / README).
+        // config.service back-fill is intentionally ignored for login (#217).
         if (availableTenants && availableTenants.length > 1) {
           let selected: TenantInfo | undefined;
 
@@ -228,17 +240,47 @@ function createLoginCommand(): Command {
             refreshToken = reloginData.refreshToken as string | undefined;
             finalTenantId = selected.tenantId;
           }
-        } else if (tenantFlag && availableTenants && availableTenants.length === 1) {
-          // Single-tenant account but flag was provided — validate it matches
-          const only = availableTenants[0];
-          const matches = tenantIdFlag
-            ? only.tenantId === tenantIdFlag
-            : only.tenantName === tenantFlag || only.tenantId === tenantFlag;
-          if (!matches) {
-            printError(
-              `Tenant "${tenantFlag}" not found. The only available tenant is "${only.tenantName ?? only.tenantId}" (${only.tenantId}).`,
-            );
-            process.exit(1);
+        } else if (tenantFlag) {
+          // Single-membership (サーバーは memberships.length > 1 のときだけ availableTenants を返す):
+          // クライアントでは検証できないため、フラグを body に載せてサーバーに判定させる (#217)。
+          // --tenant-id → 常に tenantId。
+          // --tenant / -s → 本体 NAME_REGEX に合うなら tenantName、合わなければ tenantId（UUID 等）。
+          const tenantBody: { tenantId: string } | { tenantName: string } = tenantIdFlag
+            ? { tenantId: tenantIdFlag }
+            : TENANT_SERVICE_NAME_RE.test(tenantNameOrIdFlag as string)
+              ? { tenantName: tenantNameOrIdFlag as string }
+              : { tenantId: tenantNameOrIdFlag as string };
+          const requestedTenantId = "tenantId" in tenantBody ? tenantBody.tenantId : undefined;
+          const only = availableTenants?.[0];
+          const alreadyScoped =
+            (requestedTenantId !== undefined && requestedTenantId === finalTenantId) ||
+            (!!only &&
+              only.tenantId === finalTenantId &&
+              (only.tenantName === tenantNameOrIdFlag || only.tenantId === tenantNameOrIdFlag));
+          if (!alreadyScoped) {
+            const reloginResponse = await client.rawRequest("POST", "/auth/login", {
+              // #1532: 強制パスワード変更後は effectivePassword で再ログインする。
+              body: { email, password: effectivePassword, ...tenantBody },
+              skipTenantHeader: true,
+            });
+            const reloginData = reloginResponse.data as Record<string, unknown>;
+            const newToken = (reloginData.accessToken ?? reloginData.token) as string | undefined;
+            if (!newToken) {
+              printError("Re-login failed: no token received for selected tenant.");
+              process.exit(1);
+            }
+            token = newToken;
+            refreshToken = reloginData.refreshToken as string | undefined;
+            // token は要求テナント向け。user.tenantId が無いとき primary に落とすと不一致になる。
+            // ID 指定なら要求 ID を使い、名前指定で ID が取れないなら fail-loud。
+            const reloginTenantId = loginResponseTenantId(reloginData) ?? requestedTenantId;
+            if (!reloginTenantId) {
+              printError(
+                "Re-login failed: server did not return the tenant ID for the requested tenant.",
+              );
+              process.exit(1);
+            }
+            finalTenantId = reloginTenantId;
           }
         }
 
@@ -269,7 +311,13 @@ function createLoginCommand(): Command {
         saveConfig(config, globalOpts.profile);
 
         const tenantLabel = finalTenantId
-          ? ` (tenant: ${availableTenants?.find((t) => t.tenantId === finalTenantId)?.tenantName ?? finalTenantId})`
+          ? ` (tenant: ${
+              availableTenants?.find((t) => t.tenantId === finalTenantId)?.tenantName
+              // 単一メンバーシップで --tenant <name> をサーバー検証した場合、availableTenants が無いため
+              // フラグの名前を表示する（--tenant-id は ID のまま）。
+              ?? (!tenantIdFlag && tenantNameOrIdFlag ? tenantNameOrIdFlag : undefined)
+              ?? finalTenantId
+            })`
           : "";
         printSuccess(`Login successful${tenantLabel}. Token saved to config.`);
       }),
