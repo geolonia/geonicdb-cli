@@ -1,7 +1,7 @@
 import type { Command } from "commander";
 import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, fetchPaginatedList } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
-import { printSuccess, printWarning } from "../output.js";
+import { printSuccess, printWarning, printError } from "../output.js";
 import { addExamples } from "./help.js";
 
 /** Shape of PATCH /custom-data-models/{type}?dryRun=true (GeonicDB #2098). */
@@ -13,6 +13,8 @@ export type ModelUpdateDryRunConformance = {
   maxScan?: number;
   scopeLimited?: boolean;
   samples?: unknown[];
+  /** Present only when non-empty (GeonicDB #2098). */
+  uniqueConstraintViolations?: string[];
 };
 
 export type ModelUpdateDryRunResponse = {
@@ -24,7 +26,7 @@ export type ModelUpdateDryRunResponse = {
 /**
  * Apply dry-run side effects: warn on truncated / scopeLimited / undetermined,
  * reject responses that are not a dry-run report, and fail the process when any
- * existing entity would violate the updated model.
+ * existing entity would violate the updated model (including uniqueConstraints).
  * Returns the exit code that was set (0 or 1) for testability.
  */
 export function applyModelUpdateDryRunResult(data: unknown): number {
@@ -57,7 +59,9 @@ export function applyModelUpdateDryRunResult(data: unknown): number {
   }
 
   const violating = conformance.violating ?? 0;
-  if (violating > 0) {
+  const ucViolations = conformance.uniqueConstraintViolations;
+  const hasUcViolations = Array.isArray(ucViolations) && ucViolations.length > 0;
+  if (violating > 0 || hasUcViolations) {
     process.exitCode = 1;
     return 1;
   }
@@ -198,10 +202,18 @@ export function registerModelsCommand(program: Command): void {
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, opts: { apiDryRun?: boolean }, cmd: Command) => {
+          const apiDryRun = !!opts.apiDryRun;
+          const globalDryRun = !!(cmd.optsWithGlobals() as { dryRun?: boolean }).dryRun;
+          if (apiDryRun && globalDryRun) {
+            printError(
+              "Cannot combine --api-dry-run with global --dry-run; omit --dry-run to run the API conformance check.",
+            );
+            process.exitCode = 1;
+            return;
+          }
           const body = await parseJsonInput(json as string | undefined);
           const client = createClient(cmd);
           const format = getFormat(cmd);
-          const apiDryRun = !!opts.apiDryRun;
           const response = await client.rawRequest(
             "PATCH",
             `/custom-data-models/${encodeURIComponent(String(id))}`,

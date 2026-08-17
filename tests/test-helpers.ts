@@ -48,6 +48,7 @@ export function createTestProgram(
     .option("-f, --format <fmt>", "Output format")
     .option("--no-color", "Disable color")
     .option("-v, --verbose", "Verbose output")
+    .option("--dry-run", "Print the equivalent curl command without executing")
     .exitOverride();
 
   registerFn(program);

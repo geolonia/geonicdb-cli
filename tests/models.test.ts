@@ -5,7 +5,7 @@ import type { MockClient } from "./test-helpers.js";
 
 import { createClient, getFormat, outputResponse } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
-import { printSuccess, printWarning } from "../src/output.js";
+import { printSuccess, printWarning, printError } from "../src/output.js";
 import {
   applyModelUpdateDryRunResult,
   registerModelsCommand,
@@ -321,6 +321,22 @@ describe("models (custom-data-models) command", () => {
       );
       expect(printSuccess).toHaveBeenCalledWith("Model updated.");
     });
+
+    it("rejects combining --api-dry-run with global --dry-run", async () => {
+      process.exitCode = undefined;
+      await runCommand(program, [
+        "models",
+        "update",
+        "TemperatureSensor",
+        '{"description":"x"}',
+        "--api-dry-run",
+        "--dry-run",
+      ]);
+
+      expect(mockClient.rawRequest).not.toHaveBeenCalled();
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("Cannot combine"));
+      expect(process.exitCode).toBe(1);
+    });
   });
 
   describe("applyModelUpdateDryRunResult (#198)", () => {
@@ -346,6 +362,29 @@ describe("models (custom-data-models) command", () => {
       const code = applyModelUpdateDryRunResult({
         dryRun: true,
         conformance: { violating: 0, truncated: false, scopeLimited: false },
+      });
+      expect(code).toBe(0);
+      expect(process.exitCode).toBeUndefined();
+    });
+
+    it("sets exitCode=1 when uniqueConstraintViolations is non-empty even if violating=0", () => {
+      process.exitCode = undefined;
+      const code = applyModelUpdateDryRunResult({
+        dryRun: true,
+        conformance: {
+          violating: 0,
+          uniqueConstraintViolations: ["constraint 'unique-code' already violated"],
+        },
+      });
+      expect(code).toBe(1);
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("near-miss: empty uniqueConstraintViolations does not fail", () => {
+      process.exitCode = undefined;
+      const code = applyModelUpdateDryRunResult({
+        dryRun: true,
+        conformance: { violating: 0, uniqueConstraintViolations: [] },
       });
       expect(code).toBe(0);
       expect(process.exitCode).toBeUndefined();
