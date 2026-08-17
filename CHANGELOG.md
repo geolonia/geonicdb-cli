@@ -9,7 +9,11 @@
 
 ### 2026-08-17
 - **Feat**: `entities attrs delete` に `--dataset-id` / `--delete-all` を追加し、多重属性インスタンスを CLI から削除できるようにした (closes #197, 本体 geolonia/geonicdb#2177 対応)。未指定時は既定インスタンスのみ削除する既存挙動を維持。両方指定はリクエスト前に拒否。404 時は `--dataset-id` / `--delete-all` を案内する Hint を付与 (#204)
+<<<<<<< HEAD
 - **Fix**: `registrations list` がセレクタ無しの `GET /csourceRegistrations` を呼ばないようにした (closes #201, 本体 geolonia/geonicdb#2304 対応)。ETSI GS CIM 009 clause 5.10.2.4 の too wide query に合わせ、`--type` / `--attrs` / `--query` / geoquery (`--georel` / `--geometry` / `--coords`) のいずれかを必須にし、無指定時はサーバへ送らず CLI 側で拒否する。フラグ名は既存の entities/temporal と同じ `--query` / `--coords`（クエリ param は `q` / `coordinates`）(#209)
+=======
+- **Fix**: `rules list` / `rules create` に `--service-path` を追加し、本体 #2259 の `GET /rules` 既定変更（未指定時は全 servicePath ではなく認可と同じ単一 path）に追従した (closes #199, 本体 geolonia/geonicdb#2259 / #2280 対応)。help の "all" 表現も実態に合わせて修正 (#205)
+>>>>>>> origin/main
 
 ## [0.24.0] - 2026-08-13
 

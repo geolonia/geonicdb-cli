@@ -37,6 +37,49 @@ describe("rules command", () => {
         params: { limit: "10", offset: "5" },
       });
     });
+
+    it("forwards --service-path as servicePath query param", async () => {
+      mockClient.rawRequest.mockResolvedValue(mockResponse([{ id: "rule1" }]));
+      await runCommand(program, ["rules", "list", "--service-path", "/sensors"]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/rules", {
+        params: { servicePath: "/sensors" },
+      });
+    });
+
+    it("omits servicePath when --service-path is not given (near-miss vs explicit /)", async () => {
+      mockClient.rawRequest.mockResolvedValue(mockResponse([{ id: "rule1" }]));
+      await runCommand(program, ["rules", "list"]);
+
+      const call = mockClient.rawRequest.mock.calls[0];
+      expect(call[2]?.params).not.toHaveProperty("servicePath");
+
+      mockClient.rawRequest.mockClear();
+      mockClient.rawRequest.mockResolvedValue(mockResponse([{ id: "rule1" }]));
+      await runCommand(program, ["rules", "list", "--service-path", "/"]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/rules", {
+        params: { servicePath: "/" },
+      });
+    });
+
+    it("forwards --service-path together with pagination", async () => {
+      mockClient.rawRequest.mockResolvedValue(mockResponse([{ id: "rule1" }]));
+      await runCommand(program, [
+        "rules",
+        "list",
+        "--service-path",
+        "/sensors",
+        "--limit",
+        "10",
+        "--offset",
+        "5",
+      ]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("GET", "/rules", {
+        params: { servicePath: "/sensors", limit: "10", offset: "5" },
+      });
+    });
   });
 
   describe("get", () => {
@@ -64,6 +107,37 @@ describe("rules command", () => {
       expect(mockClient.rawRequest).toHaveBeenCalledWith("POST", "/rules", { body: ruleData });
       expect(outputResponse).toHaveBeenCalled();
       expect(printSuccess).toHaveBeenCalledWith("Rule created.");
+    });
+
+    it("forwards --service-path as servicePath query param on create", async () => {
+      const ruleData = { name: "TestRule", condition: "temp>30" };
+      vi.mocked(parseJsonInput).mockResolvedValue(ruleData);
+      mockClient.rawRequest.mockResolvedValue(mockResponse({ id: "rule1" }, 201));
+
+      await runCommand(program, [
+        "rules",
+        "create",
+        '{"name":"TestRule"}',
+        "--service-path",
+        "/sensors",
+      ]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("POST", "/rules", {
+        body: ruleData,
+        params: { servicePath: "/sensors" },
+      });
+    });
+
+    it("omits servicePath params when --service-path is not given on create", async () => {
+      const ruleData = { name: "TestRule", condition: "temp>30" };
+      vi.mocked(parseJsonInput).mockResolvedValue(ruleData);
+      mockClient.rawRequest.mockResolvedValue(mockResponse({ id: "rule1" }, 201));
+
+      await runCommand(program, ["rules", "create", '{"name":"TestRule"}']);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("POST", "/rules", { body: ruleData });
+      const call = mockClient.rawRequest.mock.calls[0];
+      expect(call[2]).not.toHaveProperty("params");
     });
   });
 
