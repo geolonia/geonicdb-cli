@@ -12,22 +12,32 @@ export function registerRulesCommand(program: Command): void {
   // rules list
   const list = rules
     .command("list")
-    .description("List all configured rules and their current status")
+    .description(
+      "List rules for the given servicePath (default: `/` when omitted) and their current status",
+    )
+    .option("--service-path <path>", "Filter by servicePath (query `servicePath`; e.g. /sensors)")
     .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
     .option("--offset <n>", "Skip N results", parseNonNegativeInt)
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
+        const opts = cmd.opts() as { servicePath?: string; limit?: number; offset?: number };
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await fetchPaginatedList(client, "/rules", cmd.opts());
+        const extraParams: Record<string, string> = {};
+        if (opts.servicePath !== undefined) extraParams.servicePath = opts.servicePath;
+        const response = await fetchPaginatedList(client, "/rules", opts, extraParams);
         outputResponse(response, format);
       }),
     );
 
   addExamples(list, [
     {
-      description: "List all rules as JSON",
+      description: "List rules for the default servicePath (/) as JSON",
       command: "geonic rules list",
+    },
+    {
+      description: "List rules under a specific servicePath",
+      command: "geonic rules list --service-path /sensors",
     },
     {
       description: "List rules in table format to review status at a glance",
@@ -72,6 +82,8 @@ export function registerRulesCommand(program: Command): void {
     .summary("Create a new rule")
     .description(
       "Create a new rule\n\n" +
+        "The rule's servicePath is set via --service-path (query `servicePath`); " +
+        "when omitted the server uses Fiware-ServicePath (default `/`).\n\n" +
         "JSON payload example:\n" +
         "  {\n" +
         '    "name": "high-temp-alert",\n' +
@@ -80,12 +92,19 @@ export function registerRulesCommand(program: Command): void {
         '    "actions": [{"type": "webhook", "url": "http://localhost:5000/alert", "method": "POST"}]\n' +
         "  }",
     )
+    .option("--service-path <path>", "Create under this servicePath (query `servicePath`; e.g. /sensors)")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const body = await parseJsonInput(json as string | undefined);
+        const opts = cmd.opts() as { servicePath?: string };
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const response = await client.rawRequest("POST", "/rules", { body });
+        const params =
+          opts.servicePath !== undefined ? { servicePath: opts.servicePath } : undefined;
+        const response = await client.rawRequest("POST", "/rules", {
+          body,
+          ...(params ? { params } : {}),
+        });
         outputResponse(response, format);
         printSuccess("Rule created.");
       }),
@@ -95,6 +114,10 @@ export function registerRulesCommand(program: Command): void {
     {
       description: "Create with inline JSON",
       command: `geonic rules create '{"name":"high-temp-alert","conditions":[{"type":"celExpression","expression":"entity.temperature > 30"}],"actions":[{"type":"webhook","url":"http://localhost:5000/alert","method":"POST"}]}'`,
+    },
+    {
+      description: "Create under a specific servicePath",
+      command: `geonic rules create --service-path /sensors '{"name":"sensor-alert","conditions":[{"type":"celExpression","expression":"entity.temperature > 30"}],"actions":[{"type":"webhook","url":"http://localhost:5000/alert","method":"POST"}]}'`,
     },
     {
       description: "Create from a file",
