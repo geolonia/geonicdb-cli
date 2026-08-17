@@ -27,8 +27,8 @@ geonic config set url http://localhost:3000
 # Create an entity
 geonic entities create '{"id":"Room1","type":"Room","temperature":{"value":23,"type":"Number"}}'
 
-# List entities
-geonic entities list
+# List entities (local scope — exempts too-wide query check)
+geonic entities list --local
 
 # Get an entity by ID
 geonic entities get Room1
@@ -336,7 +336,9 @@ geonic me oauth-clients update <client-id> --policy-id my-readonly
 | `entities delete <id>` | Delete an entity by ID |
 | `entities purge <selectors> [--keep\|--drop] --yes` | Purge entities/attributes by selector (destructive) |
 
-`entities list` supports filtering options: `--type`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`.
+`entities list` supports filtering options: `--type`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`, `--local`.
+
+`--local` (`?local=true`) limits the request to local scope and exempts the too-wide query check, so a selector-less `geonic entities list --local` is allowed.
 
 `entities purge` requires **at least one primary selector** — `--type`, `--attrs`, `--query`, or `--georel` (the latter together with `--geometry`/`--coords`). These can be narrowed with the refinement filters `--id`, `--id-pattern`, `--scope-q`, `--local`. A refinement filter **on its own is not sufficient**: `--id`/`--id-pattern`/`--scope-q` alone are rejected by both the CLI and the server — to remove a single entity use `entities delete <id>`. Mutation flags `--keep`/`--drop` (mutually exclusive) remove/retain attributes on matched entities instead of deleting the entities. `--attrs` on purge is a selector ("entities having any listed attributes"), not an output projection.
 
@@ -901,7 +903,7 @@ geonic config list
 Override the config directory with the `GEONIC_CONFIG_DIR` environment variable:
 
 ```bash
-GEONIC_CONFIG_DIR=/path/to/config geonic entities list
+GEONIC_CONFIG_DIR=/path/to/config geonic entities list --local
 ```
 
 ## API Key Authentication
@@ -913,10 +915,10 @@ API keys provide an alternative to JWT tokens for authentication. When configure
 geonic config set api-key gdb_your_api_key_here
 
 # Or pass via CLI flag
-geonic entities list --api-key gdb_your_api_key_here
+geonic entities list --local --api-key gdb_your_api_key_here
 
 # Or use environment variable
-GDB_API_KEY=gdb_your_api_key_here geonic entities list
+GDB_API_KEY=gdb_your_api_key_here geonic entities list --local
 ```
 
 When both a Bearer token and an API key are configured, headers are sent exclusively — the API key takes precedence when present.
