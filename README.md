@@ -902,7 +902,7 @@ geonic config list
 Override the config directory with the `GEONIC_CONFIG_DIR` environment variable:
 
 ```bash
-GEONIC_CONFIG_DIR=/path/to/config geonic entities list
+GEONIC_CONFIG_DIR=/path/to/config geonic entities list --local
 ```
 
 ## API Key Authentication
