@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-08-17
-- **Feat**: `models update` に `--api-dry-run` を追加した (closes #198, 本体 geolonia/geonicdb#2098 / #2207 対応)。`PATCH /custom-data-models/{type}?dryRun=true` を送り、更新を適用せず既存エンティティの適合性レポートを返す。グローバル `--dry-run`（curl 表示）とは別フラグ。`conformance.violating > 0` のとき非 0 終了、`truncated` / `scopeLimited` は警告のみ
+- **Feat**: `models update` に `--api-dry-run` を追加した (closes #198, 本体 geolonia/geonicdb#2098 / #2207 対応)。`PATCH /custom-data-models/{type}?dryRun=true` を送り、更新を適用せず既存エンティティの適合性レポートを返す。グローバル `--dry-run`（curl 表示）とは別フラグ。`conformance.violating > 0` のとき非 0 終了、`truncated` / `scopeLimited` は警告のみ (#210)
 
 ## [0.24.0] - 2026-08-13
 

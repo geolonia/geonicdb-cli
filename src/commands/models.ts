@@ -22,13 +22,22 @@ export type ModelUpdateDryRunResponse = {
 };
 
 /**
- * Apply dry-run side effects: warn on truncated / scopeLimited, and fail the
- * process when any existing entity would violate the updated model.
+ * Apply dry-run side effects: warn on truncated / scopeLimited / undetermined,
+ * reject responses that are not a dry-run report, and fail the process when any
+ * existing entity would violate the updated model.
  * Returns the exit code that was set (0 or 1) for testability.
  */
 export function applyModelUpdateDryRunResult(data: unknown): number {
   const body = (data ?? {}) as ModelUpdateDryRunResponse;
-  const conformance = body.conformance ?? {};
+  const conformance = body.conformance;
+
+  if (body.dryRun !== true || conformance == null || typeof conformance !== "object") {
+    printWarning(
+      "Response is not an API dry-run conformance report; the server may not support ?dryRun=true and the update may have been applied.",
+    );
+    process.exitCode = 1;
+    return 1;
+  }
 
   if (conformance.truncated) {
     printWarning(
@@ -38,6 +47,12 @@ export function applyModelUpdateDryRunResult(data: unknown): number {
   if (conformance.scopeLimited) {
     printWarning(
       "Dry-run scan was limited to entities readable by the caller (scopeLimited); counts may under-report.",
+    );
+  }
+  const undetermined = conformance.undetermined ?? 0;
+  if (undetermined > 0) {
+    printWarning(
+      `Dry-run could not determine conformance for ${undetermined} entities; review them manually.`,
     );
   }
 

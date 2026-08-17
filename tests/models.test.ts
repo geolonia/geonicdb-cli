@@ -334,6 +334,7 @@ describe("models (custom-data-models) command", () => {
     it("returns 1 and sets exitCode when violating > 0", () => {
       process.exitCode = undefined;
       const code = applyModelUpdateDryRunResult({
+        dryRun: true,
         conformance: { violating: 1, truncated: false, scopeLimited: false },
       });
       expect(code).toBe(1);
@@ -343,16 +344,34 @@ describe("models (custom-data-models) command", () => {
     it("near-miss: violating=0 returns 0 and does not set exitCode", () => {
       process.exitCode = undefined;
       const code = applyModelUpdateDryRunResult({
+        dryRun: true,
         conformance: { violating: 0, truncated: false, scopeLimited: false },
       });
       expect(code).toBe(0);
       expect(process.exitCode).toBeUndefined();
     });
 
-    it("treats missing conformance as zero violations", () => {
+    it("warns and fails when response is not a dry-run report", () => {
       process.exitCode = undefined;
-      expect(applyModelUpdateDryRunResult({ type: "X", dryRun: true })).toBe(0);
+      const code = applyModelUpdateDryRunResult({ type: "X", description: "applied" });
+      expect(code).toBe(1);
+      expect(process.exitCode).toBe(1);
+      expect(printWarning).toHaveBeenCalledWith(
+        expect.stringContaining("may not support ?dryRun=true"),
+      );
+    });
+
+    it("warns when undetermined > 0 without failing on zero violations", () => {
+      process.exitCode = undefined;
+      const code = applyModelUpdateDryRunResult({
+        dryRun: true,
+        conformance: { violating: 0, undetermined: 3, truncated: false, scopeLimited: false },
+      });
+      expect(code).toBe(0);
       expect(process.exitCode).toBeUndefined();
+      expect(printWarning).toHaveBeenCalledWith(
+        expect.stringContaining("could not determine conformance"),
+      );
     });
   });
 
