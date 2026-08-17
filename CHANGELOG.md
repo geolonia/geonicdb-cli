@@ -9,6 +9,7 @@
 
 ### 2026-08-18
 - **Fix**: `auth login` が `config.service` に tenantId (UUID) ではなくテナント名を保存するようにした (closes #213)。`LoginResponse.user.tenantId` から解決し、`availableTenants[].tenantName` が `^[a-z0-9_]+$` を満たすときだけ `service` に書く。名前が取れない場合は既存の name 形 `service`（`profile create --tenant` 束縛）を温存し、UUID 等は削除する。`profile create --tenant` も name 形のときだけ `service` を書く (#218)
+- **Fix**: `temporal entities list` に `--local` (`?local=true`) を追加し、本体の too-wide query 検証の逃げ道を送れるようにした (closes #216)。ヘルプ例のセレクタ無しコピペで 400 になる例も修正 (#221)
 
 ## [0.25.0] - 2026-08-17
 
