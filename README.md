@@ -140,7 +140,7 @@ geonic profile use miya       # operate as miya tenant
 geonic profile use geolonia   # operate as geolonia tenant
 ```
 
-`--tenant <id>` accepts either a tenant ID or a tenant name. The value is stored as both `service` (sent in `NGSILD-Tenant` headers) and `tenantId` on the profile. For multi-tenant accounts, pass the tenant again on `auth login` via `--tenant` / `-s` — a saved `service` is not used as an implicit login tenant.
+`--tenant <name|id>` accepts either a tenant ID or a tenant name. The value is stored as both `service` (sent in `NGSILD-Tenant` headers) and `tenantId` on the profile. For multi-tenant accounts, pass the tenant again on `auth login` via `--tenant` / `-s` — a saved `service` is not used as an implicit login tenant.
 
 ### auth — Authentication
 
@@ -161,8 +161,8 @@ geonic auth login
 
 | Option | Description |
 |---|---|
-| `--tenant <name\|id>` | Log in to a specific tenant. Resolved client-side against the account's available tenants by name or ID |
-| `--tenant-id <id>` | Log in to a specific tenant by ID only. Resolved client-side against the account's available tenants (rejects names — use `--tenant` for names). Wins when both `--tenant` and `--tenant-id` are supplied |
+| `--tenant <name\|id>` | Log in to a specific tenant. When the account returns `availableTenants` (multi-tenant), resolved client-side by name or ID; otherwise the value is sent to the server for validation (`tenantName` or `tenantId`) |
+| `--tenant-id <id>` | Log in by tenant ID only. Multi-tenant: resolved client-side against `availableTenants` (rejects names — use `--tenant`). Single-membership: sent to the server as `tenantId`. Wins when both `--tenant` and `--tenant-id` are supplied |
 | `-s, --service <id\|name>` | Same resolution as `--tenant` (name or ID). Must be passed explicitly on the CLI — a profile-saved `service` is not used as an implicit login tenant |
 
 **Multi-tenant support**: When you belong to multiple tenants, `auth login` requires explicit tenant selection via `--tenant`, `--tenant-id`, or `-s/--service`. There is no interactive picker — if neither flag is provided and the account has multiple tenants, the command lists the available tenants and exits with an error. A profile-saved `service` is not treated as an implicit login tenant (explicit CLI flag required).
