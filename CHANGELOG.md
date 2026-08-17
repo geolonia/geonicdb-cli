@@ -10,6 +10,7 @@
 ### 2026-08-18
 - **Fix**: geonicdb 0.17.0 の too-wide query 検証に合わせ、セレクタ無しの E2E `entities list` / `temporal entities list` に `--local` を付与し、devDependency の geonicdb ピンを 0.17.0 (`d278cba`) へ更新した (closes #212)
 - **Fix**: 週次互換性チェックの issue 起票 heredoc でバックティックがコマンド置換されるのをエスケープした (#212)
+- **Fix**: geonicdb 0.17.0 の `TEMPORAL.DEFAULT_LAST_N` (100→10) に合わせ、`temporal entities list` / `get` の `--last-n` ヘルプと README の履歴キャップ説明を更新した (#212)
 - **Fix**: `auth login` が `config.service` に tenantId (UUID) ではなくテナント名を保存するようにした (closes #213)。`LoginResponse.user.tenantId` から解決し、`availableTenants[].tenantName` が `^[a-z0-9_]+$` を満たすときだけ `service` に書く。名前が取れない場合は既存の name 形 `service`（`profile create --tenant` 束縛）を温存し、UUID 等は削除する。`profile create --tenant` も name 形のときだけ `service` を書く (#218)
 - **Fix**: `entities list` に `--local` を追加し、セレクタ無し一覧の too-wide query 逃げ道 (`?local=true`) を CLI から送れるようにした (closes #214) (#219)
 - **Fix**: 単一メンバーシップのアカウントで `auth login --tenant` / `--tenant-id` が黙って無視されないようにした (closes #217)。`availableTenants` が無いときは明示フラグだけを `tenantName` / `tenantId` として再ログイン body に載せ、サーバー側の 400/403 で fail-loud にする。`--tenant` は NAME_REGEX で name/id を振り分け、config.service の back-fill は無視する (#222)
