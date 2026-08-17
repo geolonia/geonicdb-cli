@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-08-17
+- **Fix**: `registrations list` がセレクタ無しの `GET /csourceRegistrations` を呼ばないようにした (closes #201, 本体 geolonia/geonicdb#2304 対応)。ETSI GS CIM 009 clause 5.10.2.4 の too wide query に合わせ、`--type` / `--attrs` / `--query` / geoquery (`--georel` / `--geometry` / `--coords`) のいずれかを必須にし、無指定時はサーバへ送らず CLI 側で拒否する。フラグ名は既存の entities/temporal と同じ `--query` / `--coords`（クエリ param は `q` / `coordinates`）
+
 ## [0.24.0] - 2026-08-13
 
 ### 2026-08-13

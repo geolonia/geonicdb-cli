@@ -16,36 +16,72 @@ export function registerRegistrationsCommand(program: Command): void {
     .description("Manage context registrations");
 
   // registrations list
+  // GET /csourceRegistrations requires a selector (ETSI GS CIM 009 clause 5.10.2.4 /
+  // geonicdb#2304). Without type|attrs|q|geoquery the broker returns 400 Too wide query.
   const list = registrations
     .command("list")
-    .description("List registrations")
+    .description(
+      "List registrations (requires a selector: --type, --attrs, --query, or a geoquery)",
+    )
+    .option("--type <type>", "Filter by registered entity type")
+    .option("--attrs <a,b>", "Comma-separated list of attribute names to match")
+    .option("--query <q>", "NGSI-LD query expression (q)")
+    .option("--georel <rel>", "Geo-relationship (e.g. near;maxDistance==1000)")
+    .option("--geometry <geo>", "Geometry type for geo-query (e.g. Point)")
+    .option("--coords <coords>", "Coordinates for geo-query")
     .option("--limit <n>", "Maximum number of results", parseInt)
     .option("--offset <n>", "Skip N results", parseInt)
     .option("--count", "Include total count in response")
     .action(
-      withErrorHandler(async (_opts: unknown, cmd: Command) => {
+      withErrorHandler(async (opts: Record<string, unknown>, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
-        const cmdOpts = cmd.opts();
+
+        // Mirror assertRegistrationQueryRestrictionPresent (geonicdb#2304):
+        // type | attrs | q | (georel|geometry|coordinates). Pagination alone is not enough.
+        if (!opts.type && !opts.attrs && !opts.query && !opts.georel && !opts.geometry && !opts.coords) {
+          throw new Error(
+            "Too wide query (ETSI GS CIM 009 clause 5.10.2.4): specify at least one of --type, --attrs, --query, or a geoquery (--georel / --geometry / --coords).",
+          );
+        }
 
         const params: Record<string, string> = {};
-        if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
-        if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
-        if (cmdOpts.count) params["count"] = "true";
+        if (opts.type) params.type = String(opts.type);
+        if (opts.attrs) params.attrs = String(opts.attrs);
+        if (opts.query) params.q = String(opts.query);
+        if (opts.georel) params.georel = String(opts.georel);
+        if (opts.geometry) params.geometry = String(opts.geometry);
+        if (opts.coords) params.coordinates = String(opts.coords);
+        if (opts.limit !== undefined) params.limit = String(opts.limit);
+        if (opts.offset !== undefined) params.offset = String(opts.offset);
+        if (opts.count) params.count = "true";
 
         const response = await client.get("/csourceRegistrations", params);
-        outputResponse(response, format, !!cmdOpts.count);
+        outputResponse(response, format, !!opts.count);
       }),
     );
 
   addExamples(list, [
     {
-      description: "List all registrations",
-      command: "geonic registrations list",
+      description: "List registrations for an entity type",
+      command: "geonic registrations list --type WeatherStation",
+    },
+    {
+      description: "Filter by attribute names",
+      command: "geonic registrations list --attrs temperature,humidity",
+    },
+    {
+      description: "Filter with an NGSI-LD query",
+      command: "geonic registrations list --query 'temperature>20'",
+    },
+    {
+      description: "Geo-query near a point",
+      command:
+        "geonic registrations list --georel 'near;maxDistance==1000' --geometry Point --coords '[139.7671,35.6812]'",
     },
     {
       description: "List with pagination",
-      command: "geonic registrations list --limit 10",
+      command: "geonic registrations list --type WeatherStation --limit 10",
     },
   ]);
 
