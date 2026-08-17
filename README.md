@@ -465,10 +465,11 @@ Notes:
 | `temporal entities create [json]` | Create a temporal entity |
 | `temporal entities delete <id>` | Delete a temporal entity |
 
-Temporal entities list supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`, `--order-by`, `--options`, `--aggr-methods`, `--aggr-period`.
+Temporal entities list supports: `--time-rel`, `--time-at`, `--end-time-at`, `--time-property`, `--last-n`, `--order-by`, `--options`, `--aggr-methods`, `--aggr-period`.
 
-Temporal entities get supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`, `--options`, `--aggr-methods`, `--aggr-period`.
+Temporal entities get supports: `--time-rel`, `--time-at`, `--end-time-at`, `--time-property`, `--last-n`, `--options`, `--aggr-methods`, `--aggr-period`.
 
+`--time-property` selects which temporal property the time filter compares against (NGSI-LD `timeproperty`; ETSI clause 4.11): `observedAt` (default), `createdAt`, `modifiedAt`, or `deletedAt`. Unknown values are rejected by the server with `400 BadRequestData`.
 Temporal `--order-by` follows NGSI-LD v1.9.1 grammar (`name`, `name;desc`, composites like `a;asc,b;desc`). The server returns `400` for `dist-*`/`geo:distance` and nested paths like `a.b`; combining it with `--aggr-methods` is rejected by the CLI before a request is sent (aggregations are sorted by entity ID server-side).
 
 `--options` selects the NGSI-LD temporal representation (ETSI GS CIM 009 clause 6.3.12): `temporalValues` (alias `simplified`) for `[value, timestamp]` pairs, `aggregatedValues` for aggregations, `sysAttrs` (clause 6.3.11) to include `createdAt`/`modifiedAt` (and `expiresAt` where set). It maps to the NGSI-LD `options` query parameter — unrelated to the CLI's own `--format` (json/table). The CLI rejects the deterministic server-side `400`s before sending a request: only one of `temporalValues`/`aggregatedValues` may be present (clause 6.3.12); `aggregatedValues` requires `--aggr-methods`; and `--aggr-methods` / `--aggr-period` must be given together (e.g. `--aggr-methods avg --aggr-period PT1H` — a period alone would be silently ignored by the server, methods alone is a server 400).
