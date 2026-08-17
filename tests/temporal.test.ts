@@ -146,8 +146,11 @@ describe("temporal commands", () => {
         "--time-rel", "after",
         "--time-at", "2025-01-01T00:00:00Z",
       ]);
-      const params = client.get.mock.calls[0]?.[1] as Record<string, string>;
-      expect(params).not.toHaveProperty("timeproperty");
+      // Exact params object: timeproperty must be absent (not invented as observedAt).
+      expect(client.get).toHaveBeenCalledWith("/temporal/entities", {
+        timerel: "after",
+        timeAt: "2025-01-01T00:00:00Z",
+      });
     });
 
     // Empty string is an explicit (invalid) value — forward it so the server
