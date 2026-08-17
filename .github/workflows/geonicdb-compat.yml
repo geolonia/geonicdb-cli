@@ -77,6 +77,6 @@ jobs:
 
           1. Workflow run のログを確認し、破壊的変更の内容を特定
           2. CLI 側のコードを修正
-          3. `package.json` の geonicdb コミットハッシュを最新に更新
+          3. \`package.json\` の geonicdb コミットハッシュを最新に更新
           EOF
           )"
