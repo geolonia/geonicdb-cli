@@ -335,7 +335,9 @@ geonic me oauth-clients update <client-id> --policy-id my-readonly
 | `entities delete <id>` | Delete an entity by ID |
 | `entities purge <selectors> [--keep\|--drop] --yes` | Purge entities/attributes by selector (destructive) |
 
-`entities list` supports filtering options: `--type`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`.
+`entities list` supports filtering options: `--type`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`, `--local`.
+
+`--local` (`?local=true`) limits the request to local scope and exempts the too-wide query check, so a selector-less `geonic entities list --local` is allowed.
 
 `entities purge` requires **at least one primary selector** — `--type`, `--attrs`, `--query`, or `--georel` (the latter together with `--geometry`/`--coords`). These can be narrowed with the refinement filters `--id`, `--id-pattern`, `--scope-q`, `--local`. A refinement filter **on its own is not sufficient**: `--id`/`--id-pattern`/`--scope-q` alone are rejected by both the CLI and the server — to remove a single entity use `entities delete <id>`. Mutation flags `--keep`/`--drop` (mutually exclusive) remove/retain attributes on matched entities instead of deleting the entities. `--attrs` on purge is a selector ("entities having any listed attributes"), not an output projection.
 

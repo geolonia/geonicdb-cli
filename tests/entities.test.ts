@@ -189,6 +189,35 @@ describe("entities command", () => {
 
       expect(mockClient.get).toHaveBeenCalledWith("/entities", expect.objectContaining({ scopeQ: "/restaurants/#" }));
     });
+
+    // #214: selector-less list is a too-wide 400 unless ?local=true.
+    it("passes --local as local=true query param (#214)", async () => {
+      mockClient.get.mockResolvedValue(mockResponse([]));
+      await runCommand(program, ["entities", "list", "--local"]);
+
+      expect(mockClient.get).toHaveBeenCalledWith("/entities", { local: "true" });
+    });
+
+    // near-miss: without --local the params must stay empty —
+    // accidentally always sending local=true would change federation semantics.
+    it("does not send local when --local is omitted (near-miss)", async () => {
+      mockClient.get.mockResolvedValue(mockResponse([]));
+      await runCommand(program, ["entities", "list"]);
+
+      expect(mockClient.get).toHaveBeenCalledWith("/entities", {});
+      expect(mockClient.get.mock.calls[0]?.[1]).not.toHaveProperty("local");
+    });
+
+    // near-miss: --local must compose with other filters, not replace them.
+    it("composes --local with type filter (near-miss)", async () => {
+      mockClient.get.mockResolvedValue(mockResponse([]));
+      await runCommand(program, ["entities", "list", "--type", "Sensor", "--local"]);
+
+      expect(mockClient.get).toHaveBeenCalledWith("/entities", {
+        type: "Sensor",
+        local: "true",
+      });
+    });
   });
 
   describe("get", () => {

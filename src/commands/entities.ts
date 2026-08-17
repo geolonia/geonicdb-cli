@@ -36,6 +36,10 @@ export function registerEntitiesCommand(program: Command): void {
     .option("--count-only", "Only show the total count without listing entities")
     .option("--key-values", "Request simplified key-value format")
     .option("--sys-attrs", "Include system attributes (createdAt, modifiedAt)")
+    .option(
+      "--local",
+      "Limit to local scope (?local=true). Exempts the too-wide query check",
+    )
     .action(
       withErrorHandler(async (opts: Record<string, unknown>, cmd: Command) => {
         const client = createClient(cmd);
@@ -55,6 +59,7 @@ export function registerEntitiesCommand(program: Command): void {
         if (opts.offset !== undefined) params.offset = String(opts.offset);
         if (opts.orderBy) params.orderBy = String(opts.orderBy);
         if (opts.scopeQ) params.scopeQ = String(opts.scopeQ);
+        if (opts.local) params.local = "true";
         if (opts.count || opts.countOnly) params.count = "true";
         if (opts.countOnly) params.limit = "0";
 
@@ -150,6 +155,10 @@ export function registerEntitiesCommand(program: Command): void {
     {
       description: "Filter by scope (one level below)",
       command: "geonic entities list --scope-q '/Japan/+'",
+    },
+    {
+      description: "List all local entities (exempts too-wide query check)",
+      command: "geonic entities list --local",
     },
   ]);
 
