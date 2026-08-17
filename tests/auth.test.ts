@@ -505,6 +505,8 @@ describe("auth commands", () => {
         }),
         "default",
       );
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved).not.toHaveProperty("service");
     });
 
     it("falls back to requested --tenant-id when re-login omits user.tenantId (#217)", async () => {
@@ -618,19 +620,156 @@ describe("auth commands", () => {
       expect(saveConfig).toHaveBeenCalled();
     });
 
-    it("saves tenantId as service when present in login response", async () => {
+    // Regression #213: NGSILD-Tenant must be a tenant *name* (`^[a-z0-9_]+$`).
+    it("saves tenantName as service (not tenantId UUID) when availableTenants has a name", async () => {
+      const tenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
+      const tenants = [{ tenantId, tenantName: "miya", role: "tenant_admin" }];
       vi.mocked(isInteractive).mockReturnValue(true);
       vi.mocked(promptEmail).mockResolvedValue("user@example.com");
-      vi.mocked(promptPassword).mockResolvedValue("pass123");
+      vi.mocked(promptPassword).mockResolvedValue("password1234");
       client.rawRequest.mockResolvedValue(
-        mockResponse({ accessToken: "tok", user: loginUser("ed945710-fb96-4d17-811b-425abcb9b70e")}),
+        mockResponse({
+          accessToken: "tok",
+          user: loginUser(tenantId),
+          availableTenants: tenants,
+        }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved.service).toBe("miya");
+      expect(saved.tenantId).toBe(tenantId);
+      expect(saved.service).not.toBe(tenantId);
+    });
+
+    it("does not set service when user.tenantId is present but tenantName is unavailable", async () => {
+      const tenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("password1234");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok", user: loginUser(tenantId) }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved.tenantId).toBe(tenantId);
+      expect(saved).not.toHaveProperty("service");
+    });
+
+    it("does not fall back to tenantId for service when tenantName is missing (near-miss)", async () => {
+      const tenants = [{ tenantId: "city_a", role: "tenant_admin" }];
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("password1234");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({
+          accessToken: "tok",
+          availableTenants: tenants,
+          user: loginUser("city_a"),
+        }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved.tenantId).toBe("city_a");
+      expect(saved).not.toHaveProperty("service");
+    });
+
+    it("clears a previously saved UUID service on re-login when tenantName is available", async () => {
+      const tenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
+      vi.mocked(loadConfig).mockReturnValue({ service: tenantId, tenantId } as never);
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("password1234");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({
+          accessToken: "tok",
+          user: loginUser(tenantId),
+          availableTenants: [{ tenantId, tenantName: "miya", role: "tenant_admin" }],
+        }),
       );
       const program = makeProgram();
       await runCommand(program, ["auth", "login"]);
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "tok", service: "ed945710-fb96-4d17-811b-425abcb9b70e" }),
+        expect.objectContaining({ service: "miya", tenantId }),
         "default",
       );
+    });
+
+    it("clears existing UUID service when tenantName is unavailable (mutation guard)", async () => {
+      const tenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
+      vi.mocked(loadConfig).mockReturnValue({ service: tenantId, tenantId } as never);
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("password1234");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({
+          accessToken: "tok",
+          user: loginUser(tenantId),
+          availableTenants: [{ tenantId, role: "tenant_admin" }],
+        }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved.tenantId).toBe(tenantId);
+      expect(saved).not.toHaveProperty("service");
+    });
+
+    it("preserves existing name-shaped service when tenantName is unavailable", async () => {
+      const tenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
+      vi.mocked(loadConfig).mockReturnValue({ service: "miya", tenantId } as never);
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("password1234");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok", user: loginUser(tenantId) }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved.service).toBe("miya");
+      expect(saved.tenantId).toBe(tenantId);
+    });
+
+    it("clears name-shaped service when logging into a different tenant without a resolvable name", async () => {
+      const previousTenantId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+      const newTenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
+      vi.mocked(loadConfig).mockReturnValue({
+        service: "other_tenant",
+        tenantId: previousTenantId,
+      } as never);
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("password1234");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok", user: loginUser(newTenantId) }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved.tenantId).toBe(newTenantId);
+      expect(saved).not.toHaveProperty("service");
+    });
+
+    it("does not write legacy tenantName that fails NAME_REGEX (near-miss)", async () => {
+      const tenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("password1234");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({
+          accessToken: "tok",
+          user: loginUser(tenantId),
+          availableTenants: [{ tenantId, tenantName: "legacy-name", role: "tenant_admin" }],
+        }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved.tenantId).toBe(tenantId);
+      expect(saved).not.toHaveProperty("service");
     });
 
     it("does not set service when tenantId is absent from login response", async () => {
@@ -759,9 +898,11 @@ describe("auth commands", () => {
         skipTenantHeader: true,
       });
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "tok", service: "city_a" }),
+        expect.objectContaining({ token: "tok", tenantId: "city_a" }),
         "default",
       );
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved).not.toHaveProperty("service");
     });
 
     it("--tenant-id resolves by tenant ID and re-logins", async () => {
@@ -783,7 +924,11 @@ describe("auth commands", () => {
         skipTenantHeader: true,
       });
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "tok-b", tenantId: "tid-bbb" }),
+        expect.objectContaining({
+          token: "tok-b",
+          tenantId: "tid-bbb",
+          service: "demo_bousai",
+        }),
         "default",
       );
     });
@@ -886,15 +1031,15 @@ describe("auth commands", () => {
       );
       const program = makeProgram();
       await runCommand(program, ["auth", "login"]);
-      expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "tok", service: "city_a" }),
-        "default",
-      );
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved.token).toBe("tok");
+      expect(saved.tenantId).toBe("city_a");
+      expect(saved).not.toHaveProperty("service");
     });
 
     it("saves availableTenants list when login succeeds with one tenant", async () => {
       const tenants = [
-        { tenantId: "city_a", tenantName: "Smart City A", role: "tenant_admin" },
+        { tenantId: "city_a", tenantName: "smart_city_a", role: "tenant_admin" },
       ];
       client.rawRequest.mockResolvedValue(
         mockResponse({ accessToken: "tok", availableTenants: tenants, user: loginUser("city_a")}),
@@ -904,8 +1049,9 @@ describe("auth commands", () => {
       expect(saveConfig).toHaveBeenCalledWith(
         expect.objectContaining({
           tenantId: "city_a",
+          service: "smart_city_a",
           availableTenants: [
-            { tenantId: "city_a", tenantName: "Smart City A", role: "tenant_admin" },
+            { tenantId: "city_a", tenantName: "smart_city_a", role: "tenant_admin" },
           ],
         }),
         "default",
@@ -931,7 +1077,11 @@ describe("auth commands", () => {
         skipTenantHeader: true,
       });
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "tok-b", service: "tid-bbb", tenantId: "tid-bbb" }),
+        expect.objectContaining({
+          token: "tok-b",
+          service: "demo_bousai",
+          tenantId: "tid-bbb",
+        }),
         "default",
       );
     });
@@ -950,10 +1100,10 @@ describe("auth commands", () => {
         );
       const program = makeProgram();
       await runCommand(program, ["auth", "login", "-s", "city_b"]);
-      expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "tok-b", service: "city_b" }),
-        "default",
-      );
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved.token).toBe("tok-b");
+      expect(saved.tenantId).toBe("city_b");
+      expect(saved).not.toHaveProperty("service");
     });
 
     it("prints error when --service tenant name not found", async () => {

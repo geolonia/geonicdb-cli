@@ -4,6 +4,16 @@ import { homedir } from "node:os";
 import { splitContextValues } from "./context.js";
 import type { GdbConfig, GdbConfigFile } from "./types.js";
 
+/**
+ * NGSILD-Tenant / Fiware-Service value shape.
+ * Matches geonicdb `TENANT.NAME_REGEX` (`src/config/defaults.ts`).
+ */
+export const TENANT_SERVICE_NAME_RE = /^[a-z0-9_]+$/;
+
+export function isTenantServiceName(value: string): boolean {
+  return TENANT_SERVICE_NAME_RE.test(value);
+}
+
 export function getConfigDir(): string {
   return process.env.GEONIC_CONFIG_DIR ?? join(homedir(), ".config", "geonic");
 }

@@ -8,6 +8,7 @@ import {
   loadConfig,
   saveConfig,
   validateUrl,
+  isTenantServiceName,
 } from "../config.js";
 import { printSuccess, printInfo, printError, printWarning } from "../output.js";
 import { getTokenStatus } from "../token.js";
@@ -108,8 +109,12 @@ export function registerProfileCommands(program: Command): void {
           init.url = validateUrl(globalOpts.url);
         }
         if (localOpts.tenant) {
-          init.service = localOpts.tenant;
+          // Always bind tenantId; only set service when the value is a valid
+          // NGSILD-Tenant name (closes #213 — UUID-as-service causes 400).
           init.tenantId = localOpts.tenant;
+          if (isTenantServiceName(localOpts.tenant)) {
+            init.service = localOpts.tenant;
+          }
         }
         createProfile(name, init);
         const tenantLabel = localOpts.tenant ? ` (tenant: ${localOpts.tenant})` : "";

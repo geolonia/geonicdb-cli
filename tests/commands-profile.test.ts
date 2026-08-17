@@ -10,6 +10,8 @@ vi.mock("../src/config.js", () => ({
   loadConfig: vi.fn(() => ({})),
   saveConfig: vi.fn(),
   validateUrl: vi.fn((url: string) => url.replace(/\/+$/, "") + "/"),
+  TENANT_SERVICE_NAME_RE: /^[a-z0-9_]+$/,
+  isTenantServiceName: (value: string) => /^[a-z0-9_]+$/.test(value),
 }));
 
 vi.mock("../src/output.js", () => ({
@@ -224,6 +226,18 @@ describe("profile commands", () => {
         tenantId: "miya",
       });
       expect(printSuccess).toHaveBeenCalledWith('Profile "miya" created (tenant: miya).');
+    });
+
+    it("binds tenantId only when --tenant is a UUID (not a service name)", async () => {
+      const uuid = "ed945710-fb96-4d17-811b-425abcb9b70e";
+      const program = makeProgram();
+      await runCommand(program, ["profile", "create", "miya", "--tenant", uuid]);
+      expect(createProfile).toHaveBeenCalledWith("miya", {
+        tenantId: uuid,
+      });
+      const init = vi.mocked(createProfile).mock.calls[0][1] as Record<string, unknown>;
+      expect(init).not.toHaveProperty("service");
+      expect(printSuccess).toHaveBeenCalledWith(`Profile "miya" created (tenant: ${uuid}).`);
     });
 
     it("creates a profile with both tenant and url", async () => {
