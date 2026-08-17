@@ -161,15 +161,27 @@ export function registerBatchCommand(program: Command): void {
         '    "entities": [{"type": "Sensor"}],\n' +
         '    "attrs": ["temperature"],\n' +
         '    "q": "temperature>30"\n' +
-        "  }",
+        "  }\n\n" +
+        "Too-wide queries return 400 BadRequestData (ETSI GS CIM 009 clause 5.7.2.4;\n" +
+        "geolonia/geonicdb#2290). The body must include at least one of type, a\n" +
+        "non-system attrs, a non-system q, or geoQ — id / idPattern alone are not\n" +
+        "enough. For an unrestricted local scan (or id-only lookup), pass --local\n" +
+        "(?local=true).",
+    )
+    .option(
+      "--local",
+      "Limit to local scope (?local=true). Exempts the too-wide query check",
     )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const data = await parseJsonInput(json as string | undefined);
+        const params = cmd.opts().local ? { local: "true" } : undefined;
 
-        const response = await client.post("/entityOperations/query", data);
+        const response = params
+          ? await client.post("/entityOperations/query", data, params)
+          : await client.post("/entityOperations/query", data);
         outputResponse(response, format);
       }),
     );
@@ -178,6 +190,10 @@ export function registerBatchCommand(program: Command): void {
     {
       description: "Query with inline JSON",
       command: `geonic batch query '{"entities":[{"type":"Sensor"}],"attrs":["temperature"]}'`,
+    },
+    {
+      description: "Id-only lookup (requires --local; id alone is a too-wide 400)",
+      command: `geonic batch query '{"entities":[{"id":"urn:ngsi-ld:Sensor:001"}]}' --local`,
     },
     {
       description: "Query from a file",

@@ -118,6 +118,54 @@ describe("temporal commands", () => {
       });
       expect(outputResponse).toHaveBeenCalledWith(expect.anything(), "json", true);
     });
+
+    // #202 / geolonia/geonicdb#2267: --time-property → timeproperty query param
+    it("passes --time-property createdAt as timeproperty (#202)", async () => {
+      client.get.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "list",
+        "--time-rel", "after",
+        "--time-at", "2025-01-01T00:00:00Z",
+        "--time-property", "createdAt",
+      ]);
+      expect(client.get).toHaveBeenCalledWith("/temporal/entities", {
+        timerel: "after",
+        timeAt: "2025-01-01T00:00:00Z",
+        timeproperty: "createdAt",
+      });
+    });
+
+    // near-miss: without the flag the query must not invent a timeproperty key
+    // (server default is observedAt only when the param is absent).
+    it("omits timeproperty when --time-property is not set", async () => {
+      client.get.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "list",
+        "--time-rel", "after",
+        "--time-at", "2025-01-01T00:00:00Z",
+      ]);
+      // Exact params object: timeproperty must be absent (not invented as observedAt).
+      expect(client.get).toHaveBeenCalledWith("/temporal/entities", {
+        timerel: "after",
+        timeAt: "2025-01-01T00:00:00Z",
+      });
+    });
+
+    // Empty string is an explicit (invalid) value — forward it so the server
+    // can 400, rather than treating it as "flag absent → observedAt default".
+    it("forwards empty --time-property so the server can reject it", async () => {
+      client.get.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "list",
+        "--time-property", "",
+      ]);
+      expect(client.get).toHaveBeenCalledWith("/temporal/entities", {
+        timeproperty: "",
+      });
+    });
   });
 
   describe("temporal entities get", () => {
@@ -152,6 +200,38 @@ describe("temporal commands", () => {
           endTimeAt: "2025-07-01T00:00:00Z",
           lastN: "10",
         },
+      );
+    });
+
+    it("passes --time-property createdAt as timeproperty (#202)", async () => {
+      client.get.mockResolvedValue(mockResponse({ id: "urn:sensor:001" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "get", "urn:sensor:001",
+        "--time-rel", "before",
+        "--time-at", "2025-06-01T00:00:00Z",
+        "--time-property", "createdAt",
+      ]);
+      expect(client.get).toHaveBeenCalledWith(
+        "/temporal/entities/urn%3Asensor%3A001",
+        {
+          timerel: "before",
+          timeAt: "2025-06-01T00:00:00Z",
+          timeproperty: "createdAt",
+        },
+      );
+    });
+
+    it("forwards empty --time-property so the server can reject it", async () => {
+      client.get.mockResolvedValue(mockResponse({ id: "urn:sensor:001" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "get", "urn:sensor:001",
+        "--time-property", "",
+      ]);
+      expect(client.get).toHaveBeenCalledWith(
+        "/temporal/entities/urn%3Asensor%3A001",
+        { timeproperty: "" },
       );
     });
 
@@ -279,6 +359,57 @@ describe("temporal commands", () => {
       expect(client.post).toHaveBeenCalledWith(
         "/temporal/entityOperations/query",
         body,
+      );
+    });
+
+    // #200 / geonicdb#2290: id-only body is a too-wide 400 unless ?local=true.
+    it("passes --local as local=true query param (#200)", async () => {
+      const body = {
+        entities: [{ id: "urn:ngsi-ld:Sensor:001" }],
+        temporalQ: { timerel: "after", timeAt: "2020-01-01T00:00:00Z" },
+      };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.post.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal",
+        "entityOperations",
+        "query",
+        "{}",
+        "--local",
+      ]);
+      expect(client.post).toHaveBeenCalledWith(
+        "/temporal/entityOperations/query",
+        body,
+        { local: "true" },
+      );
+    });
+
+    // near-miss: --local must compose with aggregation flags, not replace them.
+    it("composes --local with aggregation params (near-miss)", async () => {
+      const body = { entities: [{ type: "Sensor" }] };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.post.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal",
+        "entityOperations",
+        "query",
+        "{}",
+        "--local",
+        "--aggr-methods",
+        "avg",
+        "--aggr-period",
+        "PT1H",
+      ]);
+      expect(client.post).toHaveBeenCalledWith(
+        "/temporal/entityOperations/query",
+        body,
+        {
+          local: "true",
+          aggrMethods: "avg",
+          aggrPeriodDuration: "PT1H",
+        },
       );
     });
   });

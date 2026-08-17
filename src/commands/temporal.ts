@@ -111,6 +111,10 @@ function addTemporalListOptions(cmd: Command): Command {
     .option("--time-at <time>", "Temporal query start time (ISO 8601)")
     .option("--end-time-at <time>", "Temporal query end time (ISO 8601)")
     .option(
+      "--time-property <name>",
+      "Temporal property to compare (observedAt, createdAt, modifiedAt, deletedAt; default observedAt)",
+    )
+    .option(
       "--last-n <n>",
       "Return last N instances per attribute (server default caps to 100; max 1000)",
       parsePositiveInt,
@@ -141,6 +145,11 @@ function createListAction() {
     if (cmdOpts.timeRel) params["timerel"] = cmdOpts.timeRel;
     if (cmdOpts.timeAt) params["timeAt"] = cmdOpts.timeAt;
     if (cmdOpts.endTimeAt) params["endTimeAt"] = cmdOpts.endTimeAt;
+    // undefined only = flag absent (server default observedAt). Empty string is
+    // forwarded so the server can 400 BadRequestData on unknown values (#202).
+    if (cmdOpts.timeProperty !== undefined) {
+      params["timeproperty"] = cmdOpts.timeProperty;
+    }
     if (cmdOpts.lastN !== undefined) params["lastN"] = String(cmdOpts.lastN);
     if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
     if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
@@ -170,6 +179,10 @@ function addTemporalGetOptions(cmd: Command): Command {
     .option("--time-at <time>", "Temporal query start time (ISO 8601)")
     .option("--end-time-at <time>", "Temporal query end time (ISO 8601)")
     .option(
+      "--time-property <name>",
+      "Temporal property to compare (observedAt, createdAt, modifiedAt, deletedAt; default observedAt)",
+    )
+    .option(
       "--last-n <n>",
       "Return last N instances per attribute (server default caps to 100; max 1000)",
       parsePositiveInt,
@@ -188,6 +201,11 @@ function createGetAction() {
     if (cmdOpts.timeRel) params["timerel"] = cmdOpts.timeRel;
     if (cmdOpts.timeAt) params["timeAt"] = cmdOpts.timeAt;
     if (cmdOpts.endTimeAt) params["endTimeAt"] = cmdOpts.endTimeAt;
+    // undefined only = flag absent (server default observedAt). Empty string is
+    // forwarded so the server can 400 BadRequestData on unknown values (#202).
+    if (cmdOpts.timeProperty !== undefined) {
+      params["timeproperty"] = cmdOpts.timeProperty;
+    }
     if (cmdOpts.lastN !== undefined) params["lastN"] = String(cmdOpts.lastN);
     Object.assign(params, buildRepresentationParams(cmdOpts));
 
@@ -239,7 +257,12 @@ function createQueryAction() {
     const body = await parseJsonInput(json as string | undefined);
     const client = createClient(cmd);
     const format = getFormat(cmd);
-    const params = buildRepresentationParams(cmd.opts());
+    const cmdOpts = cmd.opts();
+    const params = buildRepresentationParams(cmdOpts);
+    // geolonia/geonicdb#2290 / clause 5.7.4.4: local scope exempts the too-wide
+    // check (id / idPattern alone are not enough). Same query-param channel as
+    // aggregation flags (clause 6.3.18).
+    if (cmdOpts.local) params.local = "true";
 
     const response =
       Object.keys(params).length > 0
@@ -283,6 +306,11 @@ export function registerTemporalCommand(program: Command): void {
       description: "Filter by time (after a point)",
       command:
         "geonic temporal entities list --time-rel after --time-at 2025-06-01T00:00:00Z",
+    },
+    {
+      description: "Filter by creation time (timeproperty=createdAt)",
+      command:
+        "geonic temporal entities list --time-rel after --time-at 2025-06-01T00:00:00Z --time-property createdAt",
     },
     {
       description: "Order temporal entities (NGSI-LD v1.9.1 grammar)",
@@ -370,7 +398,16 @@ export function registerTemporalCommand(program: Command): void {
           "Aggregation flags are sent in the query string (the server also accepts them in " +
           "the body's temporalQ object, which takes precedence). Requires geonicdb with " +
           "geolonia/geonicdb#1816; older servers (<= v0.16.0) silently ignore aggregation " +
-          "here — use `temporal entities list --options aggregatedValues` against those.",
+          "here — use `temporal entities list --options aggregatedValues` against those.\n\n" +
+          "Too-wide queries return 400 BadRequestData (ETSI GS CIM 009 clause 5.7.4.4;\n" +
+          "geolonia/geonicdb#2290). The body must include at least one of type, a\n" +
+          "non-system attrs, a non-system q, or geoQ — id / idPattern alone are not\n" +
+          "enough. For an unrestricted local scan (or id-only lookup), pass --local\n" +
+          "(?local=true).",
+      )
+      .option(
+        "--local",
+        "Limit to local scope (?local=true). Exempts the too-wide query check",
       ),
   );
   opsQuery.action(createQueryAction());
@@ -379,6 +416,10 @@ export function registerTemporalCommand(program: Command): void {
     {
       description: "Query with inline JSON",
       command: `geonic temporal entityOperations query '{"entities":[{"type":"Sensor"}],"attrs":["temperature"]}'`,
+    },
+    {
+      description: "Id-only lookup (requires --local; id alone is a too-wide 400)",
+      command: `geonic temporal entityOperations query '{"entities":[{"id":"urn:ngsi-ld:Sensor:001"}],"temporalQ":{"timerel":"after","timeAt":"2020-01-01T00:00:00Z"}}' --local`,
     },
     {
       description: "Query from a file",
@@ -416,6 +457,10 @@ export function registerTemporalCommand(program: Command): void {
   addRepresentationOptions(
     temporal
       .command("query [json]", { hidden: true })
-      .description("Query temporal entities (deprecated: use temporal entityOperations query)"),
+      .description("Query temporal entities (deprecated: use temporal entityOperations query)")
+      .option(
+        "--local",
+        "Limit to local scope (?local=true). Exempts the too-wide query check",
+      ),
   ).action(createQueryAction());
 }

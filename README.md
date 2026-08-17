@@ -366,6 +366,16 @@ For safety, `entities purge` requires confirmation. In non-interactive contexts 
 
 `batch` is available as an alias for `entityOperations`.
 
+`entityOperations query` posts the JSON body as-is to `POST /entityOperations/query`. After geolonia/geonicdb#2290 (ETSI GS CIM 009 clause 5.7.2.4), a **too-wide** body returns **400 BadRequestData**: the payload must include at least one of `type`, a non-system `attrs`, a non-system `q`, or `geoQ`. `id` / `idPattern` alone are **not** enough. Use `--local` (`?local=true`) for a local-scope scan or id-only lookup.
+
+```bash
+# Restricted by type + attrs (sufficient selector)
+geonic batch query '{"entities":[{"type":"Sensor"}],"attrs":["temperature"]}'
+
+# Id-only lookup — requires --local (otherwise 400 Too wide query)
+geonic batch query '{"entities":[{"id":"urn:ngsi-ld:Sensor:001"}]}' --local
+```
+
 ### import — Bulk-load entities (large datasets)
 
 `entityOperations upsert` sends the whole payload in a single request, so it is bounded by the
@@ -438,11 +448,13 @@ Notes:
 
 | Subcommand | Description |
 |---|---|
-| `reg list` | List registrations |
+| `reg list --type WeatherStation` | List registrations (requires a selector) |
 | `reg get <id>` | Get a registration by ID |
 | `reg create [json]` | Create a registration |
 | `reg update <id> [json]` | Update a registration |
 | `reg delete <id>` | Delete a registration |
+
+`reg list` requires **at least one selector** — `--type`, `--attrs`, `--query`, or a geoquery (`--georel` / `--geometry` / `--coords`). Pagination (`--limit` / `--offset` / `--count`) alone is not enough; without a selector the CLI refuses the request (ETSI GS CIM 009 clause 5.10.2.4 / too wide query) instead of forwarding a bare `GET /csourceRegistrations` that the broker would reject with 400.
 
 ### types — Browse entity types
 
@@ -463,10 +475,11 @@ Notes:
 | `temporal entities create [json]` | Create a temporal entity |
 | `temporal entities delete <id>` | Delete a temporal entity |
 
-Temporal entities list supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`, `--order-by`, `--options`, `--aggr-methods`, `--aggr-period`.
+Temporal entities list supports: `--time-rel`, `--time-at`, `--end-time-at`, `--time-property`, `--last-n`, `--order-by`, `--options`, `--aggr-methods`, `--aggr-period`.
 
-Temporal entities get supports: `--time-rel`, `--time-at`, `--end-time-at`, `--last-n`, `--options`, `--aggr-methods`, `--aggr-period`.
+Temporal entities get supports: `--time-rel`, `--time-at`, `--end-time-at`, `--time-property`, `--last-n`, `--options`, `--aggr-methods`, `--aggr-period`.
 
+`--time-property` selects which temporal property the time filter compares against (NGSI-LD `timeproperty`; ETSI clause 4.11): `observedAt` (default), `createdAt`, `modifiedAt`, or `deletedAt`. Unknown values are rejected by the server with `400 BadRequestData`.
 Temporal `--order-by` follows NGSI-LD v1.9.1 grammar (`name`, `name;desc`, composites like `a;asc,b;desc`). The server returns `400` for `dist-*`/`geo:distance` and nested paths like `a.b`; combining it with `--aggr-methods` is rejected by the CLI before a request is sent (aggregations are sorted by entity ID server-side).
 
 `--options` selects the NGSI-LD temporal representation (ETSI GS CIM 009 clause 6.3.12): `temporalValues` (alias `simplified`) for `[value, timestamp]` pairs, `aggregatedValues` for aggregations, `sysAttrs` (clause 6.3.11) to include `createdAt`/`modifiedAt` (and `expiresAt` where set). It maps to the NGSI-LD `options` query parameter — unrelated to the CLI's own `--format` (json/table). The CLI rejects the deterministic server-side `400`s before sending a request: only one of `temporalValues`/`aggregatedValues` may be present (clause 6.3.12); `aggregatedValues` requires `--aggr-methods`; and `--aggr-methods` / `--aggr-period` must be given together (e.g. `--aggr-methods avg --aggr-period PT1H` — a period alone would be silently ignored by the server, methods alone is a server 400).
@@ -479,7 +492,9 @@ Temporal `--order-by` follows NGSI-LD v1.9.1 grammar (`name`, `name;desc`, compo
 |---|---|
 | `temporal entityOperations query [json]` | Query temporal entities (POST) |
 
-Supports the same representation flags as the GET paths: `--options`, `--aggr-methods`, `--aggr-period` (same fail-fast guards). The flags are sent in the query string; the server also accepts the spec-canonical `temporalQ` object in the request body (ETSI GS CIM 009 Table 5.2.21-1), which takes precedence over the flags. Aggregation on this POST route requires a GeonicDB with geolonia/geonicdb#1816 (after v0.16.0) — older servers silently ignore it here, so use `temporal entities list --options aggregatedValues` against those. `--order-by` is intentionally unsupported on this POST route.
+Supports the same representation flags as the GET paths: `--options`, `--aggr-methods`, `--aggr-period` (same fail-fast guards), plus `--local` (`?local=true`). The flags are sent in the query string; the server also accepts the spec-canonical `temporalQ` object in the request body (ETSI GS CIM 009 Table 5.2.21-1), which takes precedence over the flags. Aggregation on this POST route requires a GeonicDB with geolonia/geonicdb#1816 (after v0.16.0) — older servers silently ignore it here, so use `temporal entities list --options aggregatedValues` against those. `--order-by` is intentionally unsupported on this POST route.
+
+After geolonia/geonicdb#2290 (ETSI GS CIM 009 clause 5.7.4.4), a **too-wide** POST body returns **400 BadRequestData** — same contract as `entityOperations query` (`type` / non-system `attrs` / non-system `q` / `geoQ`, or `--local`). `id` / `idPattern` alone are not enough.
 
 ### snapshots — Snapshot operations
 
