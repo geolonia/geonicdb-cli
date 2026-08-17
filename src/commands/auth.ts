@@ -20,6 +20,15 @@ import { addMeApiKeysSubcommand } from "./me-api-keys.js";
 import { addMePasswordSubcommand } from "./me-password.js";
 import { addMePoliciesSubcommand } from "./me-policies.js";
 
+/** 本体 TENANT.NAME_REGEX と同じ。--tenant の name|id 判定に使う (#217)。 */
+const TENANT_SERVICE_NAME_RE = /^[a-z0-9_]+$/;
+
+function loginResponseTenantId(data: Record<string, unknown>): string | undefined {
+  // LoginResponse の tenantId は top-level ではなく user 配下 (#213 / #217)。
+  const user = data.user as { tenantId?: string | null } | undefined;
+  return user?.tenantId ?? undefined;
+}
+
 function createLoginCommand(): Command {
   return new Command("login")
     .description("Authenticate and save token")
@@ -102,8 +111,10 @@ function createLoginCommand(): Command {
 
         // --tenant-id matches by ID only. --tenant and -s/--service match by name or ID.
         // --tenant-id wins when both are supplied.
+        // config.service の back-fill (resolveOptions) は使わない — 明示フラグのみ (#217)。
+        const cliGlobals = cmd.optsWithGlobals() as { service?: string };
         const tenantIdFlag = loginOpts.tenantId;
-        const tenantNameOrIdFlag = loginOpts.tenant ?? globalOpts.service;
+        const tenantNameOrIdFlag = loginOpts.tenant ?? cliGlobals.service;
         const tenantFlag = tenantIdFlag ?? tenantNameOrIdFlag;
 
         // Step 1: tenantless login. Server returns either a single-tenant token
@@ -164,7 +175,7 @@ function createLoginCommand(): Command {
         }
 
         const availableTenants = data.availableTenants as TenantInfo[] | undefined;
-        let finalTenantId = data.tenantId as string | undefined;
+        let finalTenantId = loginResponseTenantId(data);
 
         // Multi-tenant: resolve target tenant from flag, interactive prompt, or fall back to primary
         if (availableTenants && availableTenants.length > 1) {
@@ -232,10 +243,13 @@ function createLoginCommand(): Command {
         } else if (tenantFlag) {
           // Single-membership (サーバーは memberships.length > 1 のときだけ availableTenants を返す):
           // クライアントでは検証できないため、フラグを body に載せてサーバーに判定させる (#217)。
-          // --tenant-id → tenantId / --tenant・-s → tenantName。
+          // --tenant-id → 常に tenantId。
+          // --tenant / -s → 本体 NAME_REGEX に合うなら tenantName、合わなければ tenantId（UUID 等）。
           const tenantBody = tenantIdFlag
             ? { tenantId: tenantIdFlag }
-            : { tenantName: tenantNameOrIdFlag as string };
+            : TENANT_SERVICE_NAME_RE.test(tenantNameOrIdFlag as string)
+              ? { tenantName: tenantNameOrIdFlag as string }
+              : { tenantId: tenantNameOrIdFlag as string };
           const reloginResponse = await client.rawRequest("POST", "/auth/login", {
             // #1532: 強制パスワード変更後は effectivePassword で再ログインする。
             body: { email, password: effectivePassword, ...tenantBody },
@@ -249,7 +263,7 @@ function createLoginCommand(): Command {
           }
           token = newToken;
           refreshToken = reloginData.refreshToken as string | undefined;
-          finalTenantId = (reloginData.tenantId as string | undefined) ?? finalTenantId;
+          finalTenantId = loginResponseTenantId(reloginData) ?? finalTenantId;
         }
 
         const config = loadConfig(globalOpts.profile);
