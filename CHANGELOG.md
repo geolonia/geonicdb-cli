@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-08-17
+- **Fix**: `auth login` が `config.service` に tenantId (UUID) ではなくテナント名を保存するようにした (closes #213)。UUID が `NGSILD-Tenant` に載ると本体が 400 になる。`tenantName` が取れない場合は `service` を書かず、サーバーの JWT リマップに委ねる
+
 ## [0.25.0] - 2026-08-17
 
 ### 2026-08-17

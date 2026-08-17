@@ -252,8 +252,18 @@ function createLoginCommand(): Command {
           delete config.refreshToken;
         }
         if (finalTenantId) {
-          config.service = finalTenantId;
           config.tenantId = finalTenantId;
+          // NGSILD-Tenant must be a tenant *name* (`^[a-z0-9_]+$`). Saving the
+          // UUID tenantId as config.service makes every subsequent command 400
+          // (closes #213). Prefer availableTenants[].tenantName; if missing,
+          // omit service so the server remaps from JWT tenantId (#596).
+          const tenantName = availableTenants?.find((t) => t.tenantId === finalTenantId)
+            ?.tenantName;
+          if (tenantName) {
+            config.service = tenantName;
+          } else {
+            delete config.service;
+          }
         } else {
           delete config.service;
           delete config.tenantId;
