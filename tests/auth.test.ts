@@ -336,14 +336,14 @@ describe("auth commands", () => {
     });
 
     it("first request is tenantless even when --tenant-id is provided", async () => {
-      // 初回は tenantless で availableTenants の有無を確認し、単一メンバーシップなら
+      // 初回は tenantless で availableTenants の有無を確認し、要求テナントが primary と異なれば
       // 2 回目で tenantId を載せてサーバー検証する (#217)。
       vi.mocked(isInteractive).mockReturnValue(true);
       vi.mocked(promptEmail).mockResolvedValue("user@example.com");
       vi.mocked(promptPassword).mockResolvedValue("pass123");
       client.rawRequest
         .mockResolvedValueOnce(
-          mockResponse({ accessToken: "primary-token", user: loginUser("my-tenant")}),
+          mockResponse({ accessToken: "primary-token", user: loginUser("tid-primary")}),
         )
         .mockResolvedValueOnce(
           mockResponse({ accessToken: "tenant-token", user: loginUser("my-tenant")}),
@@ -455,7 +455,7 @@ describe("auth commands", () => {
       const uuid = "ed945710-fb96-4d17-811b-425abcb9b70e";
       client.rawRequest
         .mockResolvedValueOnce(
-          mockResponse({ accessToken: "primary-tok", user: loginUser(uuid) }),
+          mockResponse({ accessToken: "primary-tok", user: loginUser("tid-primary") }),
         )
         .mockResolvedValueOnce(
           mockResponse({ accessToken: "scoped-tok", user: loginUser(uuid) }),
@@ -503,6 +503,61 @@ describe("auth commands", () => {
           token: "primary-tok",
           tenantId: "ed945710-fb96-4d17-811b-425abcb9b70e",
         }),
+        "default",
+      );
+    });
+
+    it("falls back to requested --tenant-id when re-login omits user.tenantId (#217)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "primary-tok", user: loginUser("tid-primary") }),
+        )
+        .mockResolvedValueOnce(
+          // user.tenantId 欠落 — 要求した tenantId を保存する（primary に落とさない）
+          mockResponse({ accessToken: "scoped-tok" }),
+        );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login", "--tenant-id", "tid-requested"]);
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "scoped-tok", tenantId: "tid-requested" }),
+        "default",
+      );
+    });
+
+    it("fails loud when --tenant name re-login omits user.tenantId (#217)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "primary-tok", user: loginUser("tid-primary") }),
+        )
+        .mockResolvedValueOnce(mockResponse({ accessToken: "scoped-tok" }));
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login", "--tenant", "miya"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("did not return the tenant ID"),
+      );
+      expect(saveConfig).not.toHaveBeenCalled();
+    });
+
+    it("skips re-login when --tenant-id already matches the primary tenant (#217)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "primary-tok", user: loginUser("tid-primary") }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login", "--tenant-id", "tid-primary"]);
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "primary-tok", tenantId: "tid-primary" }),
         "default",
       );
     });

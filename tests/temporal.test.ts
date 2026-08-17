@@ -119,6 +119,50 @@ describe("temporal commands", () => {
       expect(outputResponse).toHaveBeenCalledWith(expect.anything(), "json", true);
     });
 
+    // #216 / geonicdb#2290: GET /temporal/entities too-wide check exempts local=true.
+    it("passes --local as local=true query param (#216)", async () => {
+      client.get.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal",
+        "entities",
+        "list",
+        "--local",
+        "--time-rel",
+        "after",
+        "--time-at",
+        "2025-06-01T00:00:00Z",
+      ]);
+      expect(client.get).toHaveBeenCalledWith("/temporal/entities", {
+        local: "true",
+        timerel: "after",
+        timeAt: "2025-06-01T00:00:00Z",
+      });
+    });
+
+    // near-miss: omitting --local must not inject local=true (federation semantics).
+    it("does not send local when --local is omitted (near-miss #216)", async () => {
+      client.get.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal",
+        "entities",
+        "list",
+        "--type",
+        "Sensor",
+        "--time-rel",
+        "after",
+        "--time-at",
+        "2025-06-01T00:00:00Z",
+      ]);
+      expect(client.get).toHaveBeenCalledWith("/temporal/entities", {
+        type: "Sensor",
+        timerel: "after",
+        timeAt: "2025-06-01T00:00:00Z",
+      });
+      expect(client.get.mock.calls[0]?.[1]).not.toHaveProperty("local");
+    });
+
     // #202 / geolonia/geonicdb#2267: --time-property → timeproperty query param
     it("passes --time-property createdAt as timeproperty (#202)", async () => {
       client.get.mockResolvedValue(mockResponse([]));

@@ -245,25 +245,43 @@ function createLoginCommand(): Command {
           // クライアントでは検証できないため、フラグを body に載せてサーバーに判定させる (#217)。
           // --tenant-id → 常に tenantId。
           // --tenant / -s → 本体 NAME_REGEX に合うなら tenantName、合わなければ tenantId（UUID 等）。
-          const tenantBody = tenantIdFlag
+          const tenantBody: { tenantId: string } | { tenantName: string } = tenantIdFlag
             ? { tenantId: tenantIdFlag }
             : TENANT_SERVICE_NAME_RE.test(tenantNameOrIdFlag as string)
               ? { tenantName: tenantNameOrIdFlag as string }
               : { tenantId: tenantNameOrIdFlag as string };
-          const reloginResponse = await client.rawRequest("POST", "/auth/login", {
-            // #1532: 強制パスワード変更後は effectivePassword で再ログインする。
-            body: { email, password: effectivePassword, ...tenantBody },
-            skipTenantHeader: true,
-          });
-          const reloginData = reloginResponse.data as Record<string, unknown>;
-          const newToken = (reloginData.accessToken ?? reloginData.token) as string | undefined;
-          if (!newToken) {
-            printError("Re-login failed: no token received for selected tenant.");
-            process.exit(1);
+          const requestedTenantId = "tenantId" in tenantBody ? tenantBody.tenantId : undefined;
+          const only = availableTenants?.[0];
+          const alreadyScoped =
+            (requestedTenantId !== undefined && requestedTenantId === finalTenantId) ||
+            (!!only &&
+              only.tenantId === finalTenantId &&
+              (only.tenantName === tenantNameOrIdFlag || only.tenantId === tenantNameOrIdFlag));
+          if (!alreadyScoped) {
+            const reloginResponse = await client.rawRequest("POST", "/auth/login", {
+              // #1532: 強制パスワード変更後は effectivePassword で再ログインする。
+              body: { email, password: effectivePassword, ...tenantBody },
+              skipTenantHeader: true,
+            });
+            const reloginData = reloginResponse.data as Record<string, unknown>;
+            const newToken = (reloginData.accessToken ?? reloginData.token) as string | undefined;
+            if (!newToken) {
+              printError("Re-login failed: no token received for selected tenant.");
+              process.exit(1);
+            }
+            token = newToken;
+            refreshToken = reloginData.refreshToken as string | undefined;
+            // token は要求テナント向け。user.tenantId が無いとき primary に落とすと不一致になる。
+            // ID 指定なら要求 ID を使い、名前指定で ID が取れないなら fail-loud。
+            const reloginTenantId = loginResponseTenantId(reloginData) ?? requestedTenantId;
+            if (!reloginTenantId) {
+              printError(
+                "Re-login failed: server did not return the tenant ID for the requested tenant.",
+              );
+              process.exit(1);
+            }
+            finalTenantId = reloginTenantId;
           }
-          token = newToken;
-          refreshToken = reloginData.refreshToken as string | undefined;
-          finalTenantId = loginResponseTenantId(reloginData) ?? finalTenantId;
         }
 
         const config = loadConfig(globalOpts.profile);
