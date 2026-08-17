@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-08-18
-- **Fix**: `entities list` に `--local` を追加し、セレクタ無し一覧の too-wide query 逃げ道 (`?local=true`) を CLI から送れるようにした (closes #214)
+- **Fix**: `entities list` に `--local` を追加し、セレクタ無し一覧の too-wide query 逃げ道 (`?local=true`) を CLI から送れるようにした (closes #214) (#219)
 
 ## [0.25.0] - 2026-08-17
 
