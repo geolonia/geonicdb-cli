@@ -118,6 +118,37 @@ describe("temporal commands", () => {
       });
       expect(outputResponse).toHaveBeenCalledWith(expect.anything(), "json", true);
     });
+
+    // #202 / geolonia/geonicdb#2267: --time-property → timeproperty query param
+    it("passes --time-property createdAt as timeproperty (#202)", async () => {
+      client.get.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "list",
+        "--time-rel", "after",
+        "--time-at", "2025-01-01T00:00:00Z",
+        "--time-property", "createdAt",
+      ]);
+      expect(client.get).toHaveBeenCalledWith("/temporal/entities", {
+        timerel: "after",
+        timeAt: "2025-01-01T00:00:00Z",
+        timeproperty: "createdAt",
+      });
+    });
+
+    // near-miss: without the flag the query must not invent a timeproperty key
+    // (server default is observedAt only when the param is absent).
+    it("omits timeproperty when --time-property is not set", async () => {
+      client.get.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "list",
+        "--time-rel", "after",
+        "--time-at", "2025-01-01T00:00:00Z",
+      ]);
+      const params = client.get.mock.calls[0]?.[1] as Record<string, string>;
+      expect(params).not.toHaveProperty("timeproperty");
+    });
   });
 
   describe("temporal entities get", () => {
@@ -151,6 +182,25 @@ describe("temporal commands", () => {
           timeAt: "2025-06-01T00:00:00Z",
           endTimeAt: "2025-07-01T00:00:00Z",
           lastN: "10",
+        },
+      );
+    });
+
+    it("passes --time-property createdAt as timeproperty (#202)", async () => {
+      client.get.mockResolvedValue(mockResponse({ id: "urn:sensor:001" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal", "entities", "get", "urn:sensor:001",
+        "--time-rel", "before",
+        "--time-at", "2025-06-01T00:00:00Z",
+        "--time-property", "createdAt",
+      ]);
+      expect(client.get).toHaveBeenCalledWith(
+        "/temporal/entities/urn%3Asensor%3A001",
+        {
+          timerel: "before",
+          timeAt: "2025-06-01T00:00:00Z",
+          timeproperty: "createdAt",
         },
       );
     });

@@ -111,6 +111,10 @@ function addTemporalListOptions(cmd: Command): Command {
     .option("--time-at <time>", "Temporal query start time (ISO 8601)")
     .option("--end-time-at <time>", "Temporal query end time (ISO 8601)")
     .option(
+      "--time-property <name>",
+      "Temporal property to compare (observedAt, createdAt, modifiedAt, deletedAt; default observedAt)",
+    )
+    .option(
       "--last-n <n>",
       "Return last N instances per attribute (server default caps to 100; max 1000)",
       parsePositiveInt,
@@ -141,6 +145,7 @@ function createListAction() {
     if (cmdOpts.timeRel) params["timerel"] = cmdOpts.timeRel;
     if (cmdOpts.timeAt) params["timeAt"] = cmdOpts.timeAt;
     if (cmdOpts.endTimeAt) params["endTimeAt"] = cmdOpts.endTimeAt;
+    if (cmdOpts.timeProperty) params["timeproperty"] = cmdOpts.timeProperty;
     if (cmdOpts.lastN !== undefined) params["lastN"] = String(cmdOpts.lastN);
     if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
     if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
@@ -170,6 +175,10 @@ function addTemporalGetOptions(cmd: Command): Command {
     .option("--time-at <time>", "Temporal query start time (ISO 8601)")
     .option("--end-time-at <time>", "Temporal query end time (ISO 8601)")
     .option(
+      "--time-property <name>",
+      "Temporal property to compare (observedAt, createdAt, modifiedAt, deletedAt; default observedAt)",
+    )
+    .option(
       "--last-n <n>",
       "Return last N instances per attribute (server default caps to 100; max 1000)",
       parsePositiveInt,
@@ -188,6 +197,7 @@ function createGetAction() {
     if (cmdOpts.timeRel) params["timerel"] = cmdOpts.timeRel;
     if (cmdOpts.timeAt) params["timeAt"] = cmdOpts.timeAt;
     if (cmdOpts.endTimeAt) params["endTimeAt"] = cmdOpts.endTimeAt;
+    if (cmdOpts.timeProperty) params["timeproperty"] = cmdOpts.timeProperty;
     if (cmdOpts.lastN !== undefined) params["lastN"] = String(cmdOpts.lastN);
     Object.assign(params, buildRepresentationParams(cmdOpts));
 
@@ -283,6 +293,11 @@ export function registerTemporalCommand(program: Command): void {
       description: "Filter by time (after a point)",
       command:
         "geonic temporal entities list --time-rel after --time-at 2025-06-01T00:00:00Z",
+    },
+    {
+      description: "Filter by creation time (timeproperty=createdAt)",
+      command:
+        "geonic temporal entities list --time-rel after --time-at 2025-06-01T00:00:00Z --time-property createdAt",
     },
     {
       description: "Order temporal entities (NGSI-LD v1.9.1 grammar)",

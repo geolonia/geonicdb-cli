@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-08-17
+- **Feat**: `temporal entities list` / `get` に `--time-property` を追加し、NGSI-LD `timeproperty` クエリへ載せる (closes #202, 本体 geolonia/geonicdb#2267 / PR #2338 対応)。許容値は本体と同じ `observedAt` / `createdAt` / `modifiedAt` / `deletedAt`（未知値はサーバが 400）
+
 ## [0.24.0] - 2026-08-13
 
 ### 2026-08-13
