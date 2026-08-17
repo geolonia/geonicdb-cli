@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import { GdbClientError } from "../client.js";
 import {
   withErrorHandler,
   createClient,
@@ -179,22 +180,54 @@ export function addAttrsSubcommands(attrs: Command): void {
   // attrs delete
   const del = attrs
     .command("delete")
-    .description("Remove an attribute from an entity permanently")
+    .description(
+      "Remove an attribute from an entity permanently\n\n" +
+        "Without --dataset-id or --delete-all, only the default instance " +
+        "(no datasetId) is deleted. Multi-instance attributes need " +
+        "--dataset-id <id> or --delete-all (ETSI GS CIM 009 clause 5.6.5.4).",
+    )
     .argument("<entityId>", "Entity ID")
     .argument("<attrName>", "Attribute name")
+    .option("--dataset-id <id>", "Delete only the attribute instance with this datasetId")
+    .option("--delete-all", "Delete all instances of the attribute (including those with datasetId)")
     .action(
       withErrorHandler(
         async (
           entityId: string,
           attrName: string,
-          _opts: unknown,
+          opts: { datasetId?: string; deleteAll?: boolean },
           cmd: Command,
         ) => {
-          const client = createClient(cmd);
+          // Commander omits the option (undefined) when unset; an explicit
+          // empty `--dataset-id ""` must not be treated as "omit" or the
+          // default instance would be deleted by accident.
+          if (opts.datasetId !== undefined && opts.deleteAll) {
+            throw new Error("Cannot specify both --dataset-id and --delete-all.");
+          }
+          if (opts.datasetId !== undefined && opts.datasetId === "") {
+            throw new Error("--dataset-id must not be empty.");
+          }
 
-          await client.delete(
-            `/entities/${encodeURIComponent(entityId)}/attrs/${encodeURIComponent(attrName)}`,
-          );
+          const client = createClient(cmd);
+          const params: Record<string, string> = {};
+          if (opts.datasetId !== undefined) params.datasetId = opts.datasetId;
+          if (opts.deleteAll) params.deleteAll = "true";
+
+          const path = `/entities/${encodeURIComponent(entityId)}/attrs/${encodeURIComponent(attrName)}`;
+          try {
+            if (Object.keys(params).length > 0) {
+              await client.delete(path, params);
+            } else {
+              await client.delete(path);
+            }
+          } catch (err: unknown) {
+            if (err instanceof GdbClientError && err.status === 404) {
+              throw new Error(
+                `${err.message}\nHint: A default attribute instance (without datasetId) may not exist. Try --dataset-id <id> or --delete-all.`,
+              );
+            }
+            throw err;
+          }
           printSuccess("Attribute deleted.");
         },
       ),
@@ -210,6 +243,16 @@ export function addAttrsSubcommands(attrs: Command): void {
       description: "Remove a deprecated attribute from a building entity",
       command:
         "geonic entities attrs delete urn:ngsi-ld:Building:store01 legacyCode",
+    },
+    {
+      description: "Delete a specific multi-instance attribute by datasetId",
+      command:
+        "geonic entities attrs delete urn:ngsi-ld:Sensor:001 temperature --dataset-id urn:ngsi-ld:Dataset:outdoor",
+    },
+    {
+      description: "Delete all instances of a multi-instance attribute",
+      command:
+        "geonic entities attrs delete urn:ngsi-ld:Sensor:001 temperature --delete-all",
     },
   ]);
 }

@@ -8,6 +8,7 @@
 ## [Unreleased]
 
 ### 2026-08-17
+- **Feat**: `entities attrs delete` に `--dataset-id` / `--delete-all` を追加し、多重属性インスタンスを CLI から削除できるようにした (closes #197, 本体 geolonia/geonicdb#2177 対応)。未指定時は既定インスタンスのみ削除する既存挙動を維持。両方指定はリクエスト前に拒否。404 時は `--dataset-id` / `--delete-all` を案内する Hint を付与 (#204)
 - **Fix**: POST `/jsonldContexts` の E2E フィクスチャ登録からクライアント指定 `kind` を外した (closes #203, 本体 geolonia/geonicdb#2297) (#208)。Add @context は常に Hosted で、`kind` 指定は 400 になるため、本体取り込み後に context E2E が落ちるのを防ぐ。unit の `/jsonldContexts` 登録例も追随
 
 ## [0.24.0] - 2026-08-13
