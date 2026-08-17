@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-08-18
-- **Fix**: `temporal entities list` に `--local` (`?local=true`) を追加し、本体の too-wide query 検証の逃げ道を送れるようにした (closes #216)。ヘルプ例のセレクタ無しコピペで 400 になる例も修正
+- **Fix**: `temporal entities list` に `--local` (`?local=true`) を追加し、本体の too-wide query 検証の逃げ道を送れるようにした (closes #216)。ヘルプ例のセレクタ無しコピペで 400 になる例も修正 (#221)
 
 ## [0.25.0] - 2026-08-17
 
