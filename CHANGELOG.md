@@ -8,11 +8,8 @@
 ## [Unreleased]
 
 ### 2026-08-18
-<<<<<<< HEAD
 - **Fix**: `entities list` に `--local` を追加し、セレクタ無し一覧の too-wide query 逃げ道 (`?local=true`) を CLI から送れるようにした (closes #214) (#219)
-=======
 - **Fix**: `temporal entities list` に `--local` (`?local=true`) を追加し、本体の too-wide query 検証の逃げ道を送れるようにした (closes #216)。ヘルプ例のセレクタ無しコピペで 400 になる例も修正 (#221)
->>>>>>> origin/main
 
 ## [0.25.0] - 2026-08-17
 
