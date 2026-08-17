@@ -8,11 +8,8 @@
 ## [Unreleased]
 
 ### 2026-08-18
-<<<<<<< HEAD
-- **Fix**: マルチテナント `auth login` の対話ピッカーを廃止し、フラグ未指定時は TTY の有無にかかわらず一覧を出してエラー終了するよう README に揃えた (closes #215)。`promptTenantSelection` の `default: 1` による primary テナントの無言確定を構造的に排除。保存済み `config.service` による暗黙解決は維持 (#220)
-=======
+- **Fix**: マルチテナント `auth login` の対話ピッカーを廃止し、フラグ未指定時は TTY の有無にかかわらず一覧を出してエラー終了するよう README に揃えた (closes #215)。`promptTenantSelection` の `default: 1` による primary テナントの無言確定を構造的に排除。login 時のテナント指定は明示 CLI フラグのみ（`config.service` back-fill は #217 で対象外） (#220)
 - **Fix**: `entities list` に `--local` を追加し、セレクタ無し一覧の too-wide query 逃げ道 (`?local=true`) を CLI から送れるようにした (closes #214) (#219)
->>>>>>> origin/main
 - **Fix**: 単一メンバーシップのアカウントで `auth login --tenant` / `--tenant-id` が黙って無視されないようにした (closes #217)。`availableTenants` が無いときは明示フラグだけを `tenantName` / `tenantId` として再ログイン body に載せ、サーバー側の 400/403 で fail-loud にする。`--tenant` は NAME_REGEX で name/id を振り分け、config.service の back-fill は無視する (#222)
 - **Fix**: `temporal entities list` に `--local` (`?local=true`) を追加し、本体の too-wide query 検証の逃げ道を送れるようにした (closes #216)。ヘルプ例のセレクタ無しコピペで 400 になる例も修正 (#221)
 
