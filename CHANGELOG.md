@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-08-17
+- **Feat**: `entities attrs delete` に `--dataset-id` / `--delete-all` を追加し、多重属性インスタンスを CLI から削除できるようにした (closes #197, 本体 geolonia/geonicdb#2177 対応) (#204)。未指定時は既定インスタンスのみ削除する既存挙動を維持。両方指定はリクエスト前に拒否。404 時は `--dataset-id` / `--delete-all` を案内する Hint を付与
+
 ## [0.24.0] - 2026-08-13
 
 ### 2026-08-13
