@@ -281,6 +281,57 @@ describe("temporal commands", () => {
         body,
       );
     });
+
+    // #200 / geonicdb#2290: id-only body is a too-wide 400 unless ?local=true.
+    it("passes --local as local=true query param (#200)", async () => {
+      const body = {
+        entities: [{ id: "urn:ngsi-ld:Sensor:001" }],
+        temporalQ: { timerel: "after", timeAt: "2020-01-01T00:00:00Z" },
+      };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.post.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal",
+        "entityOperations",
+        "query",
+        "{}",
+        "--local",
+      ]);
+      expect(client.post).toHaveBeenCalledWith(
+        "/temporal/entityOperations/query",
+        body,
+        { local: "true" },
+      );
+    });
+
+    // near-miss: --local must compose with aggregation flags, not replace them.
+    it("composes --local with aggregation params (near-miss)", async () => {
+      const body = { entities: [{ type: "Sensor" }] };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.post.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "temporal",
+        "entityOperations",
+        "query",
+        "{}",
+        "--local",
+        "--aggr-methods",
+        "avg",
+        "--aggr-period",
+        "PT1H",
+      ]);
+      expect(client.post).toHaveBeenCalledWith(
+        "/temporal/entityOperations/query",
+        body,
+        {
+          local: "true",
+          aggrMethods: "avg",
+          aggrPeriodDuration: "PT1H",
+        },
+      );
+    });
   });
 
   // #181/#188: NGSI-LD representation parameters on the GET retrieval paths.

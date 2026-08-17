@@ -366,6 +366,16 @@ For safety, `entities purge` requires confirmation. In non-interactive contexts 
 
 `batch` is available as an alias for `entityOperations`.
 
+`entityOperations query` posts the JSON body as-is to `POST /entityOperations/query`. After geolonia/geonicdb#2290 (ETSI GS CIM 009 clause 5.7.2.4), a **too-wide** body returns **400 BadRequestData**: the payload must include at least one of `type`, a non-system `attrs`, a non-system `q`, or `geoQ`. `id` / `idPattern` alone are **not** enough. Use `--local` (`?local=true`) for a local-scope scan or id-only lookup.
+
+```bash
+# Restricted by type + attrs (sufficient selector)
+geonic batch query '{"entities":[{"type":"Sensor"}],"attrs":["temperature"]}'
+
+# Id-only lookup — requires --local (otherwise 400 Too wide query)
+geonic batch query '{"entities":[{"id":"urn:ngsi-ld:Sensor:001"}]}' --local
+```
+
 ### import — Bulk-load entities (large datasets)
 
 `entityOperations upsert` sends the whole payload in a single request, so it is bounded by the
@@ -479,7 +489,9 @@ Temporal `--order-by` follows NGSI-LD v1.9.1 grammar (`name`, `name;desc`, compo
 |---|---|
 | `temporal entityOperations query [json]` | Query temporal entities (POST) |
 
-Supports the same representation flags as the GET paths: `--options`, `--aggr-methods`, `--aggr-period` (same fail-fast guards). The flags are sent in the query string; the server also accepts the spec-canonical `temporalQ` object in the request body (ETSI GS CIM 009 Table 5.2.21-1), which takes precedence over the flags. Aggregation on this POST route requires a GeonicDB with geolonia/geonicdb#1816 (after v0.16.0) — older servers silently ignore it here, so use `temporal entities list --options aggregatedValues` against those. `--order-by` is intentionally unsupported on this POST route.
+Supports the same representation flags as the GET paths: `--options`, `--aggr-methods`, `--aggr-period` (same fail-fast guards), plus `--local` (`?local=true`). The flags are sent in the query string; the server also accepts the spec-canonical `temporalQ` object in the request body (ETSI GS CIM 009 Table 5.2.21-1), which takes precedence over the flags. Aggregation on this POST route requires a GeonicDB with geolonia/geonicdb#1816 (after v0.16.0) — older servers silently ignore it here, so use `temporal entities list --options aggregatedValues` against those. `--order-by` is intentionally unsupported on this POST route.
+
+After geolonia/geonicdb#2290 (ETSI GS CIM 009 clause 5.7.4.4), a **too-wide** POST body returns **400 BadRequestData** — same contract as `entityOperations query` (`type` / non-system `attrs` / non-system `q` / `geoQ`, or `--local`). `id` / `idPattern` alone are not enough.
 
 ### snapshots — Snapshot operations
 
