@@ -3,11 +3,12 @@ Feature: Registration management
   I want to manage context registrations
   So that I can register context sources
 
-  Scenario: List registrations when none exist
+  Scenario: List registrations refuses a too-wide query without a selector
     Given I am logged in
     When I run `geonic registrations list`
-    Then the exit code should be 0
-    And stdout should contain "[]"
+    Then the exit code should be 1
+    And the output should contain "Too wide query"
+    And the output should contain "clause 5.10.2.4"
 
   Scenario: Create a registration
     Given I am logged in
@@ -18,14 +19,14 @@ Feature: Registration management
   Scenario: List registrations after creation
     Given I am logged in
     And I run `geonic registrations create '{"type":"ContextSourceRegistration","information":[{"entities":[{"type":"Room"}]}],"endpoint":"http://localhost:4000/source"}'`
-    When I run `geonic registrations list`
+    When I run `geonic registrations list --type Room`
     Then the exit code should be 0
     And the output should contain "Room"
 
   Scenario: Get registration by ID
     Given I am logged in
     And I run `geonic registrations create '{"type":"ContextSourceRegistration","information":[{"entities":[{"type":"Room"}]}],"endpoint":"http://localhost:4000/source"}'`
-    And I run `geonic registrations list --format json`
+    And I run `geonic registrations list --type Room --format json`
     And I save the ID from the JSON output
     When I run `geonic registrations get $ID` replacing ID
     Then the exit code should be 0
@@ -34,7 +35,7 @@ Feature: Registration management
   Scenario: Delete a registration
     Given I am logged in
     And I run `geonic registrations create '{"type":"ContextSourceRegistration","information":[{"entities":[{"type":"Room"}]}],"endpoint":"http://localhost:4000/source"}'`
-    And I run `geonic registrations list --format json`
+    And I run `geonic registrations list --type Room --format json`
     And I save the ID from the JSON output
     When I run `geonic registrations delete $ID` replacing ID
     Then the exit code should be 0
@@ -43,6 +44,6 @@ Feature: Registration management
   Scenario: List registrations with count
     Given I am logged in
     And I run `geonic registrations create '{"type":"ContextSourceRegistration","information":[{"entities":[{"type":"Room"}]}],"endpoint":"http://localhost:4000/source"}'`
-    When I run `geonic registrations list --count`
+    When I run `geonic registrations list --type Room --count`
     Then the exit code should be 0
     And the output should contain "Count:"

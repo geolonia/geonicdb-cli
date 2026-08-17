@@ -438,11 +438,13 @@ Notes:
 
 | Subcommand | Description |
 |---|---|
-| `reg list` | List registrations |
+| `reg list --type WeatherStation` | List registrations (requires a selector) |
 | `reg get <id>` | Get a registration by ID |
 | `reg create [json]` | Create a registration |
 | `reg update <id> [json]` | Update a registration |
 | `reg delete <id>` | Delete a registration |
+
+`reg list` requires **at least one selector** — `--type`, `--attrs`, `--query`, or a geoquery (`--georel` / `--geometry` / `--coords`). Pagination (`--limit` / `--offset` / `--count`) alone is not enough; without a selector the CLI refuses the request (ETSI GS CIM 009 clause 5.10.2.4 / too wide query) instead of forwarding a bare `GET /csourceRegistrations` that the broker would reject with 400.
 
 ### types — Browse entity types
 
