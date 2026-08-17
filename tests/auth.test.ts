@@ -733,6 +733,26 @@ describe("auth commands", () => {
       expect(saved.tenantId).toBe(tenantId);
     });
 
+    it("clears name-shaped service when logging into a different tenant without a resolvable name", async () => {
+      const previousTenantId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+      const newTenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
+      vi.mocked(loadConfig).mockReturnValue({
+        service: "other_tenant",
+        tenantId: previousTenantId,
+      } as never);
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("password1234");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok", user: loginUser(newTenantId) }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved.tenantId).toBe(newTenantId);
+      expect(saved).not.toHaveProperty("service");
+    });
+
     it("does not write legacy tenantName that fails NAME_REGEX (near-miss)", async () => {
       const tenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
       vi.mocked(isInteractive).mockReturnValue(true);
