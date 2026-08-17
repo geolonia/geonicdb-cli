@@ -326,19 +326,115 @@ describe("auth commands", () => {
     });
 
     it("first request is tenantless even when --tenant-id is provided", async () => {
-      // New flow: always do tenantless first to receive availableTenants for name->ID resolution.
+      // 初回は tenantless で availableTenants の有無を確認し、単一メンバーシップなら
+      // 2 回目で tenantId を載せてサーバー検証する (#217)。
       vi.mocked(isInteractive).mockReturnValue(true);
       vi.mocked(promptEmail).mockResolvedValue("user@example.com");
       vi.mocked(promptPassword).mockResolvedValue("pass123");
-      client.rawRequest.mockResolvedValue(
-        mockResponse({ accessToken: "tenant-token", tenantId: "my-tenant" }),
-      );
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "primary-token", tenantId: "my-tenant" }),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tenant-token", tenantId: "my-tenant" }),
+        );
       const program = makeProgram();
       await runCommand(program, ["auth", "login", "--tenant-id", "my-tenant"]);
       expect(client.rawRequest).toHaveBeenNthCalledWith(1, "POST", "/auth/login", {
         body: { email: "user@example.com", password: "pass123" },
         skipTenantHeader: true,
       });
+      expect(client.rawRequest).toHaveBeenNthCalledWith(2, "POST", "/auth/login", {
+        body: { email: "user@example.com", password: "pass123", tenantId: "my-tenant" },
+        skipTenantHeader: true,
+      });
+    });
+
+    it("re-logins with tenantName when --tenant is set and availableTenants is absent (#217)", async () => {
+      // 本体は memberships.length > 1 のときだけ availableTenants を返す。単一所属では undefined。
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "primary-tok", tenantId: "tid-primary" }),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "scoped-tok", tenantId: "tid-primary" }),
+        );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login", "--tenant", "miya"]);
+      expect(client.rawRequest).toHaveBeenNthCalledWith(2, "POST", "/auth/login", {
+        body: { email: "user@example.com", password: "pass12345678", tenantName: "miya" },
+        skipTenantHeader: true,
+      });
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "scoped-tok", tenantId: "tid-primary" }),
+        "default",
+      );
+      expect(printSuccess).toHaveBeenCalledWith(
+        "Login successful (tenant: miya). Token saved to config.",
+      );
+    });
+
+    it("does not succeed when --tenant is wrong and availableTenants is absent (#217)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "primary-tok", tenantId: "tid-primary" }),
+        )
+        .mockRejectedValueOnce(
+          new GdbClientError("Tenant not found: miyaa", 400, {
+            error: "BadRequest",
+            description: "Tenant not found: miyaa",
+          }),
+        );
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login", "--tenant", "miyaa"]),
+      ).rejects.toThrow("Tenant not found: miyaa");
+      expect(saveConfig).not.toHaveBeenCalled();
+      expect(printSuccess).not.toHaveBeenCalled();
+    });
+
+    it("does not succeed when --tenant-id is outside membership and availableTenants is absent (#217)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "primary-tok", tenantId: "tid-primary" }),
+        )
+        .mockRejectedValueOnce(
+          new GdbClientError("You are not a member of the requested tenant", 403, {
+            error: "Forbidden",
+            description: "You are not a member of the requested tenant",
+          }),
+        );
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login", "--tenant-id", "tid-other"]),
+      ).rejects.toThrow("You are not a member of the requested tenant");
+      expect(saveConfig).not.toHaveBeenCalled();
+    });
+
+    it("near-miss: without tenant flag, single-membership login stays one request (#217)", async () => {
+      // フラグ無しなら従来どおり tenantless 1 回のみ（サーバー検証の再ログインを起こさない）
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "primary-tok", tenantId: "tid-primary" }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "primary-tok", tenantId: "tid-primary" }),
+        "default",
+      );
     });
 
     it("sends skipTenantHeader to prevent NGSILD-Tenant on login", async () => {

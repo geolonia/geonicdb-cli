@@ -229,18 +229,27 @@ function createLoginCommand(): Command {
             refreshToken = reloginData.refreshToken as string | undefined;
             finalTenantId = selected.tenantId;
           }
-        } else if (tenantFlag && availableTenants && availableTenants.length === 1) {
-          // Single-tenant account but flag was provided — validate it matches
-          const only = availableTenants[0];
-          const matches = tenantIdFlag
-            ? only.tenantId === tenantIdFlag
-            : only.tenantName === tenantFlag || only.tenantId === tenantFlag;
-          if (!matches) {
-            printError(
-              `Tenant "${tenantFlag}" not found. The only available tenant is "${only.tenantName ?? only.tenantId}" (${only.tenantId}).`,
-            );
+        } else if (tenantFlag) {
+          // Single-membership (サーバーは memberships.length > 1 のときだけ availableTenants を返す):
+          // クライアントでは検証できないため、フラグを body に載せてサーバーに判定させる (#217)。
+          // --tenant-id → tenantId / --tenant・-s → tenantName。
+          const tenantBody = tenantIdFlag
+            ? { tenantId: tenantIdFlag }
+            : { tenantName: tenantNameOrIdFlag as string };
+          const reloginResponse = await client.rawRequest("POST", "/auth/login", {
+            // #1532: 強制パスワード変更後は effectivePassword で再ログインする。
+            body: { email, password: effectivePassword, ...tenantBody },
+            skipTenantHeader: true,
+          });
+          const reloginData = reloginResponse.data as Record<string, unknown>;
+          const newToken = (reloginData.accessToken ?? reloginData.token) as string | undefined;
+          if (!newToken) {
+            printError("Re-login failed: no token received for selected tenant.");
             process.exit(1);
           }
+          token = newToken;
+          refreshToken = reloginData.refreshToken as string | undefined;
+          finalTenantId = (reloginData.tenantId as string | undefined) ?? finalTenantId;
         }
 
         const config = loadConfig(globalOpts.profile);
@@ -270,7 +279,13 @@ function createLoginCommand(): Command {
         saveConfig(config, globalOpts.profile);
 
         const tenantLabel = finalTenantId
-          ? ` (tenant: ${availableTenants?.find((t) => t.tenantId === finalTenantId)?.tenantName ?? finalTenantId})`
+          ? ` (tenant: ${
+              availableTenants?.find((t) => t.tenantId === finalTenantId)?.tenantName
+              // 単一メンバーシップで --tenant <name> をサーバー検証した場合、availableTenants が無いため
+              // フラグの名前を表示する（--tenant-id は ID のまま）。
+              ?? (!tenantIdFlag && tenantNameOrIdFlag ? tenantNameOrIdFlag : undefined)
+              ?? finalTenantId
+            })`
           : "";
         printSuccess(`Login successful${tenantLabel}. Token saved to config.`);
       }),

@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-08-18
+- **Fix**: 単一メンバーシップのアカウントで `auth login --tenant` / `--tenant-id` が黙って無視されないようにした (closes #217)。`availableTenants` が無いときはフラグを `tenantName` / `tenantId` として再ログイン body に載せ、サーバー側の 400/403 で fail-loud にする
+
 ## [0.25.0] - 2026-08-17
 
 ### 2026-08-17
