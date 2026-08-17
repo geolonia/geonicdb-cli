@@ -43,8 +43,6 @@ vi.mock("../src/config.js", () => ({
   saveConfig: vi.fn(),
   getCurrentProfile: vi.fn(() => "default"),
   validateUrl: vi.fn((url: string) => url.replace(/\/+$/, "") + "/"),
-  TENANT_SERVICE_NAME_RE: /^[a-z0-9_]+$/,
-  isTenantServiceName: (value: string) => /^[a-z0-9_]+$/.test(value),
 }));
 
 vi.mock("../src/prompt.js", () => ({
@@ -71,6 +69,16 @@ import { getTokenStatus, formatDuration } from "../src/token.js";
 import { clientCredentialsGrant } from "../src/oauth.js";
 import { registerAuthCommands } from "../src/commands/auth.js";
 import { GdbClientError } from "../src/client.js";
+
+function loginUser(tenantId: string, overrides: Record<string, string> = {}) {
+  return {
+    id: "u1",
+    email: "user@example.com",
+    role: "user",
+    tenantId,
+    ...overrides,
+  };
+}
 
 describe("auth commands", () => {
   let client: MockClient;
@@ -328,19 +336,232 @@ describe("auth commands", () => {
     });
 
     it("first request is tenantless even when --tenant-id is provided", async () => {
-      // New flow: always do tenantless first to receive availableTenants for name->ID resolution.
+      // 初回は tenantless で availableTenants の有無を確認し、要求テナントが primary と異なれば
+      // 2 回目で tenantId を載せてサーバー検証する (#217)。
       vi.mocked(isInteractive).mockReturnValue(true);
       vi.mocked(promptEmail).mockResolvedValue("user@example.com");
       vi.mocked(promptPassword).mockResolvedValue("pass123");
-      client.rawRequest.mockResolvedValue(
-        mockResponse({  accessToken: "tenant-token", user: { id: "u1", email: "user@example.com", role: "user", tenantId: "my-tenant" } }),
-      );
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "primary-token", user: loginUser("tid-primary")}),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "tenant-token", user: loginUser("my-tenant")}),
+        );
       const program = makeProgram();
       await runCommand(program, ["auth", "login", "--tenant-id", "my-tenant"]);
       expect(client.rawRequest).toHaveBeenNthCalledWith(1, "POST", "/auth/login", {
         body: { email: "user@example.com", password: "pass123" },
         skipTenantHeader: true,
       });
+      expect(client.rawRequest).toHaveBeenNthCalledWith(2, "POST", "/auth/login", {
+        body: { email: "user@example.com", password: "pass123", tenantId: "my-tenant" },
+        skipTenantHeader: true,
+      });
+    });
+
+    it("re-logins with tenantName when --tenant is set and availableTenants is absent (#217)", async () => {
+      // 本体は memberships.length > 1 のときだけ availableTenants を返す。単一所属では undefined。
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "primary-tok", user: loginUser("tid-primary")}),
+        )
+        .mockResolvedValueOnce(
+          // レスポンスの tenantId は user 配下。top-level を読む実装だと primary のまま残る。
+          mockResponse({ accessToken: "scoped-tok", user: loginUser("tid-scoped")}),
+        );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login", "--tenant", "miya"]);
+      expect(client.rawRequest).toHaveBeenNthCalledWith(2, "POST", "/auth/login", {
+        body: { email: "user@example.com", password: "pass12345678", tenantName: "miya" },
+        skipTenantHeader: true,
+      });
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "scoped-tok", tenantId: "tid-scoped" }),
+        "default",
+      );
+      expect(printSuccess).toHaveBeenCalledWith(
+        "Login successful (tenant: miya). Token saved to config.",
+      );
+    });
+
+    it("does not succeed when --tenant is wrong and availableTenants is absent (#217)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "primary-tok", user: loginUser("tid-primary")}),
+        )
+        .mockRejectedValueOnce(
+          new GdbClientError("Tenant not found: miyaa", 400, {
+            error: "BadRequest",
+            description: "Tenant not found: miyaa",
+          }),
+        );
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login", "--tenant", "miyaa"]),
+      ).rejects.toThrow("Tenant not found: miyaa");
+      expect(saveConfig).not.toHaveBeenCalled();
+      expect(printSuccess).not.toHaveBeenCalled();
+    });
+
+    it("does not succeed when --tenant-id is outside membership and availableTenants is absent (#217)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "primary-tok", user: loginUser("tid-primary")}),
+        )
+        .mockRejectedValueOnce(
+          new GdbClientError("You are not a member of the requested tenant", 403, {
+            error: "Forbidden",
+            description: "You are not a member of the requested tenant",
+          }),
+        );
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login", "--tenant-id", "tid-other"]),
+      ).rejects.toThrow("You are not a member of the requested tenant");
+      expect(saveConfig).not.toHaveBeenCalled();
+    });
+
+    it("near-miss: without tenant flag, single-membership login stays one request (#217)", async () => {
+      // フラグ無しなら従来どおり tenantless 1 回のみ（サーバー検証の再ログインを起こさない）
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "primary-tok", user: loginUser("tid-primary")}),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "primary-tok", tenantId: "tid-primary" }),
+        "default",
+      );
+    });
+
+    it("sends --tenant UUID as tenantId when it does not match NAME_REGEX (#217)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      const uuid = "ed945710-fb96-4d17-811b-425abcb9b70e";
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "primary-tok", user: loginUser("tid-primary") }),
+        )
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "scoped-tok", user: loginUser(uuid) }),
+        );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login", "--tenant", uuid]);
+      expect(client.rawRequest).toHaveBeenNthCalledWith(2, "POST", "/auth/login", {
+        body: { email: "user@example.com", password: "pass12345678", tenantId: uuid },
+        skipTenantHeader: true,
+      });
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "scoped-tok", tenantId: uuid }),
+        "default",
+      );
+    });
+
+    it("ignores config.service back-fill and does not re-login without an explicit flag (#217)", async () => {
+      // resolveOptions は config.service (UUID) を back-fill するが、明示 -s/--tenant が無い限り
+      // 単一メンバーシップ経路に入ってはならない。
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      vi.mocked(resolveOptions).mockReturnValue({
+        url: "http://localhost:3000",
+        profile: "default",
+        token: "test-token",
+        format: "json",
+        service: "ed945710-fb96-4d17-811b-425abcb9b70e",
+      } as never);
+      client.rawRequest.mockResolvedValue(
+        mockResponse({
+          accessToken: "primary-tok",
+          user: loginUser("ed945710-fb96-4d17-811b-425abcb9b70e"),
+        }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login"]);
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/auth/login", {
+        body: { email: "user@example.com", password: "pass12345678" },
+        skipTenantHeader: true,
+      });
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          token: "primary-tok",
+          tenantId: "ed945710-fb96-4d17-811b-425abcb9b70e",
+        }),
+        "default",
+      );
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved).not.toHaveProperty("service");
+    });
+
+    it("falls back to requested --tenant-id when re-login omits user.tenantId (#217)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "primary-tok", user: loginUser("tid-primary") }),
+        )
+        .mockResolvedValueOnce(
+          // user.tenantId 欠落 — 要求した tenantId を保存する（primary に落とさない）
+          mockResponse({ accessToken: "scoped-tok" }),
+        );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login", "--tenant-id", "tid-requested"]);
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "scoped-tok", tenantId: "tid-requested" }),
+        "default",
+      );
+    });
+
+    it("fails loud when --tenant name re-login omits user.tenantId (#217)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest
+        .mockResolvedValueOnce(
+          mockResponse({ accessToken: "primary-tok", user: loginUser("tid-primary") }),
+        )
+        .mockResolvedValueOnce(mockResponse({ accessToken: "scoped-tok" }));
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login", "--tenant", "miya"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("did not return the tenant ID"),
+      );
+      expect(saveConfig).not.toHaveBeenCalled();
+    });
+
+    it("skips re-login when --tenant-id already matches the primary tenant (#217)", async () => {
+      vi.mocked(isInteractive).mockReturnValue(true);
+      vi.mocked(promptEmail).mockResolvedValue("user@example.com");
+      vi.mocked(promptPassword).mockResolvedValue("pass12345678");
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "primary-tok", user: loginUser("tid-primary") }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["auth", "login", "--tenant-id", "tid-primary"]);
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "primary-tok", tenantId: "tid-primary" }),
+        "default",
+      );
     });
 
     it("sends skipTenantHeader to prevent NGSILD-Tenant on login", async () => {
@@ -400,20 +621,16 @@ describe("auth commands", () => {
     });
 
     // Regression #213: NGSILD-Tenant must be a tenant *name* (`^[a-z0-9_]+$`).
-    // Saving tenantId (UUID) as config.service makes every subsequent command 400.
-    // LoginResponse puts tenantId under `user` (not top-level).
     it("saves tenantName as service (not tenantId UUID) when availableTenants has a name", async () => {
       const tenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
-      const tenants = [
-        { tenantId, tenantName: "miya", role: "tenant_admin" },
-      ];
+      const tenants = [{ tenantId, tenantName: "miya", role: "tenant_admin" }];
       vi.mocked(isInteractive).mockReturnValue(true);
       vi.mocked(promptEmail).mockResolvedValue("user@example.com");
       vi.mocked(promptPassword).mockResolvedValue("password1234");
       client.rawRequest.mockResolvedValue(
         mockResponse({
           accessToken: "tok",
-          user: { id: "u1", email: "user@example.com", role: "user", tenantId },
+          user: loginUser(tenantId),
           availableTenants: tenants,
         }),
       );
@@ -431,10 +648,7 @@ describe("auth commands", () => {
       vi.mocked(promptEmail).mockResolvedValue("user@example.com");
       vi.mocked(promptPassword).mockResolvedValue("password1234");
       client.rawRequest.mockResolvedValue(
-        mockResponse({
-          accessToken: "tok",
-          user: { id: "u1", email: "user@example.com", role: "user", tenantId },
-        }),
+        mockResponse({ accessToken: "tok", user: loginUser(tenantId) }),
       );
       const program = makeProgram();
       await runCommand(program, ["auth", "login"]);
@@ -443,8 +657,6 @@ describe("auth commands", () => {
       expect(saved).not.toHaveProperty("service");
     });
 
-    // Near-miss: tenantId itself looks like a valid NGSILD-Tenant value, but without
-    // tenantName we must still omit service (do not fall back to tenantId).
     it("does not fall back to tenantId for service when tenantName is missing (near-miss)", async () => {
       const tenants = [{ tenantId: "city_a", role: "tenant_admin" }];
       vi.mocked(isInteractive).mockReturnValue(true);
@@ -454,7 +666,7 @@ describe("auth commands", () => {
         mockResponse({
           accessToken: "tok",
           availableTenants: tenants,
-          user: { id: "u1", email: "user@example.com", role: "user", tenantId: "city_a" },
+          user: loginUser("city_a"),
         }),
       );
       const program = makeProgram();
@@ -466,17 +678,14 @@ describe("auth commands", () => {
 
     it("clears a previously saved UUID service on re-login when tenantName is available", async () => {
       const tenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
-      vi.mocked(loadConfig).mockReturnValue({
-        service: tenantId,
-        tenantId,
-      } as never);
+      vi.mocked(loadConfig).mockReturnValue({ service: tenantId, tenantId } as never);
       vi.mocked(isInteractive).mockReturnValue(true);
       vi.mocked(promptEmail).mockResolvedValue("user@example.com");
       vi.mocked(promptPassword).mockResolvedValue("password1234");
       client.rawRequest.mockResolvedValue(
         mockResponse({
           accessToken: "tok",
-          user: { id: "u1", email: "user@example.com", role: "user", tenantId },
+          user: loginUser(tenantId),
           availableTenants: [{ tenantId, tenantName: "miya", role: "tenant_admin" }],
         }),
       );
@@ -488,22 +697,16 @@ describe("auth commands", () => {
       );
     });
 
-    // Mutation target: delete config.service when existing value is UUID and
-    // tenantName cannot be resolved. Removing that branch leaves the UUID.
     it("clears existing UUID service when tenantName is unavailable (mutation guard)", async () => {
       const tenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
-      vi.mocked(loadConfig).mockReturnValue({
-        service: tenantId,
-        tenantId,
-      } as never);
+      vi.mocked(loadConfig).mockReturnValue({ service: tenantId, tenantId } as never);
       vi.mocked(isInteractive).mockReturnValue(true);
       vi.mocked(promptEmail).mockResolvedValue("user@example.com");
       vi.mocked(promptPassword).mockResolvedValue("password1234");
       client.rawRequest.mockResolvedValue(
         mockResponse({
           accessToken: "tok",
-          user: { id: "u1", email: "user@example.com", role: "user", tenantId },
-          // availableTenants without tenantName — cannot resolve a service name
+          user: loginUser(tenantId),
           availableTenants: [{ tenantId, role: "tenant_admin" }],
         }),
       );
@@ -516,18 +719,12 @@ describe("auth commands", () => {
 
     it("preserves existing name-shaped service when tenantName is unavailable", async () => {
       const tenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
-      vi.mocked(loadConfig).mockReturnValue({
-        service: "miya",
-        tenantId,
-      } as never);
+      vi.mocked(loadConfig).mockReturnValue({ service: "miya", tenantId } as never);
       vi.mocked(isInteractive).mockReturnValue(true);
       vi.mocked(promptEmail).mockResolvedValue("user@example.com");
       vi.mocked(promptPassword).mockResolvedValue("password1234");
       client.rawRequest.mockResolvedValue(
-        mockResponse({
-          accessToken: "tok",
-          user: { id: "u1", email: "user@example.com", role: "user", tenantId },
-        }),
+        mockResponse({ accessToken: "tok", user: loginUser(tenantId) }),
       );
       const program = makeProgram();
       await runCommand(program, ["auth", "login"]);
@@ -536,7 +733,6 @@ describe("auth commands", () => {
       expect(saved.tenantId).toBe(tenantId);
     });
 
-    // Near-miss for NAME_REGEX: legacy tenantName with hyphen must not be written.
     it("does not write legacy tenantName that fails NAME_REGEX (near-miss)", async () => {
       const tenantId = "ed945710-fb96-4d17-811b-425abcb9b70e";
       vi.mocked(isInteractive).mockReturnValue(true);
@@ -545,10 +741,8 @@ describe("auth commands", () => {
       client.rawRequest.mockResolvedValue(
         mockResponse({
           accessToken: "tok",
-          user: { id: "u1", email: "user@example.com", role: "user", tenantId },
-          availableTenants: [
-            { tenantId, tenantName: "legacy-name", role: "tenant_admin" },
-          ],
+          user: loginUser(tenantId),
+          availableTenants: [{ tenantId, tenantName: "legacy-name", role: "tenant_admin" }],
         }),
       );
       const program = makeProgram();
@@ -646,7 +840,7 @@ describe("auth commands", () => {
         { tenantId: "city_b", role: "user" },
       ];
       client.rawRequest.mockResolvedValue(
-        mockResponse({  accessToken: "tok",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "city_a" } }),
+        mockResponse({ accessToken: "tok", availableTenants: tenants, user: loginUser("city_a")}),
       );
       const program = makeProgram();
       await expect(
@@ -673,7 +867,7 @@ describe("auth commands", () => {
         { tenantId: "city_b", role: "user" },
       ];
       client.rawRequest.mockResolvedValue(
-        mockResponse({  accessToken: "tok",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "city_a" } }),
+        mockResponse({ accessToken: "tok", availableTenants: tenants, user: loginUser("city_a")}),
       );
       const program = makeProgram();
       await runCommand(program, ["auth", "login", "--tenant-id", "city_a"]);
@@ -683,10 +877,11 @@ describe("auth commands", () => {
         body: { email: "user@example.com", password: "pass123" },
         skipTenantHeader: true,
       });
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ token: "tok", tenantId: "city_a" }),
+        "default",
+      );
       const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
-      expect(saved.token).toBe("tok");
-      expect(saved.tenantId).toBe("city_a");
-      // No tenantName in availableTenants → omit service (#213)
       expect(saved).not.toHaveProperty("service");
     });
 
@@ -697,10 +892,10 @@ describe("auth commands", () => {
       ];
       client.rawRequest
         .mockResolvedValueOnce(
-          mockResponse({  accessToken: "tok-a",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "tid-aaa" } }),
+          mockResponse({ accessToken: "tok-a", availableTenants: tenants, user: loginUser("tid-aaa")}),
         )
         .mockResolvedValueOnce(
-          mockResponse({  accessToken: "tok-b", user: { id: "u1", email: "user@example.com", role: "user", tenantId: "tid-bbb" } }),
+          mockResponse({ accessToken: "tok-b", user: loginUser("tid-bbb")}),
         );
       const program = makeProgram();
       await runCommand(program, ["auth", "login", "--tenant-id", "tid-bbb"]);
@@ -724,7 +919,7 @@ describe("auth commands", () => {
         { tenantId: "tid-bbb", tenantName: "demo_bousai", role: "user" },
       ];
       client.rawRequest.mockResolvedValueOnce(
-        mockResponse({  accessToken: "tok-a",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "tid-aaa" } }),
+        mockResponse({ accessToken: "tok-a", availableTenants: tenants, user: loginUser("tid-aaa")}),
       );
       const program = makeProgram();
       await expect(
@@ -746,10 +941,10 @@ describe("auth commands", () => {
       ];
       client.rawRequest
         .mockResolvedValueOnce(
-          mockResponse({  accessToken: "tok-a",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "tid-aaa" } }),
+          mockResponse({ accessToken: "tok-a", availableTenants: tenants, user: loginUser("tid-aaa")}),
         )
         .mockResolvedValueOnce(
-          mockResponse({  accessToken: "tok-b", user: { id: "u1", email: "user@example.com", role: "user", tenantId: "tid-bbb" } }),
+          mockResponse({ accessToken: "tok-b", user: loginUser("tid-bbb")}),
         );
       const program = makeProgram();
       await runCommand(program, ["auth", "login", "--tenant", "demo_bousai"]);
@@ -758,7 +953,7 @@ describe("auth commands", () => {
         skipTenantHeader: true,
       });
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ tenantId: "tid-bbb", service: "demo_bousai" }),
+        expect.objectContaining({ tenantId: "tid-bbb" }),
         "default",
       );
     });
@@ -770,15 +965,15 @@ describe("auth commands", () => {
       ];
       client.rawRequest
         .mockResolvedValueOnce(
-          mockResponse({  accessToken: "tok-a",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "tid-aaa" } }),
+          mockResponse({ accessToken: "tok-a", availableTenants: tenants, user: loginUser("tid-aaa")}),
         )
         .mockResolvedValueOnce(
-          mockResponse({  accessToken: "tok-b", user: { id: "u1", email: "user@example.com", role: "user", tenantId: "tid-bbb" } }),
+          mockResponse({ accessToken: "tok-b", user: loginUser("tid-bbb")}),
         );
       const program = makeProgram();
       await runCommand(program, ["auth", "login", "--tenant", "tid-bbb"]);
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ tenantId: "tid-bbb", service: "demo_bousai" }),
+        expect.objectContaining({ tenantId: "tid-bbb" }),
         "default",
       );
     });
@@ -791,10 +986,10 @@ describe("auth commands", () => {
       vi.mocked(promptTenantSelection).mockResolvedValue(tenants[1]);
       client.rawRequest
         .mockResolvedValueOnce(
-          mockResponse({  accessToken: "tok-a",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "tid-aaa" } }),
+          mockResponse({ accessToken: "tok-a", availableTenants: tenants, user: loginUser("tid-aaa")}),
         )
         .mockResolvedValueOnce(
-          mockResponse({  accessToken: "tok-b", user: { id: "u1", email: "user@example.com", role: "user", tenantId: "tid-bbb" } }),
+          mockResponse({ accessToken: "tok-b", user: loginUser("tid-bbb")}),
         );
       const program = makeProgram();
       await runCommand(program, ["auth", "login"]);
@@ -804,11 +999,7 @@ describe("auth commands", () => {
         skipTenantHeader: true,
       });
       expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({
-          token: "tok-b",
-          tenantId: "tid-bbb",
-          service: "demo_bousai",
-        }),
+        expect.objectContaining({ token: "tok-b", tenantId: "tid-bbb" }),
         "default",
       );
     });
@@ -816,7 +1007,7 @@ describe("auth commands", () => {
     it("succeeds without explicit tenant when only one tenant is available", async () => {
       const tenants = [{ tenantId: "city_a", role: "tenant_admin" }];
       client.rawRequest.mockResolvedValue(
-        mockResponse({  accessToken: "tok",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "city_a" } }),
+        mockResponse({ accessToken: "tok", availableTenants: tenants, user: loginUser("city_a")}),
       );
       const program = makeProgram();
       await runCommand(program, ["auth", "login"]);
@@ -831,7 +1022,7 @@ describe("auth commands", () => {
         { tenantId: "city_a", tenantName: "smart_city_a", role: "tenant_admin" },
       ];
       client.rawRequest.mockResolvedValue(
-        mockResponse({  accessToken: "tok",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "city_a" } }),
+        mockResponse({ accessToken: "tok", availableTenants: tenants, user: loginUser("city_a")}),
       );
       const program = makeProgram();
       await runCommand(program, ["auth", "login"]);
@@ -852,22 +1043,15 @@ describe("auth commands", () => {
         { tenantId: "tid-aaa", tenantName: "demo_smartcity", role: "tenant_admin" },
         { tenantId: "tid-bbb", tenantName: "demo_bousai", role: "user" },
       ];
-      vi.mocked(resolveOptions).mockReturnValue({
-        url: "http://localhost:3000",
-        profile: "default",
-        token: "test-token",
-        format: "json",
-        service: "demo_bousai",
-      } as never);
       client.rawRequest
         .mockResolvedValueOnce(
-          mockResponse({  accessToken: "tok-a",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "tid-aaa" } }),
+          mockResponse({ accessToken: "tok-a", availableTenants: tenants, user: loginUser("tid-aaa")}),
         )
         .mockResolvedValueOnce(
-          mockResponse({  accessToken: "tok-b", refreshToken: "ref-b", user: { id: "u1", email: "user@example.com", role: "user", tenantId: "tid-bbb" } }),
+          mockResponse({ accessToken: "tok-b", refreshToken: "ref-b", user: loginUser("tid-bbb")}),
         );
       const program = makeProgram();
-      await runCommand(program, ["auth", "login"]);
+      await runCommand(program, ["auth", "login", "-s", "demo_bousai"]);
       expect(client.rawRequest).toHaveBeenLastCalledWith("POST", "/auth/login", {
         body: { email: "user@example.com", password: "pass123", tenantId: "tid-bbb" },
         skipTenantHeader: true,
@@ -887,30 +1071,18 @@ describe("auth commands", () => {
         { tenantId: "city_a", role: "tenant_admin" },
         { tenantId: "city_b", role: "user" },
       ];
-      vi.mocked(resolveOptions).mockReturnValue({
-        url: "http://localhost:3000",
-        profile: "default",
-        token: "test-token",
-        format: "json",
-        service: "city_b",
-      } as never);
       client.rawRequest
         .mockResolvedValueOnce(
-          mockResponse({  accessToken: "tok-a",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "city_a" } }),
+          mockResponse({ accessToken: "tok-a", availableTenants: tenants, user: loginUser("city_a")}),
         )
         .mockResolvedValueOnce(
-          mockResponse({  accessToken: "tok-b", user: { id: "u1", email: "user@example.com", role: "user", tenantId: "city_b" } }),
+          mockResponse({ accessToken: "tok-b", user: loginUser("city_b")}),
         );
       const program = makeProgram();
-      await runCommand(program, ["auth", "login"]);
-      expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({
-          token: "tok-b",
-          tenantId: "city_b",
-        }),
-        "default",
-      );
+      await runCommand(program, ["auth", "login", "-s", "city_b"]);
       const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved.token).toBe("tok-b");
+      expect(saved.tenantId).toBe("city_b");
       expect(saved).not.toHaveProperty("service");
     });
 
@@ -919,19 +1091,12 @@ describe("auth commands", () => {
         { tenantId: "city_a", tenantName: "Smart City A", role: "tenant_admin" },
         { tenantId: "city_b", role: "user" },
       ];
-      vi.mocked(resolveOptions).mockReturnValue({
-        url: "http://localhost:3000",
-        profile: "default",
-        token: "test-token",
-        format: "json",
-        service: "nonexistent",
-      } as never);
       client.rawRequest.mockResolvedValue(
-        mockResponse({  accessToken: "tok",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "city_a" } }),
+        mockResponse({ accessToken: "tok", availableTenants: tenants, user: loginUser("city_a")}),
       );
       const program = makeProgram();
       await expect(
-        runCommand(program, ["auth", "login"]),
+        runCommand(program, ["auth", "login", "-s", "nonexistent"]),
       ).rejects.toThrow("process.exit");
       expect(printError).toHaveBeenCalledWith(
         expect.stringContaining('Tenant "nonexistent" not found'),
@@ -943,23 +1108,16 @@ describe("auth commands", () => {
         { tenantId: "city_a", role: "tenant_admin" },
         { tenantId: "city_b", role: "user" },
       ];
-      vi.mocked(resolveOptions).mockReturnValue({
-        url: "http://localhost:3000",
-        profile: "default",
-        token: "test-token",
-        format: "json",
-        service: "city_b",
-      } as never);
       client.rawRequest
         .mockResolvedValueOnce(
-          mockResponse({  accessToken: "tok-a",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "city_a" } }),
+          mockResponse({ accessToken: "tok-a", availableTenants: tenants, user: loginUser("city_a")}),
         )
         .mockResolvedValueOnce(
           mockResponse({ message: "ok" }), // no token
         );
       const program = makeProgram();
       await expect(
-        runCommand(program, ["auth", "login"]),
+        runCommand(program, ["auth", "login", "-s", "city_b"]),
       ).rejects.toThrow("process.exit");
       expect(printError).toHaveBeenCalledWith("Re-login failed: no token received for selected tenant.");
       expect(exitSpy).toHaveBeenCalledWith(1);
@@ -970,7 +1128,7 @@ describe("auth commands", () => {
         { tenantId: "city_a", tenantName: "Smart City A", role: "tenant_admin" },
       ];
       client.rawRequest.mockResolvedValue(
-        mockResponse({  accessToken: "tok",  availableTenants: tenants, user: { id: "u1", email: "user@example.com", role: "user", tenantId: "city_a" } }),
+        mockResponse({ accessToken: "tok", availableTenants: tenants, user: loginUser("city_a")}),
       );
       const program = makeProgram();
       await runCommand(program, ["auth", "login"]);
