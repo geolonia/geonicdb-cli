@@ -1,5 +1,6 @@
 import { Given } from "@cucumber/cucumber";
 import { strict as assert } from "node:assert";
+import { buildAddContextBody } from "../support/add-context-body.js";
 import type { GdbWorld } from "../support/world.js";
 
 /**
@@ -46,11 +47,12 @@ async function apiRequest(
 Given(
   /^a JSON-LD context "([^"]+)" is registered with:$/,
   async function (this: GdbWorld, url: string, docString: string) {
-    const { status, text } = await apiRequest(this, "POST", "/ngsi-ld/v1/jsonldContexts", {
-      url,
-      kind: "cached",
-      body: { "@context": JSON.parse(docString) },
-    });
+    const { status, text } = await apiRequest(
+      this,
+      "POST",
+      "/ngsi-ld/v1/jsonldContexts",
+      buildAddContextBody(url, JSON.parse(docString)),
+    );
     assert.equal(status, 201, `Registering ${url} failed: HTTP ${status} ${text}`);
   },
 );

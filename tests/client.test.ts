@@ -194,7 +194,8 @@ describe("GdbClient", () => {
   // into it would corrupt the registration (the server excludes it the same way).
   it("does NOT inject @context into a /jsonldContexts registration body (#189)", async () => {
     const client = new GdbClient({ baseUrl: "http://localhost:3000" });
-    const body = { url: "https://example.org/ctx.jsonld", kind: "cached" };
+    // No `kind`: Add @context is always Hosted; client kind is 400 (geonicdb #2297 / #203).
+    const body = { url: "https://example.org/ctx.jsonld" };
 
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(JSON.stringify({}), { status: 201 }),
