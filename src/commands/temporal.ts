@@ -116,7 +116,7 @@ function addTemporalListOptions(cmd: Command): Command {
     )
     .option(
       "--last-n <n>",
-      "Return last N instances per attribute (server default caps to 100; max 1000)",
+      "Return last N instances per attribute (server default caps to 10; max 1000)",
       parsePositiveInt,
     )
     .option("--limit <n>", "Maximum number of entities to return", parseInt)
@@ -191,7 +191,7 @@ function addTemporalGetOptions(cmd: Command): Command {
     )
     .option(
       "--last-n <n>",
-      "Return last N instances per attribute (server default caps to 100; max 1000)",
+      "Return last N instances per attribute (server default caps to 10; max 1000)",
       parsePositiveInt,
     );
 }
