@@ -10,7 +10,7 @@ import {
 import { GdbClientError } from "../client.js";
 import { loadConfig, saveConfig, getCurrentProfile, validateUrl } from "../config.js";
 import { printSuccess, printError, printInfo, printWarning } from "../output.js";
-import { isInteractive, promptEmail, promptPassword, promptTenantSelection } from "../prompt.js";
+import { isInteractive, promptEmail, promptPassword } from "../prompt.js";
 import type { TenantInfo } from "../types.js";
 import { getTokenStatus, formatDuration } from "../token.js";
 import { clientCredentialsGrant } from "../oauth.js";
@@ -166,7 +166,8 @@ function createLoginCommand(): Command {
         const availableTenants = data.availableTenants as TenantInfo[] | undefined;
         let finalTenantId = data.tenantId as string | undefined;
 
-        // Multi-tenant: resolve target tenant from flag, interactive prompt, or fall back to primary
+        // Multi-tenant: require an explicit tenant flag (or saved config.service via resolveOptions).
+        // No interactive picker — Enter-default would silently bind the primary tenant (#215 / README).
         if (availableTenants && availableTenants.length > 1) {
           let selected: TenantInfo | undefined;
 
@@ -200,8 +201,6 @@ function createLoginCommand(): Command {
               );
               process.exit(1);
             }
-          } else if (isInteractive()) {
-            selected = await promptTenantSelection(availableTenants);
           } else {
             const list = availableTenants
               .map((t) => `  - ${t.tenantName ?? t.tenantId} (${t.tenantId}) [${t.role}]`)

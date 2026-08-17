@@ -164,7 +164,7 @@ geonic auth login
 | `--tenant-id <id>` | Log in to a specific tenant. Value is sent to the server as-is (server resolves) |
 | `-s, --service <id\|name>` | Log in to a specific tenant. Resolved client-side against the account's available tenants by ID or name |
 
-**Multi-tenant support**: When you belong to multiple tenants, `auth login` requires explicit tenant selection via `--tenant-id` or `-s/--service`. There is no interactive picker — if neither flag is provided and the account has multiple tenants, the command lists the available tenants and exits with an error.
+**Multi-tenant support**: When you belong to multiple tenants, `auth login` requires explicit tenant selection via `--tenant`, `--tenant-id`, or `-s/--service`. There is no interactive picker — if neither flag is provided and the account has multiple tenants, the command lists the available tenants and exits with an error.
 
 A common workflow is to create one profile per tenant (`geonic profile create <name> --tenant <tenant>`); the tenant binding is persisted on the profile, so plain `geonic --profile <name> auth login` resolves to the correct tenant automatically.
 
@@ -172,11 +172,11 @@ A common workflow is to create one profile per tenant (`geonic profile create <n
 $ geonic auth login
 Email: user@example.com
 Password: ********
-Error: Multiple tenants are available for this account. Specify one with --tenant-id <id> or -s/--service <name>:
+Error: Multiple tenants are available for this account. Specify one with --tenant <name|id>, --tenant-id <id>, or -s/--service <name|id>:
   - my_city (tid-aaa) [tenant_admin]
   - another_city (tid-bbb) [user]
 
-$ geonic auth login --tenant-id tid-aaa
+$ geonic auth login --tenant my_city
 Login successful (tenant: my_city). Token saved to config.
 ```
 

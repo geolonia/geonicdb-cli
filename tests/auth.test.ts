@@ -49,7 +49,6 @@ vi.mock("../src/prompt.js", () => ({
   isInteractive: vi.fn(),
   promptEmail: vi.fn(),
   promptPassword: vi.fn(),
-  promptTenantSelection: vi.fn(),
 }));
 
 vi.mock("../src/token.js", () => ({
@@ -64,7 +63,7 @@ vi.mock("../src/oauth.js", () => ({
 import { createClient, getFormat, outputResponse, resolveOptions } from "../src/helpers.js";
 import { printSuccess, printError, printInfo, printWarning } from "../src/output.js";
 import { loadConfig, saveConfig, getCurrentProfile, validateUrl } from "../src/config.js";
-import { isInteractive, promptEmail, promptPassword, promptTenantSelection } from "../src/prompt.js";
+import { isInteractive, promptEmail, promptPassword } from "../src/prompt.js";
 import { getTokenStatus, formatDuration } from "../src/token.js";
 import { clientCredentialsGrant } from "../src/oauth.js";
 import { registerAuthCommands } from "../src/commands/auth.js";
@@ -492,8 +491,7 @@ describe("auth commands", () => {
     });
 
     it("errors out when multi-tenant, non-interactive, and no flag is specified", async () => {
-      // Interactive selection requires a TTY (but auth.login itself already required TTY for
-      // password prompt — this branch is reached when stdin is TTY-faked but isInteractive() is overridden).
+      // パスワード入力のため最初の isInteractive は true。テナント分岐は TTY を見ない (#215)。
       vi.mocked(isInteractive).mockReturnValueOnce(true).mockReturnValue(false);
       const tenants = [
         { tenantId: "city_a", role: "tenant_admin" },
@@ -632,30 +630,35 @@ describe("auth commands", () => {
       );
     });
 
-    it("prompts interactively when multi-tenant and no flag is provided (TTY)", async () => {
+    it("errors out when multi-tenant and no flag is provided (TTY — no interactive picker)", async () => {
+      // #215: README どおりフラグ必須。TTY があっても対話ピッカーは出さない。
       const tenants = [
         { tenantId: "tid-aaa", tenantName: "demo_smartcity", role: "tenant_admin" },
         { tenantId: "tid-bbb", tenantName: "demo_bousai", role: "user" },
       ];
-      vi.mocked(promptTenantSelection).mockResolvedValue(tenants[1]);
-      client.rawRequest
-        .mockResolvedValueOnce(
-          mockResponse({ accessToken: "tok-a", tenantId: "tid-aaa", availableTenants: tenants }),
-        )
-        .mockResolvedValueOnce(
-          mockResponse({ accessToken: "tok-b", tenantId: "tid-bbb" }),
-        );
-      const program = makeProgram();
-      await runCommand(program, ["auth", "login"]);
-      expect(promptTenantSelection).toHaveBeenCalledWith(tenants);
-      expect(client.rawRequest).toHaveBeenLastCalledWith("POST", "/auth/login", {
-        body: { email: "user@example.com", password: "pass123", tenantId: "tid-bbb" },
-        skipTenantHeader: true,
-      });
-      expect(saveConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ token: "tok-b", tenantId: "tid-bbb" }),
-        "default",
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ accessToken: "tok-a", tenantId: "tid-aaa", availableTenants: tenants }),
       );
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "login"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("Multiple tenants are available"),
+      );
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("demo_smartcity"),
+      );
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("demo_bousai"),
+      );
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("--tenant"),
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(saveConfig).not.toHaveBeenCalled();
+      // 初回 tenantless login のみ。再ログインも保存もしない
+      expect(client.rawRequest).toHaveBeenCalledTimes(1);
     });
 
     it("succeeds without explicit tenant when only one tenant is available", async () => {

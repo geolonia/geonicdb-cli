@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-08-17
+- **Fix**: マルチテナント `auth login` の対話ピッカーを廃止し、フラグ未指定時は TTY の有無にかかわらず一覧を出してエラー終了するよう README に揃えた (closes #215)。`promptTenantSelection` の `default: 1` による primary テナントの無言確定を構造的に排除。保存済み `config.service` による暗黙解決は維持
+
 ## [0.25.0] - 2026-08-17
 
 ### 2026-08-17
