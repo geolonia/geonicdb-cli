@@ -257,7 +257,12 @@ function createQueryAction() {
     const body = await parseJsonInput(json as string | undefined);
     const client = createClient(cmd);
     const format = getFormat(cmd);
-    const params = buildRepresentationParams(cmd.opts());
+    const cmdOpts = cmd.opts();
+    const params = buildRepresentationParams(cmdOpts);
+    // geolonia/geonicdb#2290 / clause 5.7.4.4: local scope exempts the too-wide
+    // check (id / idPattern alone are not enough). Same query-param channel as
+    // aggregation flags (clause 6.3.18).
+    if (cmdOpts.local) params.local = "true";
 
     const response =
       Object.keys(params).length > 0
@@ -393,7 +398,16 @@ export function registerTemporalCommand(program: Command): void {
           "Aggregation flags are sent in the query string (the server also accepts them in " +
           "the body's temporalQ object, which takes precedence). Requires geonicdb with " +
           "geolonia/geonicdb#1816; older servers (<= v0.16.0) silently ignore aggregation " +
-          "here — use `temporal entities list --options aggregatedValues` against those.",
+          "here — use `temporal entities list --options aggregatedValues` against those.\n\n" +
+          "Too-wide queries return 400 BadRequestData (ETSI GS CIM 009 clause 5.7.4.4;\n" +
+          "geolonia/geonicdb#2290). The body must include at least one of type, a\n" +
+          "non-system attrs, a non-system q, or geoQ — id / idPattern alone are not\n" +
+          "enough. For an unrestricted local scan (or id-only lookup), pass --local\n" +
+          "(?local=true).",
+      )
+      .option(
+        "--local",
+        "Limit to local scope (?local=true). Exempts the too-wide query check",
       ),
   );
   opsQuery.action(createQueryAction());
@@ -402,6 +416,10 @@ export function registerTemporalCommand(program: Command): void {
     {
       description: "Query with inline JSON",
       command: `geonic temporal entityOperations query '{"entities":[{"type":"Sensor"}],"attrs":["temperature"]}'`,
+    },
+    {
+      description: "Id-only lookup (requires --local; id alone is a too-wide 400)",
+      command: `geonic temporal entityOperations query '{"entities":[{"id":"urn:ngsi-ld:Sensor:001"}],"temporalQ":{"timerel":"after","timeAt":"2020-01-01T00:00:00Z"}}' --local`,
     },
     {
       description: "Query from a file",
@@ -439,6 +457,10 @@ export function registerTemporalCommand(program: Command): void {
   addRepresentationOptions(
     temporal
       .command("query [json]", { hidden: true })
-      .description("Query temporal entities (deprecated: use temporal entityOperations query)"),
+      .description("Query temporal entities (deprecated: use temporal entityOperations query)")
+      .option(
+        "--local",
+        "Limit to local scope (?local=true). Exempts the too-wide query check",
+      ),
   ).action(createQueryAction());
 }

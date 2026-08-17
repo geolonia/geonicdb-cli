@@ -83,6 +83,41 @@ describe("batch (entityOperations) command", () => {
       expect(mockClient.post).toHaveBeenCalledWith("/entityOperations/query", queryPayload);
       expect(outputResponse).toHaveBeenCalled();
     });
+
+    // #200 / geonicdb#2290: id-only body is a too-wide 400 unless ?local=true.
+    it("passes --local as local=true query param (#200)", async () => {
+      const queryPayload = { entities: [{ id: "urn:ngsi-ld:Sensor:001" }] };
+      vi.mocked(parseJsonInput).mockResolvedValue(queryPayload);
+      mockClient.post.mockResolvedValue(mockResponse([{ id: "urn:ngsi-ld:Sensor:001" }], 200));
+
+      await runCommand(program, [
+        "entityOperations",
+        "query",
+        '{"entities":[{"id":"urn:ngsi-ld:Sensor:001"}]}',
+        "--local",
+      ]);
+
+      expect(mockClient.post).toHaveBeenCalledWith("/entityOperations/query", queryPayload, {
+        local: "true",
+      });
+    });
+
+    // near-miss: without --local the third (params) argument must stay absent —
+    // accidentally always sending local=true would change federation semantics.
+    it("does not send local when --local is omitted (near-miss)", async () => {
+      const queryPayload = { entities: [{ type: "Sensor" }] };
+      vi.mocked(parseJsonInput).mockResolvedValue(queryPayload);
+      mockClient.post.mockResolvedValue(mockResponse([], 200));
+
+      await runCommand(program, [
+        "entityOperations",
+        "query",
+        '{"entities":[{"type":"Sensor"}]}',
+      ]);
+
+      expect(mockClient.post).toHaveBeenCalledWith("/entityOperations/query", queryPayload);
+      expect(mockClient.post.mock.calls[0]).toHaveLength(2);
+    });
   });
 
   describe("merge", () => {
