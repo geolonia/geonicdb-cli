@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-08-18
+
 ### 2026-08-18
 - **Fix**: geonicdb 0.17.0 の too-wide query 検証に合わせ、セレクタ無しの E2E `entities list` / `temporal entities list` に `--local` を付与し、devDependency の geonicdb ピンを 0.17.0 (`d278cba`) へ更新した (closes #212) (#223)
 - **Fix**: 週次互換性チェックの issue 起票 heredoc でバックティックがコマンド置換されるのをエスケープした (#212) (#223)
@@ -419,7 +421,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.25.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.26.0...HEAD
+[0.26.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.22.1...v0.23.0
