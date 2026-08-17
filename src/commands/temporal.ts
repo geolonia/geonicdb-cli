@@ -297,6 +297,7 @@ export function registerTemporalCommand(program: Command): void {
   const entitiesList = addTemporalListOptions(
     entities
       .command("list")
+      .summary("List temporal entities with optional filters")
       .description(
         "List temporal entities with optional filters\n\n" +
           "Too-wide queries return 400 BadRequestData (ETSI GS CIM 009 clause 5.7.4.4;\n" +
