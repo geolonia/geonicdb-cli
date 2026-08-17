@@ -5,7 +5,7 @@ Feature: Entity management
 
   Scenario: List entities when none exist
     Given I am logged in
-    When I run `geonic entities list`
+    When I run `geonic entities list --local`
     Then the exit code should be 0
     And stdout should be valid JSON
 
@@ -26,7 +26,7 @@ Feature: Entity management
   Scenario: List shows created entities
     Given I am logged in
     And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:003","type":"Room"}'`
-    When I run `geonic entities list`
+    When I run `geonic entities list --local`
     Then the exit code should be 0
     And the output should contain "Room:003"
 
@@ -42,7 +42,7 @@ Feature: Entity management
   Scenario: List entities with count
     Given I am logged in
     And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:020","type":"Room"}'`
-    When I run `geonic entities list --count`
+    When I run `geonic entities list --local --count`
     Then the exit code should be 0
     And the output should contain "Count:"
 
@@ -67,7 +67,7 @@ Feature: Entity management
 
   Scenario: List entities without authentication
     Given I am not logged in
-    When I run `geonic entities list`
+    When I run `geonic entities list --local`
     Then the exit code should be 1
 
   Scenario: Replace entity with full Entity Representation
@@ -88,7 +88,7 @@ Feature: Entity management
     And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:070","type":"Room"}'`
     And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:071","type":"Room"}'`
     And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:072","type":"Room"}'`
-    When I run `geonic entities list --limit 2`
+    When I run `geonic entities list --local --limit 2`
     Then the exit code should be 0
     And stdout should be valid JSON
 
@@ -97,7 +97,7 @@ Feature: Entity management
     And I run `geonic entities create '{"id":"urn:ngsi-ld:Sensor:080","type":"Sensor"}'`
     And I run `geonic entities create '{"id":"urn:ngsi-ld:Sensor:081","type":"Sensor"}'`
     And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:080","type":"Room"}'`
-    When I run `geonic entities list --id-pattern Sensor`
+    When I run `geonic entities list --local --id-pattern Sensor`
     Then the exit code should be 0
     And the output should contain "Sensor:080"
     And the output should not contain "Room:080"
@@ -236,7 +236,7 @@ Feature: Entity management
     When I run `geonic entities purge --type Room --yes`
     Then the exit code should be 0
     And the output should contain "Purge completed."
-    And I run `geonic entities list`
+    And I run `geonic entities list --local`
     Then the exit code should be 0
     And the output should not contain "Room:P171-1"
     And the output should contain "Car:P171-1"
