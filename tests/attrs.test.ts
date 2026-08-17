@@ -144,6 +144,21 @@ describe("attrs subcommand", () => {
       expect(mockClient.delete).not.toHaveBeenCalled();
     });
 
+    it('rejects an empty --dataset-id before any request', async () => {
+      await expect(
+        runCommand(program, [
+          "attrs",
+          "delete",
+          "urn:ngsi-ld:Sensor:001",
+          "temperature",
+          "--dataset-id",
+          "",
+        ]),
+      ).rejects.toThrow("--dataset-id must not be empty.");
+
+      expect(mockClient.delete).not.toHaveBeenCalled();
+    });
+
     it("hints at --dataset-id / --delete-all when delete returns 404", async () => {
       mockClient.delete.mockRejectedValue(new GdbClientError("Attribute not found", 404));
 

@@ -198,13 +198,19 @@ export function addAttrsSubcommands(attrs: Command): void {
           opts: { datasetId?: string; deleteAll?: boolean },
           cmd: Command,
         ) => {
-          if (opts.datasetId && opts.deleteAll) {
+          // Commander omits the option (undefined) when unset; an explicit
+          // empty `--dataset-id ""` must not be treated as "omit" or the
+          // default instance would be deleted by accident.
+          if (opts.datasetId !== undefined && opts.deleteAll) {
             throw new Error("Cannot specify both --dataset-id and --delete-all.");
+          }
+          if (opts.datasetId !== undefined && opts.datasetId === "") {
+            throw new Error("--dataset-id must not be empty.");
           }
 
           const client = createClient(cmd);
           const params: Record<string, string> = {};
-          if (opts.datasetId) params.datasetId = opts.datasetId;
+          if (opts.datasetId !== undefined) params.datasetId = opts.datasetId;
           if (opts.deleteAll) params.deleteAll = "true";
 
           const path = `/entities/${encodeURIComponent(entityId)}/attrs/${encodeURIComponent(attrName)}`;
