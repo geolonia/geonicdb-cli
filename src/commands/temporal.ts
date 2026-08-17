@@ -125,7 +125,11 @@ function addTemporalListOptions(cmd: Command): Command {
       "--order-by <spec>",
       "Order by NGSI-LD v1.9.1 grammar (e.g. observedAt;desc). Server rejects dist-*/geo:distance, nested paths, aggrMethods combos.",
     )
-    .option("--count", "Include total count in response");
+    .option("--count", "Include total count in response")
+    .option(
+      "--local",
+      "Limit to local scope (?local=true). Exempts the too-wide query check",
+    );
 }
 
 function createListAction() {
@@ -155,6 +159,9 @@ function createListAction() {
     if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
     if (cmdOpts.orderBy) params["orderBy"] = cmdOpts.orderBy;
     if (cmdOpts.count) params["count"] = "true";
+    // geolonia/geonicdb#2290 / clause 5.7.4.4: local scope exempts the too-wide
+    // check (timerel/timeAt alone are not enough). Same as entityOperations query.
+    if (cmdOpts.local) params.local = "true";
     Object.assign(params, buildRepresentationParams(cmdOpts));
     // The aggregation pipeline sorts by entityId and cannot honor orderBy; the
     // server rejects the combination with 400 — fail fast like the other
@@ -288,7 +295,16 @@ export function registerTemporalCommand(program: Command): void {
 
   // temporal entities list
   const entitiesList = addTemporalListOptions(
-    entities.command("list").description("List temporal entities with optional filters"),
+    entities
+      .command("list")
+      .description(
+        "List temporal entities with optional filters\n\n" +
+          "Too-wide queries return 400 BadRequestData (ETSI GS CIM 009 clause 5.7.4.4;\n" +
+          "geolonia/geonicdb#2290). At least one of --type, non-system --attrs,\n" +
+          "non-system --query, or a geoquery is required — --time-rel / --time-at\n" +
+          "alone are not enough. For an unrestricted local scan, pass --local\n" +
+          "(?local=true).",
+      ),
   );
   entitiesList.action(createListAction());
 
@@ -303,14 +319,19 @@ export function registerTemporalCommand(program: Command): void {
       command: "geonic temporal entities list --type Sensor --last-n 5",
     },
     {
-      description: "Filter by time (after a point)",
+      description: "Filter by time (after a point; --type required — time alone is too-wide)",
       command:
-        "geonic temporal entities list --time-rel after --time-at 2025-06-01T00:00:00Z",
+        "geonic temporal entities list --type Sensor --time-rel after --time-at 2025-06-01T00:00:00Z",
     },
     {
       description: "Filter by creation time (timeproperty=createdAt)",
       command:
-        "geonic temporal entities list --time-rel after --time-at 2025-06-01T00:00:00Z --time-property createdAt",
+        "geonic temporal entities list --type Sensor --time-rel after --time-at 2025-06-01T00:00:00Z --time-property createdAt",
+    },
+    {
+      description: "Local-scope scan (exempts the too-wide query check)",
+      command:
+        "geonic temporal entities list --local --time-rel after --time-at 2025-06-01T00:00:00Z",
     },
     {
       description: "Order temporal entities (NGSI-LD v1.9.1 grammar)",

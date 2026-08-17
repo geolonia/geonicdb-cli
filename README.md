@@ -475,7 +475,7 @@ Notes:
 | `temporal entities create [json]` | Create a temporal entity |
 | `temporal entities delete <id>` | Delete a temporal entity |
 
-Temporal entities list supports: `--time-rel`, `--time-at`, `--end-time-at`, `--time-property`, `--last-n`, `--order-by`, `--options`, `--aggr-methods`, `--aggr-period`.
+Temporal entities list supports: `--time-rel`, `--time-at`, `--end-time-at`, `--time-property`, `--last-n`, `--order-by`, `--options`, `--aggr-methods`, `--aggr-period`, `--local` (`?local=true`). After geolonia/geonicdb#2290 (ETSI GS CIM 009 clause 5.7.4.4), a **too-wide** GET returns **400 BadRequestData** unless at least one of `--type`, non-system `--attrs`, non-system `--query`, or a geoquery is present — `--time-rel` / `--time-at` alone are not enough. Use `--local` for a local-scope scan.
 
 Temporal entities get supports: `--time-rel`, `--time-at`, `--end-time-at`, `--time-property`, `--last-n`, `--options`, `--aggr-methods`, `--aggr-period`.
 
