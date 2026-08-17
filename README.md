@@ -122,7 +122,7 @@ geonic help [<command>] [<subcommand>]
 |---|---|
 | `profile list` | List all profiles |
 | `profile use <name>` | Switch active profile |
-| `profile create <name> [--tenant <id\|name>] [--url <url>]` | Create a new profile, optionally bound to a tenant and URL |
+| `profile create <name> [--tenant <id\|name>] [--url <url>]` | Create a new profile. `--tenant` always sets `tenantId`; `service` (`NGSILD-Tenant`) is set only when the value is a tenant name (`^[a-z0-9_]+$`) |
 | `profile delete <name>` | Delete a profile |
 | `profile show [name]` | Show profile settings |
 
@@ -140,7 +140,7 @@ geonic profile use miya       # operate as miya tenant
 geonic profile use geolonia   # operate as geolonia tenant
 ```
 
-`--tenant <id>` accepts either a tenant ID or a tenant name. The value is stored as both `service` (sent in `NGSILD-Tenant` headers) and `tenantId` on the profile, so subsequent `auth login` calls resolve to that tenant automatically.
+`--tenant <name|id>` accepts either a tenant ID or a tenant name. The value is always stored as `tenantId` on the profile. `service` (sent in `NGSILD-Tenant` headers) is set **only when the value matches the tenant-name pattern `^[a-z0-9_]+$`** — UUIDs and other ID forms are never written to `service` (they would make subsequent API calls return 400). The same rule applies to `auth login` when it persists `config.service` from `availableTenants[].tenantName`. For multi-tenant accounts, pass the tenant again on `auth login` via `--tenant` / `-s` — a saved `service` is not used as an implicit login tenant.
 
 ### auth — Authentication
 
@@ -161,22 +161,23 @@ geonic auth login
 
 | Option | Description |
 |---|---|
-| `--tenant-id <id>` | Log in to a specific tenant. Value is sent to the server as-is (server resolves) |
-| `-s, --service <id\|name>` | Log in to a specific tenant. Resolved client-side against the account's available tenants by ID or name |
+| `--tenant <name\|id>` | Log in to a specific tenant. When the account returns `availableTenants` (multi-tenant), resolved client-side by name or ID; otherwise the value is sent to the server for validation (`tenantName` or `tenantId`) |
+| `--tenant-id <id>` | Log in by tenant ID only. Multi-tenant: resolved client-side against `availableTenants` (rejects names — use `--tenant`). Single-membership: sent to the server as `tenantId`. Wins when both `--tenant` and `--tenant-id` are supplied |
+| `-s, --service <id\|name>` | Same resolution as `--tenant` (name or ID). Must be passed explicitly on the CLI — a profile-saved `service` is not used as an implicit login tenant |
 
-**Multi-tenant support**: When you belong to multiple tenants, `auth login` requires explicit tenant selection via `--tenant-id` or `-s/--service`. There is no interactive picker — if neither flag is provided and the account has multiple tenants, the command lists the available tenants and exits with an error.
+**Multi-tenant support**: When you belong to multiple tenants, `auth login` requires explicit tenant selection via `--tenant`, `--tenant-id`, or `-s/--service`. There is no interactive picker — if neither flag is provided and the account has multiple tenants, the command lists the available tenants and exits with an error. A profile-saved `service` is not treated as an implicit login tenant (explicit CLI flag required).
 
-A common workflow is to create one profile per tenant (`geonic profile create <name> --tenant <tenant>`); the tenant binding is persisted on the profile, so plain `geonic --profile <name> auth login` resolves to the correct tenant automatically.
+A common workflow is to create one profile per tenant (`geonic profile create <name> --tenant <tenant>`) and pass the same tenant on login (`geonic --profile <name> auth login --tenant <tenant>`). The profile's saved `service` still applies to subsequent API calls via `NGSILD-Tenant`.
 
 ```text
 $ geonic auth login
 Email: user@example.com
 Password: ********
-Error: Multiple tenants are available for this account. Specify one with --tenant-id <id> or -s/--service <name>:
+Error: Multiple tenants are available for this account. Specify one with --tenant <name|id>, --tenant-id <id>, or -s/--service <name|id>:
   - my_city (tid-aaa) [tenant_admin]
   - another_city (tid-bbb) [user]
 
-$ geonic auth login --tenant-id tid-aaa
+$ geonic auth login --tenant my_city
 Login successful (tenant: my_city). Token saved to config.
 ```
 
