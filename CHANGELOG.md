@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-08-18
-- **Fix**: 単一メンバーシップのアカウントで `auth login --tenant` / `--tenant-id` が黙って無視されないようにした (closes #217)。`availableTenants` が無いときは明示フラグだけを `tenantName` / `tenantId` として再ログイン body に載せ、サーバー側の 400/403 で fail-loud にする。`--tenant` は NAME_REGEX で name/id を振り分け、config.service の back-fill は無視する (#PR)
+- **Fix**: 単一メンバーシップのアカウントで `auth login --tenant` / `--tenant-id` が黙って無視されないようにした (closes #217)。`availableTenants` が無いときは明示フラグだけを `tenantName` / `tenantId` として再ログイン body に載せ、サーバー側の 400/403 で fail-loud にする。`--tenant` は NAME_REGEX で name/id を振り分け、config.service の back-fill は無視する (#222)
 
 ## [0.25.0] - 2026-08-17
 
