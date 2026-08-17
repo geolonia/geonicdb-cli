@@ -27,8 +27,8 @@ geonic config set url http://localhost:3000
 # Create an entity
 geonic entities create '{"id":"Room1","type":"Room","temperature":{"value":23,"type":"Number"}}'
 
-# List entities
-geonic entities list
+# List entities (local scope — exempts too-wide query check)
+geonic entities list --local
 
 # Get an entity by ID
 geonic entities get Room1
@@ -914,10 +914,10 @@ API keys provide an alternative to JWT tokens for authentication. When configure
 geonic config set api-key gdb_your_api_key_here
 
 # Or pass via CLI flag
-geonic entities list --api-key gdb_your_api_key_here
+geonic entities list --local --api-key gdb_your_api_key_here
 
 # Or use environment variable
-GDB_API_KEY=gdb_your_api_key_here geonic entities list
+GDB_API_KEY=gdb_your_api_key_here geonic entities list --local
 ```
 
 When both a Bearer token and an API key are configured, headers are sent exclusively — the API key takes precedence when present.
