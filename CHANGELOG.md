@@ -7,8 +7,8 @@
 
 ## [Unreleased]
 
-### 2026-08-17
-- **Fix**: `auth login` が `config.service` に tenantId (UUID) ではなくテナント名を保存するようにした (closes #213)。UUID が `NGSILD-Tenant` に載ると本体が 400 になる。`tenantName` が取れない場合は `service` を書かず、サーバーの JWT リマップに委ねる
+### 2026-08-18
+- **Fix**: `auth login` が `config.service` に tenantId (UUID) ではなくテナント名を保存するようにした (closes #213)。`LoginResponse.user.tenantId` から解決し、`availableTenants[].tenantName` が `^[a-z0-9_]+$` を満たすときだけ `service` に書く。名前が取れない場合は既存の name 形 `service`（`profile create --tenant` 束縛）を温存し、UUID 等は削除する。`profile create --tenant` も name 形のときだけ `service` を書く
 
 ## [0.25.0] - 2026-08-17
 

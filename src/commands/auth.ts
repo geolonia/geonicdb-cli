@@ -8,7 +8,7 @@ import {
   outputResponse,
 } from "../helpers.js";
 import { GdbClientError } from "../client.js";
-import { loadConfig, saveConfig, getCurrentProfile, validateUrl } from "../config.js";
+import { loadConfig, saveConfig, getCurrentProfile, validateUrl, isTenantServiceName } from "../config.js";
 import { printSuccess, printError, printInfo, printWarning } from "../output.js";
 import { isInteractive, promptEmail, promptPassword, promptTenantSelection } from "../prompt.js";
 import type { TenantInfo } from "../types.js";
@@ -164,7 +164,10 @@ function createLoginCommand(): Command {
         }
 
         const availableTenants = data.availableTenants as TenantInfo[] | undefined;
-        let finalTenantId = data.tenantId as string | undefined;
+        // LoginResponse has tenantId under `user`, not at the top level
+        // (geonicdb LoginResponse / LoginUserInfo).
+        const loginUser = data.user as { tenantId?: string | null } | undefined;
+        let finalTenantId = loginUser?.tenantId ?? undefined;
 
         // Multi-tenant: resolve target tenant from flag, interactive prompt, or fall back to primary
         if (availableTenants && availableTenants.length > 1) {
@@ -255,12 +258,15 @@ function createLoginCommand(): Command {
           config.tenantId = finalTenantId;
           // NGSILD-Tenant must be a tenant *name* (`^[a-z0-9_]+$`). Saving the
           // UUID tenantId as config.service makes every subsequent command 400
-          // (closes #213). Prefer availableTenants[].tenantName; if missing,
-          // omit service so the server remaps from JWT tenantId (#596).
-          const tenantName = availableTenants?.find((t) => t.tenantId === finalTenantId)
+          // (closes #213). Prefer availableTenants[].tenantName when it passes
+          // the name regex; if unresolved, keep an existing name-shaped service
+          // (e.g. from `profile create --tenant miya`); otherwise clear.
+          const rawName = availableTenants?.find((t) => t.tenantId === finalTenantId)
             ?.tenantName;
-          if (tenantName) {
-            config.service = tenantName;
+          if (rawName && isTenantServiceName(rawName)) {
+            config.service = rawName;
+          } else if (config.service && isTenantServiceName(config.service)) {
+            // preserve existing name-shaped binding
           } else {
             delete config.service;
           }
