@@ -122,7 +122,7 @@ geonic help [<command>] [<subcommand>]
 |---|---|
 | `profile list` | List all profiles |
 | `profile use <name>` | Switch active profile |
-| `profile create <name> [--tenant <id\|name>] [--url <url>]` | Create a new profile, optionally bound to a tenant and URL |
+| `profile create <name> [--tenant <id\|name>] [--url <url>]` | Create a new profile. `--tenant` always sets `tenantId`; `service` (`NGSILD-Tenant`) is set only when the value is a tenant name (`^[a-z0-9_]+$`) |
 | `profile delete <name>` | Delete a profile |
 | `profile show [name]` | Show profile settings |
 
@@ -140,7 +140,7 @@ geonic profile use miya       # operate as miya tenant
 geonic profile use geolonia   # operate as geolonia tenant
 ```
 
-`--tenant <name|id>` accepts either a tenant ID or a tenant name. The value is stored as both `service` (sent in `NGSILD-Tenant` headers) and `tenantId` on the profile. For multi-tenant accounts, pass the tenant again on `auth login` via `--tenant` / `-s` — a saved `service` is not used as an implicit login tenant.
+`--tenant <name|id>` accepts either a tenant ID or a tenant name. The value is always stored as `tenantId` on the profile. `service` (sent in `NGSILD-Tenant` headers) is set **only when the value matches the tenant-name pattern `^[a-z0-9_]+$`** — UUIDs and other ID forms are never written to `service` (they would make subsequent API calls return 400). The same rule applies to `auth login` when it persists `config.service` from `availableTenants[].tenantName`. For multi-tenant accounts, pass the tenant again on `auth login` via `--tenant` / `-s` — a saved `service` is not used as an implicit login tenant.
 
 ### auth — Authentication
 
