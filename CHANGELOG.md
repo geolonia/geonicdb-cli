@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-08-17
+
 ### 2026-08-17
 - **Feat**: `temporal entities list` / `get` に `--time-property` を追加し、NGSI-LD `timeproperty` クエリへ載せる (closes #202, 本体 geolonia/geonicdb#2267 / PR #2338 対応) (#206)。許容値は本体と同じ `observedAt` / `createdAt` / `modifiedAt` / `deletedAt`（未知値・空文字はサーバが 400。CLI は未指定時のみ省略し、明示された空文字は転送する）
 - **Feat**: `entities attrs delete` に `--dataset-id` / `--delete-all` を追加し、多重属性インスタンスを CLI から削除できるようにした (closes #197, 本体 geolonia/geonicdb#2177 対応)。未指定時は既定インスタンスのみ削除する既存挙動を維持。両方指定はリクエスト前に拒否。404 時は `--dataset-id` / `--delete-all` を案内する Hint を付与 (#204)
@@ -407,7 +409,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.24.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.25.0...HEAD
+[0.25.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.22.1...v0.23.0
 [0.22.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.22.0...v0.22.1
