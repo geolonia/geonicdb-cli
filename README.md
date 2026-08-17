@@ -161,8 +161,9 @@ geonic auth login
 
 | Option | Description |
 |---|---|
-| `--tenant-id <id>` | Log in to a specific tenant. Value is sent to the server as-is (server resolves) |
-| `-s, --service <id\|name>` | Log in to a specific tenant. Resolved client-side against the account's available tenants by ID or name |
+| `--tenant <name\|id>` | Log in to a specific tenant. Resolved client-side against the account's available tenants by name or ID |
+| `--tenant-id <id>` | Log in to a specific tenant by ID only. Resolved client-side against the account's available tenants (rejects names — use `--tenant` for names). Wins when both `--tenant` and `--tenant-id` are supplied |
+| `-s, --service <id\|name>` | Same resolution as `--tenant` (name or ID). Also applied when the profile has a saved `service` and no explicit tenant flag is given |
 
 **Multi-tenant support**: When you belong to multiple tenants, `auth login` requires explicit tenant selection via `--tenant`, `--tenant-id`, or `-s/--service`. There is no interactive picker — if neither flag is provided and the account has multiple tenants, the command lists the available tenants and exits with an error.
 
