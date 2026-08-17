@@ -8,6 +8,7 @@
 ## [Unreleased]
 
 ### 2026-08-18
+- **Fix**: マルチテナント `auth login` の対話ピッカーを廃止し、`--tenant` / `--tenant-id` / `-s` のいずれも無いときは TTY の有無にかかわらず利用可能テナント一覧を出してエラー終了するよう README に揃えた (closes #215)。`promptTenantSelection` の `default: 1` による primary テナントの無言確定を構造的に排除 (#220)
 - **Fix**: `auth login` が `config.service` に tenantId (UUID) ではなくテナント名を保存するようにした (closes #213)。`LoginResponse.user.tenantId` から解決し、`availableTenants[].tenantName` が `^[a-z0-9_]+$` を満たすときだけ `service` に書く。名前が取れない場合は既存の name 形 `service`（`profile create --tenant` 束縛）を温存し、UUID 等は削除する。`profile create --tenant` も name 形のときだけ `service` を書く (#218)
 - **Fix**: `entities list` に `--local` を追加し、セレクタ無し一覧の too-wide query 逃げ道 (`?local=true`) を CLI から送れるようにした (closes #214) (#219)
 - **Fix**: 単一メンバーシップのアカウントで `auth login --tenant` / `--tenant-id` が黙って無視されないようにした (closes #217)。`availableTenants` が無いときは明示フラグだけを `tenantName` / `tenantId` として再ログイン body に載せ、サーバー側の 400/403 で fail-loud にする。`--tenant` は NAME_REGEX で name/id を振り分け、config.service の back-fill は無視する (#222)
