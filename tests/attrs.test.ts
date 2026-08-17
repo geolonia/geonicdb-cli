@@ -6,6 +6,7 @@ import type { MockClient } from "./test-helpers.js";
 import { createClient, getFormat, outputResponse } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
 import { printSuccess } from "../src/output.js";
+import { GdbClientError } from "../src/client.js";
 import { addAttrsSubcommands } from "../src/commands/attrs.js";
 
 describe("attrs subcommand", () => {
@@ -90,6 +91,98 @@ describe("attrs subcommand", () => {
         `/entities/${encodeURIComponent("urn:ngsi-ld:Sensor:001")}/attrs/${encodeURIComponent("temperature")}`,
       );
       expect(printSuccess).toHaveBeenCalledWith("Attribute deleted.");
+    });
+
+    it("passes datasetId query param when --dataset-id is set", async () => {
+      mockClient.delete.mockResolvedValue(mockResponse(undefined, 204));
+      await runCommand(program, [
+        "attrs",
+        "delete",
+        "urn:ngsi-ld:Sensor:001",
+        "temperature",
+        "--dataset-id",
+        "urn:ngsi-ld:Dataset:outdoor",
+      ]);
+
+      expect(mockClient.delete).toHaveBeenCalledWith(
+        `/entities/${encodeURIComponent("urn:ngsi-ld:Sensor:001")}/attrs/${encodeURIComponent("temperature")}`,
+        { datasetId: "urn:ngsi-ld:Dataset:outdoor" },
+      );
+      expect(printSuccess).toHaveBeenCalledWith("Attribute deleted.");
+    });
+
+    it("passes deleteAll=true when --delete-all is set", async () => {
+      mockClient.delete.mockResolvedValue(mockResponse(undefined, 204));
+      await runCommand(program, [
+        "attrs",
+        "delete",
+        "urn:ngsi-ld:Sensor:001",
+        "temperature",
+        "--delete-all",
+      ]);
+
+      expect(mockClient.delete).toHaveBeenCalledWith(
+        `/entities/${encodeURIComponent("urn:ngsi-ld:Sensor:001")}/attrs/${encodeURIComponent("temperature")}`,
+        { deleteAll: "true" },
+      );
+      expect(printSuccess).toHaveBeenCalledWith("Attribute deleted.");
+    });
+
+    it("rejects combining --dataset-id and --delete-all before any request", async () => {
+      await expect(
+        runCommand(program, [
+          "attrs",
+          "delete",
+          "urn:ngsi-ld:Sensor:001",
+          "temperature",
+          "--dataset-id",
+          "urn:ngsi-ld:Dataset:outdoor",
+          "--delete-all",
+        ]),
+      ).rejects.toThrow("Cannot specify both --dataset-id and --delete-all.");
+
+      expect(mockClient.delete).not.toHaveBeenCalled();
+    });
+
+    it('rejects an empty --dataset-id before any request', async () => {
+      await expect(
+        runCommand(program, [
+          "attrs",
+          "delete",
+          "urn:ngsi-ld:Sensor:001",
+          "temperature",
+          "--dataset-id",
+          "",
+        ]),
+      ).rejects.toThrow("--dataset-id must not be empty.");
+
+      expect(mockClient.delete).not.toHaveBeenCalled();
+    });
+
+    it("hints at --dataset-id / --delete-all when delete returns 404", async () => {
+      mockClient.delete.mockRejectedValue(new GdbClientError("Attribute not found", 404));
+
+      await expect(
+        runCommand(program, ["attrs", "delete", "urn:ngsi-ld:Sensor:001", "temperature"]),
+      ).rejects.toThrow(/--dataset-id|--delete-all/);
+
+      expect(mockClient.delete).toHaveBeenCalled();
+    });
+
+    // near-miss: non-404 errors must not get the multi-instance hint
+    it("does not rewrite non-404 delete errors with the datasetId hint", async () => {
+      mockClient.delete.mockRejectedValue(new GdbClientError("Forbidden", 403));
+
+      let caught: unknown;
+      try {
+        await runCommand(program, ["attrs", "delete", "urn:ngsi-ld:Sensor:001", "temperature"]);
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(GdbClientError);
+      expect((caught as Error).message).toBe("Forbidden");
+      expect((caught as Error).message).not.toMatch(/--dataset-id|--delete-all/);
     });
   });
 });
