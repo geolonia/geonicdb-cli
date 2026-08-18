@@ -206,17 +206,24 @@ export function registerEntitiesCommand(program: Command): void {
         }
 
         // Defense-in-depth: refuse an under-specified purge on the client before
-        // any confirmation or server call. The server also rejects too-wide
-        // requests (400 requires at least one of type|attrs|q|georel), but a
-        // stray `purge --yes` (or a typo that parses to no selector) must never
-        // even leave the CLI as an unbounded delete. Mirror the server's
-        // sufficient-selector set exactly: only type/attrs/query/georel qualify.
-        // --id/--id-pattern/--scope-q/--local are refinements, NOT sufficient on
-        // their own (the server rejects them alone too); a single-entity delete
-        // is `entities delete <id>`. See README "entities purge".
-        if (!opts.type && !opts.attrs && !opts.query && !opts.georel) {
+        // any confirmation or server call. Mirror the server's sufficient-selector
+        // set after geonicdb#2432 / ETSI 5.6.21.4:
+        //   sufficient: --type / --attrs / --query / --georel / --keep / --drop / --local
+        //   refinements (not sufficient alone): --id / --id-pattern / --scope-q
+        // keep/drop count as attribute-name selectors (non-system attrs required server-side).
+        // local=true is the local-scope exemption. A single-entity delete remains
+        // `entities delete <id>`. See README "entities purge".
+        if (
+          !opts.type &&
+          !opts.attrs &&
+          !opts.query &&
+          !opts.georel &&
+          !opts.keep &&
+          !opts.drop &&
+          !opts.local
+        ) {
           throw new Error(
-            "Refusing to purge: specify at least one selector (--type, --attrs, --query, or --georel).",
+            "Refusing to purge: specify at least one selector (--type, --attrs, --query, --georel, --keep, --drop, or --local).",
           );
         }
 

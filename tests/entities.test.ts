@@ -417,12 +417,36 @@ describe("entities command", () => {
       expect(mockClient.delete).not.toHaveBeenCalled();
     });
 
-    it("refuses an under-specified purge (no type/attrs/query/georel) before any server call", async () => {
+    it("refuses an under-specified purge (no type/attrs/query/georel/keep/drop/local) before any server call", async () => {
       await expect(
         runCommand(program, ["entities", "purge", "--id-pattern", ".*", "--yes"]),
       ).rejects.toThrow("specify at least one selector");
 
       expect(mockClient.delete).not.toHaveBeenCalled();
+    });
+
+    it("allows keep-only as a sufficient selector (#225 / geonicdb#2432)", async () => {
+      mockClient.delete.mockResolvedValue(mockResponse(undefined, 204));
+
+      await runCommand(program, ["entities", "purge", "--keep", "name", "--yes"]);
+
+      expect(mockClient.delete).toHaveBeenCalledWith("/entities", { keep: "name" });
+    });
+
+    it("allows drop-only as a sufficient selector (#225)", async () => {
+      mockClient.delete.mockResolvedValue(mockResponse(undefined, 204));
+
+      await runCommand(program, ["entities", "purge", "--drop", "temperature", "--yes"]);
+
+      expect(mockClient.delete).toHaveBeenCalledWith("/entities", { drop: "temperature" });
+    });
+
+    it("allows local-only as a sufficient selector (#225)", async () => {
+      mockClient.delete.mockResolvedValue(mockResponse(undefined, 204));
+
+      await runCommand(program, ["entities", "purge", "--local", "--yes"]);
+
+      expect(mockClient.delete).toHaveBeenCalledWith("/entities", { local: "true" });
     });
   });
 });
