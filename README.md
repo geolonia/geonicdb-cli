@@ -288,6 +288,8 @@ geonic me api-keys update <key-id> --policy-id my-readonly
 geonic me api-keys update <key-id> --policy-id null
 ```
 
+`--origins` accepts a comma-separated list where each entry is either an exact origin (`https://app.example.com`) or a subdomain wildcard (`https://*.example.com`). A wildcard matches one or more subdomain labels (`https://a.example.com`, `https://a.b.example.com`) but **not** the apex itself (`https://example.com`) and **not** a hyphenated look-alike domain (`https://evil-example.com`); scheme and port must match exactly.
+
 `me api-keys list` output includes a `dpopRequired` field (boolean).
 
 **Note**: `--policy-id` on update accepts only policies created by yourself (`/me/policies`). Policies created via `admin policies` cannot be bound here.
@@ -336,9 +338,13 @@ geonic me oauth-clients update <client-id> --policy-id my-readonly
 | `entities delete <id>` | Delete an entity by ID |
 | `entities purge <selectors> [--keep\|--drop] --yes` | Purge entities/attributes by selector (destructive) |
 
-`entities list` supports filtering options: `--type`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`, `--local`.
+`entities list` supports filtering options: `--type`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`, `--local`, `--scope-q`.
 
 `--local` (`?local=true`) limits the request to local scope and exempts the too-wide query check, so a selector-less `geonic entities list --local` is allowed.
+
+`--scope-q` filters by NGSI-LD scope (e.g. `/restaurants/#`, `/Japan/Tokyo`, `/Japan/+`). Operators follow ETSI GS CIM 009 clause 4.19: `;` is **AND**, `,`/`|` is **OR** — `;` is *not* a union.
+
+`--georel` uses NGSI-LD canonical syntax, e.g. `--georel 'near;maxDistance==1000'` (an NGSIv2-style `maxDistance:1000` is also accepted by the server, but `==` is the ETSI-compliant form).
 
 `entities purge` requires **at least one primary selector** — `--type`, `--attrs`, `--query`, `--georel` (with `--geometry`/`--coords`), **`--keep`**, **`--drop`**, or **`--local`**. These can be narrowed with the refinement filters `--id`, `--id-pattern`, `--scope-q`. A refinement filter **on its own is not sufficient**: `--id`/`--id-pattern`/`--scope-q` alone are rejected by both the CLI and the server — to remove a single entity use `entities delete <id>`. `--keep`/`--drop` (mutually exclusive) are attribute-name selectors: they retain/remove attributes on matched entities, and **alone they target every authorized entity in the tenant** (server: geonicdb#2432). Prefer combining with `--type` / `--query` / `--id` when you do not intend a tenant-wide attribute strip. `--attrs` on purge is a selector ("entities having any listed attributes"), not an output projection.
 
@@ -688,6 +694,8 @@ Custom `tenant_admin` policies (priority 10–99) override the user defaults. Ta
 **Policy**: Use `--policy <policyId>` to attach an existing XACML policy to the API key. Manage policies with `geonic admin policies` commands.
 
 **Note**: `allowedOrigins` must contain at least 1 item when specified. Use `*` to allow all origins. `admin api-keys list` / `admin api-keys get` output includes a `dpopRequired` field (boolean).
+
+`--origins` accepts a comma-separated list where each entry is either an exact origin (`https://app.example.com`) or a subdomain wildcard (`https://*.example.com`). A wildcard matches one or more subdomain labels (`https://a.example.com`, `https://a.b.example.com`) but **not** the apex itself (`https://example.com`) and **not** a hyphenated look-alike domain (`https://evil-example.com`); scheme and port must match exactly.
 
 #### admin deployments
 
