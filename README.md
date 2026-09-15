@@ -288,6 +288,8 @@ geonic me api-keys update <key-id> --policy-id my-readonly
 geonic me api-keys update <key-id> --policy-id null
 ```
 
+`--origins` accepts a comma-separated list where each entry is either an exact origin (`https://app.example.com`) or a subdomain wildcard (`https://*.example.com`). A wildcard matches one or more subdomain labels (`https://a.example.com`, `https://a.b.example.com`) but **not** the apex itself (`https://example.com`) and **not** a hyphenated look-alike domain (`https://evil-example.com`); scheme and port must match exactly.
+
 `me api-keys list` output includes a `dpopRequired` field (boolean).
 
 **Note**: `--policy-id` on update accepts only policies created by yourself (`/me/policies`). Policies created via `admin policies` cannot be bound here.
@@ -336,9 +338,13 @@ geonic me oauth-clients update <client-id> --policy-id my-readonly
 | `entities delete <id>` | Delete an entity by ID |
 | `entities purge <selectors> [--keep\|--drop] --yes` | Purge entities/attributes by selector (destructive) |
 
-`entities list` supports filtering options: `--type`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`, `--local`.
+`entities list` supports filtering options: `--type`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`, `--local`, `--scope-q`.
 
 `--local` (`?local=true`) limits the request to local scope and exempts the too-wide query check, so a selector-less `geonic entities list --local` is allowed.
+
+`--scope-q` filters by NGSI-LD scope (e.g. `/restaurants/#`, `/Japan/Tokyo`, `/Japan/+`). Operators follow ETSI GS CIM 009 clause 4.19: `;` is **AND**, `,`/`|` is **OR** — `;` is *not* a union.
+
+`--georel` uses NGSI-LD canonical syntax, e.g. `--georel 'near;maxDistance==1000'` (an NGSIv2-style `maxDistance:1000` is also accepted by the server, but `==` is the ETSI-compliant form).
 
 `entities purge` requires **at least one primary selector** — `--type`, `--attrs`, `--query`, `--georel` (with `--geometry`/`--coords`), **`--keep`**, **`--drop`**, or **`--local`**. These can be narrowed with the refinement filters `--id`, `--id-pattern`, `--scope-q`. A refinement filter **on its own is not sufficient**: `--id`/`--id-pattern`/`--scope-q` alone are rejected by both the CLI and the server — to remove a single entity use `entities delete <id>`. `--keep`/`--drop` (mutually exclusive) are attribute-name selectors: they retain/remove attributes on matched entities, and **alone they target every authorized entity in the tenant** (server: geonicdb#2432). Prefer combining with `--type` / `--query` / `--id` when you do not intend a tenant-wide attribute strip. `--attrs` on purge is a selector ("entities having any listed attributes"), not an output projection.
 
@@ -548,7 +554,7 @@ $ geonic models create '{
     "startTime": {"ngsiType": "Property", "valueType": "string", "example": "10:00"}
   },
   "uniqueConstraints": [
-    {"name": "no-double-booking", "fields": ["room", "date", "startTime"]}
+    {"name": "one-booking-per-slot", "fields": ["room", "date", "startTime"]}
   ]
 }'
 ```
@@ -558,12 +564,13 @@ $ geonic models create '{
 - `models update` の `uniqueConstraints` は全置換です（`[]` で全削除）
 - 既存エンティティが重複している状態で制約を追加すると `400` になります（先に重複を解消してください）
 - 定義済みの制約は `geonic models get <model-id>` で確認できます（table 形式では `制約名(フィールド, ...)` 表記）
+- 複合ユニーク制約はタプルの**完全一致**でのみ判定されます。値の重複は防げますが、区間（例: 開始・終了時刻）の重複は防げません（`10:00-11:00` と `10:30-11:30` は別タプルのため両方成立してしまいます）。区間重複を防ぐには、固定長スロットに区切ってスロットごとにエンティティを持たせる等アプリケーション側の実装が必要です
 
 重複作成時のエラー表示例:
 
 ```console
 $ geonic entities create '{"id":"urn:ngsi-ld:RoomReservation:002","type":"RoomReservation","room":{"type":"Property","value":"R1"},"date":{"type":"Property","value":"2026-07-15"},"startTime":{"type":"Property","value":"10:00"}}'
-Error: Entity already exists: violates unique constraint 'no-double-booking' on fields [room, date, startTime]
+Error: Entity already exists: violates unique constraint 'one-booking-per-slot' on fields [room, date, startTime]
 Hint: inspect the model's unique constraints with `geonic models get <model-id>`.
 ```
 
@@ -597,11 +604,16 @@ Hint: inspect the model's unique constraints with `geonic models get <model-id>`
 | Flag omitted | All origins allowed (backward-compatible default) |
 | `--allowed-origins ""` | Empty array — deny all |
 | `--allowed-origins "*"` | Wildcard — allow all origins (including non-browser / S2S clients) |
-| `--allowed-origins "https://a,https://b"` | Exact-match list (max 50 entries) |
+| `--allowed-origins "https://a,https://b"` | List of origins (max 50 entries); each entry is an exact match or a subdomain wildcard |
+
+Each entry may be an exact origin (`https://app.example.com`) or a subdomain wildcard (`https://*.example.com`). A wildcard matches one or more subdomain labels (`https://a.example.com`, `https://a.b.example.com`) but **not** the apex itself (`https://example.com`) and **not** a hyphenated look-alike domain (`https://evil-example.com`); scheme and port must match exactly. Useful for origins that vary per deploy, such as Cloudflare Pages preview URLs (`https://*.<project>.pages.dev`).
 
 ```bash
 # Restrict to specific origins
 geonic admin tenants update <tenant-id> --allowed-origins "https://app.example.com,https://admin.example.com"
+
+# Allow all subdomains of a domain (e.g. per-branch preview deployments)
+geonic admin tenants update <tenant-id> --allowed-origins "https://*.example.pages.dev"
 
 # Wildcard for development tenants
 geonic admin tenants update <tenant-id> --allowed-origins "*"
@@ -682,6 +694,8 @@ Custom `tenant_admin` policies (priority 10–99) override the user defaults. Ta
 **Policy**: Use `--policy <policyId>` to attach an existing XACML policy to the API key. Manage policies with `geonic admin policies` commands.
 
 **Note**: `allowedOrigins` must contain at least 1 item when specified. Use `*` to allow all origins. `admin api-keys list` / `admin api-keys get` output includes a `dpopRequired` field (boolean).
+
+`--origins` accepts a comma-separated list where each entry is either an exact origin (`https://app.example.com`) or a subdomain wildcard (`https://*.example.com`). A wildcard matches one or more subdomain labels (`https://a.example.com`, `https://a.b.example.com`) but **not** the apex itself (`https://example.com`) and **not** a hyphenated look-alike domain (`https://evil-example.com`); scheme and port must match exactly.
 
 #### admin deployments
 

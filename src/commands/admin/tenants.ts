@@ -124,7 +124,10 @@ export function registerTenantsCommand(parent: Command): void {
     "  Unset = allow all origins (backward-compatible default).",
     "  '' (empty string) = explicit empty array — deny all.",
     "  '*' = wildcard — allow all origins (including non-browser clients).",
-    "  Otherwise = comma-separated list of exact-match origins (max 50).",
+    "  Otherwise = comma-separated list of origins (max 50), each either an exact match",
+    "  or a subdomain wildcard 'https://*.example.com' (matches https://a.example.com and",
+    "  https://a.b.example.com; does NOT match the apex https://example.com or a hyphenated",
+    "  domain like https://evil-example.com; scheme and port must match exactly).",
   ]);
 
   addExamples(create, [
@@ -190,7 +193,10 @@ export function registerTenantsCommand(parent: Command): void {
     "--allowed-origins maps to settings.allowedOrigins (CORS).",
     "  '' (empty string) = explicit empty array — deny all.",
     "  '*' = wildcard — allow all origins (including non-browser clients).",
-    "  Otherwise = comma-separated list of exact-match origins (max 50).",
+    "  Otherwise = comma-separated list of origins (max 50), each either an exact match",
+    "  or a subdomain wildcard 'https://*.example.com' (matches https://a.example.com and",
+    "  https://a.b.example.com; does NOT match the apex https://example.com or a hyphenated",
+    "  domain like https://evil-example.com; scheme and port must match exactly).",
     "  Existing settings.* keys in JSON payload are preserved.",
   ]);
 

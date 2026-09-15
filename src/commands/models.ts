@@ -147,9 +147,11 @@ export function registerModelsCommand(program: Command): void {
         "    }\n" +
         "  }\n\n" +
         "Optional uniqueConstraints (composite unique, enforced server-side):\n" +
-        '  "uniqueConstraints": [{"name": "no-double-booking", "fields": ["room", "date", "startTime"]}]\n' +
+        '  "uniqueConstraints": [{"name": "one-booking-per-slot", "fields": ["room", "date", "startTime"]}]\n' +
         "  Fields must be declared in propertyDetails with a scalar valueType.\n" +
-        "  Duplicate entities are rejected with 409 AlreadyExists (constraint name in the message).",
+        "  Duplicate entities are rejected with 409 AlreadyExists (constraint name in the message).\n" +
+        "  A composite constraint matches an exact tuple: it rejects duplicate values, not overlapping\n" +
+        "  ranges (e.g. a 10:00-11:00 booking does not block a 10:30-11:30 booking on the same room/date).",
     )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
@@ -176,8 +178,8 @@ export function registerModelsCommand(program: Command): void {
       command: "cat model.json | geonic models create",
     },
     {
-      description: "Create with a composite unique constraint (no double booking)",
-      command: `geonic models create '{"type":"RoomReservation","domain":"building","description":"Room reservation","propertyDetails":{"room":{"ngsiType":"Property","valueType":"string","example":"R1"},"date":{"ngsiType":"Property","valueType":"string","example":"2026-07-15"},"startTime":{"ngsiType":"Property","valueType":"string","example":"10:00"}},"uniqueConstraints":[{"name":"no-double-booking","fields":["room","date","startTime"]}]}'`,
+      description: "Create with a composite unique constraint (one booking per slot)",
+      command: `geonic models create '{"type":"RoomReservation","domain":"building","description":"Room reservation","propertyDetails":{"room":{"ngsiType":"Property","valueType":"string","example":"R1"},"date":{"ngsiType":"Property","valueType":"string","example":"2026-07-15"},"startTime":{"ngsiType":"Property","valueType":"string","example":"10:00"}},"uniqueConstraints":[{"name":"one-booking-per-slot","fields":["room","date","startTime"]}]}'`,
     },
   ]);
 
@@ -244,7 +246,7 @@ export function registerModelsCommand(program: Command): void {
     },
     {
       description: "Replace unique constraints",
-      command: `geonic models update RoomReservation '{"uniqueConstraints":[{"name":"no-double-booking","fields":["room","date","startTime"]}]}'`,
+      command: `geonic models update RoomReservation '{"uniqueConstraints":[{"name":"one-booking-per-slot","fields":["room","date","startTime"]}]}'`,
     },
     {
       description: "Remove all unique constraints",

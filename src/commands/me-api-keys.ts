@@ -101,7 +101,10 @@ export function addMeApiKeysSubcommand(me: Command): void {
     .description("Create a new API key")
     .option("--name <name>", "Key name")
     .option("--policy <policyId>", "Policy ID to attach (NOTE: use --policy-id on update)")
-    .option("--origins <origins>", "Allowed origins (comma-separated)")
+    .option(
+      "--origins <origins>",
+      "Allowed origins (comma-separated). Exact match or subdomain wildcard 'https://*.example.com'",
+    )
     .option("--rate-limit <n>", "Rate limit per minute")
     .option("--dpop-required", "Require DPoP token binding")
     .option("--save", "Save the API key to config for automatic use")
@@ -176,6 +179,9 @@ export function addMeApiKeysSubcommand(me: Command): void {
   addNotes(create, [
     "Use --policy to attach an existing XACML policy to the API key.",
     "Manage policies with `geonic admin policies` commands.",
+    "--origins wildcard 'https://*.example.com' matches https://a.example.com and",
+    "  https://a.b.example.com; does NOT match the apex https://example.com or a hyphenated",
+    "  domain like https://evil-example.com; scheme and port must match exactly.",
   ]);
 
   addExamples(create, [
@@ -246,7 +252,10 @@ export function addMeApiKeysSubcommand(me: Command): void {
     .description("Update an API key")
     .option("--name <name>", "Key name")
     .option("--policy-id <policyId>", "Policy ID to attach or 'null' to unbind (NOTE: use --policy on create)")
-    .option("--origins <origins>", "Allowed origins (comma-separated)")
+    .option(
+      "--origins <origins>",
+      "Allowed origins (comma-separated). Exact match or subdomain wildcard 'https://*.example.com'",
+    )
     .option("--rate-limit <n>", "Rate limit (requests per minute)")
     .option("--dpop-required", "Require DPoP token binding")
     .option("--no-dpop-required", "Disable DPoP requirement")
@@ -313,6 +322,12 @@ export function addMeApiKeysSubcommand(me: Command): void {
         console.error("API key updated.");
       }),
     );
+
+  addNotes(update, [
+    "--origins wildcard 'https://*.example.com' matches https://a.example.com and",
+    "  https://a.b.example.com; does NOT match the apex https://example.com or a hyphenated",
+    "  domain like https://evil-example.com; scheme and port must match exactly.",
+  ]);
 
   addExamples(update, [
     {

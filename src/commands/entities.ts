@@ -24,7 +24,7 @@ export function registerEntitiesCommand(program: Command): void {
     .option("--id-pattern <pat>", "Filter by entity ID pattern (regex)")
     .option("--query <q>", "NGSI query expression")
     .option("--attrs <a,b>", "Comma-separated list of attributes to include")
-    .option("--georel <rel>", "Geo-relationship (e.g. near;maxDistance:1000)")
+    .option("--georel <rel>", "Geo-relationship (e.g. near;maxDistance==1000; NGSIv2-style maxDistance:1000 is also accepted)")
     .option("--geometry <geo>", "Geometry type for geo-query (e.g. point)")
     .option("--coords <coords>", "Coordinates for geo-query")
     .option("--spatial-id <zfxy>", "Spatial ID filter (ZFXY tile)")
@@ -32,7 +32,11 @@ export function registerEntitiesCommand(program: Command): void {
     .option("--offset <n>", "Skip first N entities", parseInt)
     .option("--order-by <field>", "Order results by field")
     .option("--count", "Include total count in response")
-    .option("--scope-q <expr>", "Filter by scope (e.g. /restaurants/#, /Japan/Tokyo, /Japan/+)")
+    .option(
+      "--scope-q <expr>",
+      "Filter by scope (e.g. /restaurants/#, /Japan/Tokyo, /Japan/+). " +
+        "Operators per ETSI GS CIM 009 clause 4.19: ';'=AND, ','/'|'=OR (';' is NOT a union).",
+    )
     .option("--count-only", "Only show the total count without listing entities")
     .option("--key-values", "Request simplified key-value format")
     .option("--sys-attrs", "Include system attributes (createdAt, modifiedAt)")
@@ -178,7 +182,10 @@ export function registerEntitiesCommand(program: Command): void {
     .option("--georel <rel>", "Geo-relationship selector")
     .option("--geometry <geo>", "Geometry type for geo-selector (e.g. Point)")
     .option("--coords <coords>", "Coordinates for geo-selector")
-    .option("--scope-q <expr>", "Filter by scope (scopeQ)")
+    .option(
+      "--scope-q <expr>",
+      "Filter by scope (scopeQ). Operators per ETSI GS CIM 009 clause 4.19: ';'=AND, ','/'|'=OR (';' is NOT a union).",
+    )
     .option("--local", "Restrict to local entities")
     .option("--keep <a,b>", "Keep only these attributes on matched entities")
     .option("--drop <a,b>", "Drop these attributes from matched entities")
