@@ -7,6 +7,11 @@
 
 ## [Unreleased]
 
+## [0.26.1] - 2026-09-15
+
+### 2026-09-15
+- **Docs**: `entities list`/`entities purge` の `--scope-q` に ETSI GS CIM 009 clause 4.19 の演算子注記（`;`=AND, `,`/`|`=OR）を追加し、`entities list` の `--georel` 例を NGSI-LD 正準記法 (`maxDistance==1000`) に揃えた。`models` の複合ユニーク制約サンプルを `no-double-booking` → `one-booking-per-slot` に改名し、タプル完全一致であり区間重複は防がない旨を明記した (本体 geolonia/geonicdb#2641 と表記統一)。`admin tenants`/`admin api-keys`/`me api-keys` の `--allowed-origins`/`--origins` ヘルプにサブドメインワイルドカード (`https://*.example.com`) の挙動を追記した (closes #227, closes #228, closes #229, closes #230) (#232)
+
 ## [0.26.0] - 2026-08-18
 
 ### 2026-08-18
@@ -421,7 +426,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.26.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.26.1...HEAD
+[0.26.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.26.0...v0.26.1
 [0.26.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.24.0...v0.25.0
 [0.24.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.23.0...v0.24.0
