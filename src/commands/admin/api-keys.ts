@@ -175,7 +175,10 @@ export function registerApiKeysCommand(parent: Command): void {
     .description("Create a new API key")
     .option("--name <name>", "Key name")
     .option("--policy <policyId>", "Policy ID to attach")
-    .option("--origins <origins>", "Comma-separated origins")
+    .option(
+      "--origins <origins>",
+      "Comma-separated origins. Exact match or subdomain wildcard 'https://*.example.com'",
+    )
     .option("--rate-limit <n>", "Rate limit per minute")
     .option("--dpop-required", "Require DPoP token binding")
     .option("--tenant-id <id>", "Tenant ID")
@@ -221,6 +224,9 @@ export function registerApiKeysCommand(parent: Command): void {
   addNotes(create, [
     "Use --policy to attach an existing XACML policy to the API key.",
     "Manage policies with `geonic admin policies` commands.",
+    "--origins wildcard 'https://*.example.com' matches https://a.example.com and",
+    "  https://a.b.example.com; does NOT match the apex https://example.com or a hyphenated",
+    "  domain like https://evil-example.com; scheme and port must match exactly.",
   ]);
 
   addExamples(create, [
@@ -283,7 +289,10 @@ export function registerApiKeysCommand(parent: Command): void {
     .description("Update an API key")
     .option("--name <name>", "Key name")
     .option("--policy <policyId>", "Policy ID to attach")
-    .option("--origins <origins>", "Comma-separated origins")
+    .option(
+      "--origins <origins>",
+      "Comma-separated origins. Exact match or subdomain wildcard 'https://*.example.com'",
+    )
     .option("--rate-limit <n>", "Rate limit per minute")
     .option("--dpop-required", "Require DPoP token binding")
     .option("--no-dpop-required", "Disable DPoP token binding")
@@ -327,6 +336,9 @@ export function registerApiKeysCommand(parent: Command): void {
   addNotes(update, [
     "Use --policy to attach an existing XACML policy to the API key.",
     "Manage policies with `geonic admin policies` commands.",
+    "--origins wildcard 'https://*.example.com' matches https://a.example.com and",
+    "  https://a.b.example.com; does NOT match the apex https://example.com or a hyphenated",
+    "  domain like https://evil-example.com; scheme and port must match exactly.",
   ]);
 
   addExamples(update, [

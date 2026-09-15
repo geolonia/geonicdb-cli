@@ -548,7 +548,7 @@ $ geonic models create '{
     "startTime": {"ngsiType": "Property", "valueType": "string", "example": "10:00"}
   },
   "uniqueConstraints": [
-    {"name": "no-double-booking", "fields": ["room", "date", "startTime"]}
+    {"name": "one-booking-per-slot", "fields": ["room", "date", "startTime"]}
   ]
 }'
 ```
@@ -558,12 +558,13 @@ $ geonic models create '{
 - `models update` の `uniqueConstraints` は全置換です（`[]` で全削除）
 - 既存エンティティが重複している状態で制約を追加すると `400` になります（先に重複を解消してください）
 - 定義済みの制約は `geonic models get <model-id>` で確認できます（table 形式では `制約名(フィールド, ...)` 表記）
+- 複合ユニーク制約はタプルの**完全一致**でのみ判定されます。値の重複は防げますが、区間（例: 開始・終了時刻）の重複は防げません（`10:00-11:00` と `10:30-11:30` は別タプルのため両方成立してしまいます）。区間重複を防ぐには、固定長スロットに区切ってスロットごとにエンティティを持たせる等アプリケーション側の実装が必要です
 
 重複作成時のエラー表示例:
 
 ```console
 $ geonic entities create '{"id":"urn:ngsi-ld:RoomReservation:002","type":"RoomReservation","room":{"type":"Property","value":"R1"},"date":{"type":"Property","value":"2026-07-15"},"startTime":{"type":"Property","value":"10:00"}}'
-Error: Entity already exists: violates unique constraint 'no-double-booking' on fields [room, date, startTime]
+Error: Entity already exists: violates unique constraint 'one-booking-per-slot' on fields [room, date, startTime]
 Hint: inspect the model's unique constraints with `geonic models get <model-id>`.
 ```
 
@@ -597,11 +598,16 @@ Hint: inspect the model's unique constraints with `geonic models get <model-id>`
 | Flag omitted | All origins allowed (backward-compatible default) |
 | `--allowed-origins ""` | Empty array — deny all |
 | `--allowed-origins "*"` | Wildcard — allow all origins (including non-browser / S2S clients) |
-| `--allowed-origins "https://a,https://b"` | Exact-match list (max 50 entries) |
+| `--allowed-origins "https://a,https://b"` | List of origins (max 50 entries); each entry is an exact match or a subdomain wildcard |
+
+Each entry may be an exact origin (`https://app.example.com`) or a subdomain wildcard (`https://*.example.com`). A wildcard matches one or more subdomain labels (`https://a.example.com`, `https://a.b.example.com`) but **not** the apex itself (`https://example.com`) and **not** a hyphenated look-alike domain (`https://evil-example.com`); scheme and port must match exactly. Useful for origins that vary per deploy, such as Cloudflare Pages preview URLs (`https://*.<project>.pages.dev`).
 
 ```bash
 # Restrict to specific origins
 geonic admin tenants update <tenant-id> --allowed-origins "https://app.example.com,https://admin.example.com"
+
+# Allow all subdomains of a domain (e.g. per-branch preview deployments)
+geonic admin tenants update <tenant-id> --allowed-origins "https://*.example.pages.dev"
 
 # Wildcard for development tenants
 geonic admin tenants update <tenant-id> --allowed-origins "*"
