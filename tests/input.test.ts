@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { Readable } from "node:stream";
 
 const mockReadFileSync = vi.fn();
 vi.mock("node:fs", async () => {
@@ -121,21 +122,49 @@ describe("parseJsonInput", () => {
   });
 
   describe("stdin mode (input === '-')", () => {
-    it("reads from stdin fd 0 when input is '-'", async () => {
-      mockReadFileSync.mockReturnValue('{"id":"stdin-entity"}');
-      const result = await parseJsonInput("-");
-      expect(result).toEqual({ id: "stdin-entity" });
-      expect(mockReadFileSync).toHaveBeenCalledWith(0, "utf-8");
+    it("reads from stdin when input is '-'", async () => {
+      const realStdin = process.stdin;
+      Object.defineProperty(process, "stdin", { value: Readable.from(['{"id":"stdin-entity"}']), configurable: true });
+      try {
+        const result = await parseJsonInput("-");
+        expect(result).toEqual({ id: "stdin-entity" });
+      } finally {
+        Object.defineProperty(process, "stdin", { value: realStdin, configurable: true });
+      }
     });
   });
 
   describe("piped stdin (non-TTY, no input)", () => {
     it("reads from stdin when no input and stdin is not a TTY", async () => {
-      Object.defineProperty(process.stdin, "isTTY", { value: false, writable: true });
-      mockReadFileSync.mockReturnValue('{"piped":"data"}');
-      const result = await parseJsonInput(undefined);
-      expect(result).toEqual({ piped: "data" });
-      expect(mockReadFileSync).toHaveBeenCalledWith(0, "utf-8");
+      const realStdin = process.stdin;
+      // Readable.from() has no isTTY, so parseJsonInput treats it as piped input
+      Object.defineProperty(process, "stdin", { value: Readable.from(['{"piped":"data"}']), configurable: true });
+      try {
+        const result = await parseJsonInput(undefined);
+        expect(result).toEqual({ piped: "data" });
+      } finally {
+        Object.defineProperty(process, "stdin", { value: realStdin, configurable: true });
+      }
+    });
+
+    it("waits for piped data that arrives late instead of failing with EAGAIN", async () => {
+      const slow = new Readable({ read() {} });
+      const realStdin = process.stdin;
+      Object.defineProperty(process, "stdin", { value: slow, configurable: true });
+      try {
+        const promise = parseJsonInput(undefined);
+        setTimeout(() => {
+          slow.push('{"late":');
+          setTimeout(() => {
+            slow.push('"data"}');
+            slow.push(null);
+          }, 20);
+        }, 20);
+        const result = await promise;
+        expect(result).toEqual({ late: "data" });
+      } finally {
+        Object.defineProperty(process, "stdin", { value: realStdin, configurable: true });
+      }
     });
   });
 
