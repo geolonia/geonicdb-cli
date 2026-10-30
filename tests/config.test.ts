@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach } from "vitest";
-import { mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync, statSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -15,6 +15,7 @@ import {
   createProfile,
   deleteProfile,
   getConfigPath,
+  CONFIG_FILE_MODE,
 } from "../src/config.js";
 
 describe("config", () => {
@@ -39,6 +40,16 @@ describe("config", () => {
     saveConfig({ url: "http://localhost:3000" });
     const config = loadConfig();
     expect(config.url).toBe("http://localhost:3000");
+  });
+
+  it("writes config.json with mode 0o600 and chmods existing files (M1)", () => {
+    saveConfig({ url: "http://localhost:3000", token: "secret" });
+    const path = getConfigPath();
+    expect(statSync(path).mode & 0o777).toBe(CONFIG_FILE_MODE);
+    // Existing world-readable file must be tightened on rewrite.
+    chmodSync(path, 0o644);
+    saveConfig({ url: "http://localhost:3000", token: "secret2" });
+    expect(statSync(path).mode & 0o777).toBe(CONFIG_FILE_MODE);
   });
 
   it("sets individual config values", () => {

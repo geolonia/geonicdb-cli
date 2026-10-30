@@ -4,7 +4,24 @@ import { DryRunSignal, GdbClient, GdbClientError } from "./client.js";
 import { printError, printOutput, printCount, printWarning } from "./output.js";
 import { sanitizeServerText } from "./sanitize.js";
 import { normalizeContextConfigValue } from "./context.js";
+import { decodeJwtPayload } from "./token.js";
 import type { ClientResponse, GlobalOptions, OutputFormat } from "./types.js";
+
+const AUTH_FAILED_BASE =
+  "Authentication failed. Please re-authenticate (e.g., `geonic auth login` or check your API key).";
+
+/** Append platform-login hint only when the saved token is platform_admin (L6). */
+export function authenticationFailedMessage(profileName?: string): string {
+  const config = loadConfig(profileName);
+  const payload = config.token ? decodeJwtPayload(config.token) : null;
+  if (payload?.role === "platform_admin") {
+    return (
+      AUTH_FAILED_BASE +
+      " platform token は 15 分。`geonic auth platform-login` をやり直す"
+    );
+  }
+  return AUTH_FAILED_BASE;
+}
 
 /**
  * Resolve merged options from config + CLI flags.
@@ -272,15 +289,9 @@ export function withErrorHandler<T extends unknown[]>(fn: (...args: T) => Promis
         return;
       }
       if (err instanceof GdbClientError && err.status === 401) {
-        printError(
-          "Authentication failed. Please re-authenticate (e.g., `geonic auth login` or check your API key). " +
-            "platform token は 15 分。`geonic auth platform-login` をやり直す",
-        );
+        printError(authenticationFailedMessage());
       } else if (err instanceof GdbClientError && err.status === 403 && /not assigned to any tenant|invalid token/i.test(err.message)) {
-        printError(
-          "Authentication failed. Please re-authenticate (e.g., `geonic auth login` or check your API key). " +
-            "platform token は 15 分。`geonic auth platform-login` をやり直す",
-        );
+        printError(authenticationFailedMessage());
       } else if (err instanceof GdbClientError && err.status === 403) {
         const detail = (err.ngsiError?.detail ?? err.ngsiError?.description ?? "").toLowerCase();
         if (detail.includes("entity type") || detail.includes("allowedentitytypes")) {

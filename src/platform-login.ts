@@ -1,10 +1,16 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { GdbClient } from "./client.js";
 
 const PLATFORM_TOKEN_PATH = "/auth/platform-token";
 const EXECUTE_API_SERVICE = "execute-api";
+/** Refuse pathological ~/.aws/config before parsing into memory. */
+const AWS_CONFIG_MAX_BYTES = 1_048_576;
+const AWS_REGION_RE = /^[a-z0-9-]+$/;
+
+export const PLATFORM_TOKEN_FORBIDDEN_MESSAGE =
+  "許可された IAM 呼び出し元ではない（署名・region・資格情報の不正でも 403 になりうる）";
 
 export class PlatformLoginError extends Error {
   constructor(
@@ -16,10 +22,40 @@ export class PlatformLoginError extends Error {
   }
 }
 
+/** Strip AWS INI inline comments (`#` / `;`). */
+export function stripIniInlineComment(line: string): string {
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === "#" || ch === ";") return line.slice(0, i).trimEnd();
+  }
+  return line;
+}
+
+/** Collapse whitespace so `[profile  ops]` matches profile `ops`. */
+export function normalizeIniSectionName(name: string): string {
+  return name.trim().replace(/\s+/g, " ");
+}
+
+export function assertValidAwsRegion(region: string): string {
+  if (!AWS_REGION_RE.test(region)) {
+    throw new PlatformLoginError(
+      `Invalid AWS region "${region}". Expected lowercase letters, digits, and hyphens only (e.g. ap-northeast-1).`,
+    );
+  }
+  return region;
+}
+
 /** Read `region` from ~/.aws/config (or AWS_CONFIG_FILE) for the given profile. */
 export function regionFromAwsConfig(profile: string): string | undefined {
   const configPath = process.env.AWS_CONFIG_FILE ?? join(homedir(), ".aws", "config");
   if (!existsSync(configPath)) return undefined;
+
+  try {
+    const size = statSync(configPath).size;
+    if (size > AWS_CONFIG_MAX_BYTES) return undefined;
+  } catch {
+    return undefined;
+  }
 
   let text: string;
   try {
@@ -28,14 +64,15 @@ export function regionFromAwsConfig(profile: string): string | undefined {
     return undefined;
   }
 
-  const wanted = profile === "default" ? "default" : `profile ${profile}`;
+  const wanted =
+    profile === "default" ? "default" : normalizeIniSectionName(`profile ${profile}`);
   let inSection = false;
   for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#") || line.startsWith(";")) continue;
+    const line = stripIniInlineComment(rawLine).trim();
+    if (!line) continue;
     const section = line.match(/^\[(.+)]$/);
     if (section) {
-      inSection = section[1].trim() === wanted;
+      inSection = normalizeIniSectionName(section[1]) === wanted;
       continue;
     }
     if (!inSection) continue;
@@ -56,16 +93,21 @@ export function resolveAwsRegion(opts: {
   awsRegion?: string;
   awsProfile?: string;
 }): string {
-  if (opts.awsRegion && opts.awsRegion.trim()) return opts.awsRegion.trim();
-  if (process.env.AWS_REGION && process.env.AWS_REGION.trim()) {
-    return process.env.AWS_REGION.trim();
+  let region: string | undefined;
+  if (opts.awsRegion && opts.awsRegion.trim()) {
+    region = opts.awsRegion.trim();
+  } else if (process.env.AWS_REGION && process.env.AWS_REGION.trim()) {
+    region = process.env.AWS_REGION.trim();
+  } else {
+    const profile = opts.awsProfile ?? process.env.AWS_PROFILE ?? "default";
+    region = regionFromAwsConfig(profile);
   }
-  const profile = opts.awsProfile ?? process.env.AWS_PROFILE ?? "default";
-  const fromProfile = regionFromAwsConfig(profile);
-  if (fromProfile) return fromProfile;
-  throw new PlatformLoginError(
-    "AWS region is required. Pass --aws-region, set AWS_REGION, or set region in the AWS profile.",
-  );
+  if (!region) {
+    throw new PlatformLoginError(
+      "AWS region is required. Pass --aws-region, set AWS_REGION, or set region in the AWS profile.",
+    );
+  }
+  return assertValidAwsRegion(region);
 }
 
 /** Mask SigV4 Authorization (and session token) for dry-run curl output. */
@@ -91,9 +133,46 @@ function joinPlatformTokenUrl(baseUrl: string): string {
 
 export interface PlatformTokenSuccess {
   accessToken: string;
-  expiresIn: number;
+  expiresIn?: number;
   tokenType: string;
-  user?: { id?: string; role?: string; tenantId?: string | null };
+  user: { id?: string; role: string; tenantId?: string | null; email?: string };
+}
+
+/** Validate POST /auth/platform-token 200 body (L1). */
+export function parsePlatformTokenResponse(raw: unknown): PlatformTokenSuccess {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new PlatformLoginError("Invalid platform-token response: expected a JSON object.");
+  }
+  const data = raw as Record<string, unknown>;
+  if (typeof data.accessToken !== "string" || data.accessToken.length === 0) {
+    throw new PlatformLoginError("Invalid platform-token response: accessToken must be a non-empty string.");
+  }
+  if (data.tokenType !== "Bearer") {
+    throw new PlatformLoginError('Invalid platform-token response: tokenType must be "Bearer".');
+  }
+  const user = data.user;
+  if (user === null || typeof user !== "object" || Array.isArray(user)) {
+    throw new PlatformLoginError("Invalid platform-token response: user object is required.");
+  }
+  const role = (user as Record<string, unknown>).role;
+  if (role !== "platform_admin") {
+    throw new PlatformLoginError(
+      'Invalid platform-token response: user.role must be "platform_admin".',
+    );
+  }
+  let expiresIn: number | undefined;
+  if (data.expiresIn !== undefined && data.expiresIn !== null) {
+    if (typeof data.expiresIn !== "number" || !Number.isFinite(data.expiresIn)) {
+      throw new PlatformLoginError("Invalid platform-token response: expiresIn must be a number when present.");
+    }
+    expiresIn = data.expiresIn;
+  }
+  return {
+    accessToken: data.accessToken,
+    tokenType: "Bearer",
+    user: user as PlatformTokenSuccess["user"],
+    ...(expiresIn !== undefined ? { expiresIn } : {}),
+  };
 }
 
 export interface PlatformLoginRequestOptions {
@@ -110,7 +189,7 @@ export interface PlatformLoginRequestOptions {
   }) => Promise<Record<string, string>>;
 }
 
-async function defaultSignRequest(input: {
+export async function defaultSignRequest(input: {
   url: URL;
   region: string;
   awsProfile?: string;
@@ -138,22 +217,33 @@ async function defaultSignRequest(input: {
     "content-type": "application/json",
   };
 
-  const signed = await signer.sign({
-    method: "POST",
-    protocol: input.url.protocol,
-    hostname: input.url.hostname,
-    ...(input.url.port ? { port: Number(input.url.port) } : {}),
-    path: `${input.url.pathname}${input.url.search}`,
-    headers,
-    body: "",
-  });
-
-  return signed.headers as Record<string, string>;
+  try {
+    const signed = await signer.sign({
+      method: "POST",
+      protocol: input.url.protocol,
+      hostname: input.url.hostname,
+      ...(input.url.port ? { port: Number(input.url.port) } : {}),
+      path: `${input.url.pathname}${input.url.search}`,
+      headers,
+      body: "",
+    });
+    return signed.headers as Record<string, string>;
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new PlatformLoginError(
+      "Failed to obtain AWS credentials for SigV4 signing. " +
+        "If you use AWS IAM Identity Center (SSO), run `aws sso login`" +
+        (input.awsProfile ? ` --profile ${input.awsProfile}` : "") +
+        ". Otherwise check AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, " +
+        "`~/.aws/credentials`, or pass --aws-profile. " +
+        `Detail: ${detail}`,
+    );
+  }
 }
 
 /**
  * SigV4-sign POST /auth/platform-token and return the platform_admin token body.
- * On dry-run, prints a curl with masked Authorization and throws DryRunSignal via caller.
+ * On dry-run, returns a curl with masked Authorization (caller prints it).
  */
 export async function requestPlatformToken(
   opts: PlatformLoginRequestOptions,
@@ -187,28 +277,27 @@ export async function requestPlatformToken(
       method: "POST",
       headers: fetchHeaders,
       body: "",
+      redirect: "error",
     });
   } catch (err) {
-    throw new PlatformLoginError(
-      err instanceof Error ? err.message : String(err),
-    );
+    if (err instanceof PlatformLoginError) throw err;
+    throw new PlatformLoginError(err instanceof Error ? err.message : String(err));
   }
 
   if (response.status === 403) {
-    throw new PlatformLoginError("許可された IAM 呼び出し元ではない", 403);
+    throw new PlatformLoginError(PLATFORM_TOKEN_FORBIDDEN_MESSAGE, 403);
   }
 
   if (!response.ok) {
     const text = await response.text();
-    throw new PlatformLoginError(
-      text || `HTTP ${response.status}`,
-      response.status,
-    );
+    throw new PlatformLoginError(text || `HTTP ${response.status}`, response.status);
   }
 
-  const data = (await response.json()) as PlatformTokenSuccess;
-  if (!data.accessToken) {
-    throw new PlatformLoginError("No accessToken received from server.");
+  let raw: unknown;
+  try {
+    raw = await response.json();
+  } catch {
+    throw new PlatformLoginError("Invalid platform-token response: body is not JSON.");
   }
-  return { data };
+  return { data: parsePlatformTokenResponse(raw) };
 }

@@ -28,6 +28,10 @@ import { addMePoliciesSubcommand } from "./me-policies.js";
 /** 本体 TENANT.NAME_REGEX と同じ。--tenant の name|id 判定に使う (#217)。 */
 const TENANT_SERVICE_NAME_RE = /^[a-z0-9_]+$/;
 
+function formatExpiresInLabel(expiresIn: number | undefined): string {
+  return typeof expiresIn === "number" ? `expiresIn=${expiresIn}` : "expiresIn=(not provided)";
+}
+
 function loginResponseTenantId(data: Record<string, unknown>): string | undefined {
   // LoginResponse の tenantId は top-level ではなく user 配下 (#213 / #217)。
   const user = data.user as { tenantId?: string | null } | undefined;
@@ -575,7 +579,7 @@ function createPlatformLoginCommand(): Command {
         saveConfig(config, globalOpts.profile);
 
         printSuccess(
-          `Platform login successful (platform_admin). Token saved to config. expiresIn=${data.expiresIn}`,
+          `Platform login successful (platform_admin). Token saved to config. ${formatExpiresInLabel(data.expiresIn)}`,
         );
       }),
     );

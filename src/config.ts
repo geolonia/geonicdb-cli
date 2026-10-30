@@ -1,8 +1,11 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { splitContextValues } from "./context.js";
 import type { GdbConfig, GdbConfigFile } from "./types.js";
+
+/** Owner-only read/write — config may hold tokens / client secrets (#243). */
+export const CONFIG_FILE_MODE = 0o600;
 
 /**
  * NGSILD-Tenant / Fiware-Service value shape.
@@ -91,7 +94,13 @@ export function loadConfigFile(): GdbConfigFile {
 
 export function saveConfigFile(configFile: GdbConfigFile): void {
   ensureConfigDir();
-  writeFileSync(getConfigFile(), JSON.stringify(configFile, null, 2) + "\n", "utf-8");
+  const path = getConfigFile();
+  // mode applies on create; chmod covers in-place rewrites of an existing file.
+  writeFileSync(path, JSON.stringify(configFile, null, 2) + "\n", {
+    encoding: "utf-8",
+    mode: CONFIG_FILE_MODE,
+  });
+  chmodSync(path, CONFIG_FILE_MODE);
 }
 
 export function loadConfig(profileName?: string): GdbConfig {

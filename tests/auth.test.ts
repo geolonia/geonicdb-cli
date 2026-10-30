@@ -69,6 +69,8 @@ vi.mock("../src/platform-login.js", () => ({
       this.status = status;
     }
   },
+  PLATFORM_TOKEN_FORBIDDEN_MESSAGE:
+    "許可された IAM 呼び出し元ではない（署名・region・資格情報の不正でも 403 になりうる）",
   resolveAwsRegion: vi.fn(),
   requestPlatformToken: vi.fn(),
 }));
@@ -1617,15 +1619,32 @@ describe("auth commands", () => {
     });
 
     it("prints Japanese message on 403 PlatformLoginError", async () => {
+      const msg =
+        "許可された IAM 呼び出し元ではない（署名・region・資格情報の不正でも 403 になりうる）";
       vi.mocked(resolveAwsRegion).mockReturnValue("ap-northeast-1");
-      vi.mocked(requestPlatformToken).mockRejectedValue(
-        new PlatformLoginError("許可された IAM 呼び出し元ではない", 403),
-      );
+      vi.mocked(requestPlatformToken).mockRejectedValue(new PlatformLoginError(msg, 403));
       const program = makeProgram();
       await expect(
         runCommand(program, ["auth", "platform-login", "--aws-region", "ap-northeast-1"]),
       ).rejects.toThrow("process.exit");
-      expect(printError).toHaveBeenCalledWith("許可された IAM 呼び出し元ではない");
+      expect(printError).toHaveBeenCalledWith(msg);
+    });
+
+    it("shows expiresIn=(not provided) when server omits expiresIn (L1)", async () => {
+      vi.mocked(resolveAwsRegion).mockReturnValue("ap-northeast-1");
+      vi.mocked(requestPlatformToken).mockResolvedValue({
+        data: {
+          accessToken: "platform-jwt",
+          tokenType: "Bearer",
+          user: { role: "platform_admin" },
+        },
+      });
+      vi.mocked(loadConfig).mockReturnValue({} as never);
+      const program = makeProgram();
+      await runCommand(program, ["auth", "platform-login", "--aws-region", "ap-northeast-1"]);
+      expect(printSuccess).toHaveBeenCalledWith(
+        expect.stringContaining("expiresIn=(not provided)"),
+      );
     });
 
     it("prints dry-run curl without saving config", async () => {

@@ -413,12 +413,25 @@ describe("helpers", () => {
       const wrapped = withErrorHandler(fn);
       await expect(wrapped()).rejects.toThrow("process.exit");
       expect(printError).toHaveBeenCalledWith(
-        expect.stringContaining("Authentication failed"),
+        "Authentication failed. Please re-authenticate (e.g., `geonic auth login` or check your API key).",
       );
-      expect(printError).toHaveBeenCalledWith(
+      expect(printError).not.toHaveBeenCalledWith(
         expect.stringContaining("geonic auth platform-login"),
       );
       expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    it("appends platform-login hint on 401 only when saved token is platform_admin (L6)", async () => {
+      const payload = Buffer.from(
+        JSON.stringify({ role: "platform_admin", exp: Math.floor(Date.now() / 1000) + 60 }),
+      ).toString("base64url");
+      saveConfig({ token: `hdr.${payload}.sig` });
+      const fn = vi.fn().mockRejectedValue(new GdbClientError("Unauthorized", 401));
+      const wrapped = withErrorHandler(fn);
+      await expect(wrapped()).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("geonic auth platform-login"),
+      );
     });
 
     it("prints error message and exits on generic Error", async () => {
