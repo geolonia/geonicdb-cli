@@ -48,6 +48,9 @@
     "access": "public"
   },
   "dependencies": {
+    "@aws-crypto/sha256-js": "^5.2.0",
+    "@aws-sdk/credential-providers": "^3.1160.0",
+    "@smithy/signature-v4": "^5.7.5",
     "chalk": "^5.3.0",
     "commander": "^13.1.0",
     "json5": "^2.2.3"
