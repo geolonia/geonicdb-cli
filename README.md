@@ -535,6 +535,7 @@ After geolonia/geonicdb#2290 (ETSI GS CIM 009 clause 5.7.4.4), a **too-wide** PO
 |---|---|
 | `custom-data-models list` | List all models |
 | `custom-data-models get <id>` | Get a model by ID |
+| `custom-data-models missing-types` | List live entity types with no active data model |
 | `custom-data-models create [json]` | Create a new model |
 | `custom-data-models update <id> [json]` | Update a model |
 | `custom-data-models delete <id>` | Delete a model |

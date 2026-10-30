@@ -67,6 +67,15 @@ Feature: Custom data model management
     When I run `geonic entities create '{"id":"urn:ngsi-ld:UcReservation:003","type":"UcReservation","room":{"type":"Property","value":"R2"},"date":{"type":"Property","value":"2026-07-15"}}' --service e2e_test`
     Then the exit code should be 0
 
+  @models-missing-types @issue-244
+  Scenario: List types with no active data model (#244)
+    Given I am logged in
+    When I run `geonic models missing-types --service e2e_test`
+    Then the exit code should be 0
+    And the output should contain "requireDataModel"
+    And the output should contain "types"
+    And the output should contain "maxTypes"
+
   @models-apply
   Scenario: Apply creates then reports unchanged or updated (#238)
     # valueType はサーバー正規化後の lowercase を使う。PascalCase の Number だと

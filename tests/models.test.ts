@@ -67,6 +67,97 @@ describe("models (custom-data-models) command", () => {
     });
   });
 
+  describe("missing-types (#244)", () => {
+    it("calls rawRequest GET /custom-data-models/missing-types without params", async () => {
+      const body = {
+        requireDataModel: false,
+        types: [{ type: "OrphanSensor", reason: "missing" }],
+        scopeLimited: false,
+        truncated: false,
+        maxTypes: 1000,
+      };
+      mockClient.rawRequest.mockResolvedValue(mockResponse(body));
+      await runCommand(program, ["custom-data-models", "missing-types"]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith(
+        "GET",
+        "/custom-data-models/missing-types",
+      );
+      expect(mockClient.rawRequest).toHaveBeenCalledTimes(1);
+      // near-miss: must not use fetchPaginatedList-style params (no limit/offset)
+      expect(mockClient.rawRequest.mock.calls[0]).toHaveLength(2);
+      expect(outputResponse).toHaveBeenCalledWith(expect.anything(), "json");
+    });
+
+    it("works with models alias", async () => {
+      mockClient.rawRequest.mockResolvedValue(
+        mockResponse({
+          requireDataModel: true,
+          types: [{ type: "InactiveType", reason: "inactive" }],
+          scopeLimited: true,
+          truncated: false,
+          maxTypes: 1000,
+        }),
+      );
+      await runCommand(program, ["models", "missing-types"]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith(
+        "GET",
+        "/custom-data-models/missing-types",
+      );
+    });
+
+    it("near-miss: underscore form missing_types is not registered (hyphen only)", async () => {
+      // Commander must match the exact static path segment "missing-types".
+      // A near-miss name must not silently route to the new endpoint.
+      await expect(runCommand(program, ["models", "missing_types"])).rejects.toThrow();
+      expect(mockClient.rawRequest).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("create/update help — typeIri / contextUrl (#244)", () => {
+    it("create help mentions typeIri and contextUrl (passthrough fields)", () => {
+      const create = program.commands
+        .find((c) => c.name() === "custom-data-models")
+        ?.commands.find((c) => c.name() === "create");
+      const help = create?.description() ?? "";
+      expect(help).toContain("typeIri");
+      expect(help).toContain("contextUrl");
+    });
+
+    it("update help mentions typeIri and contextUrl constraints", () => {
+      const update = program.commands
+        .find((c) => c.name() === "custom-data-models")
+        ?.commands.find((c) => c.name() === "update");
+      const help = update?.description() ?? "";
+      expect(help).toContain("typeIri");
+      expect(help).toContain("contextUrl");
+    });
+
+    it("near-miss: typeIri in create body is passed through unchanged (no CLI stripping)", async () => {
+      const modelData = {
+        type: "RoadRestriction",
+        domain: "transport",
+        description: "typed IRI",
+        typeIri: "https://datamodels.jp/ns/transportation/RoadRestriction",
+        propertyDetails: {
+          name: { ngsiType: "Property", valueType: "string", example: "x" },
+        },
+      };
+      vi.mocked(parseJsonInput).mockResolvedValue(modelData);
+      mockClient.rawRequest.mockResolvedValue(mockResponse({ type: "RoadRestriction" }, 201));
+
+      await runCommand(program, ["models", "create", JSON.stringify(modelData)]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("POST", "/custom-data-models", {
+        body: modelData,
+      });
+      expect(
+        (mockClient.rawRequest.mock.calls[0][2] as { body: Record<string, unknown> }).body.typeIri,
+      ).toBe("https://datamodels.jp/ns/transportation/RoadRestriction");
+    });
+  });
+
   describe("create", () => {
     it("parses JSON and posts via rawRequest", async () => {
       const modelData = { name: "TestModel", schema: {} };
