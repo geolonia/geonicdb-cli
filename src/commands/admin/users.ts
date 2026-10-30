@@ -196,7 +196,7 @@ export function registerUsersCommand(parent: Command): void {
       "Update a user\n\n" +
         "JSON payload: only specified fields are updated.\n" +
         '  e.g. {"role": "tenant_admin"}\n\n' +
-        "isActive cannot be changed via update; use activate / deactivate.",
+        "isActive cannot be changed via PATCH /admin/users/{userId}; use POST /admin/users/{userId}/activate or POST /admin/users/{userId}/deactivate",
     )
     .action(
       withErrorHandler(

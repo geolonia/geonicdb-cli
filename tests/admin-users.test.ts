@@ -274,9 +274,10 @@ describe("admin users commands", () => {
         .commands.find((c) => c.name() === "users")!
         .commands.find((c) => c.name() === "update")!;
       const desc = updateCmd.description();
-      expect(desc).toMatch(/isActive/i);
-      expect(desc).toMatch(/activate/i);
-      expect(desc).toMatch(/deactivate/i);
+      // DESIGN: wording must track geonicdb user.schemas.ts:96
+      expect(desc).toContain(
+        "isActive cannot be changed via PATCH /admin/users/{userId}; use POST /admin/users/{userId}/activate or POST /admin/users/{userId}/deactivate",
+      );
       expect(desc).toContain('"role": "tenant_admin"');
       expect(desc).not.toContain('"role": "admin"');
 
