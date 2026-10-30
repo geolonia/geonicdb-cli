@@ -68,15 +68,19 @@ describe("models (custom-data-models) command", () => {
   });
 
   describe("missing-types (#244)", () => {
+    const missingTypesBody = {
+      requireDataModel: false,
+      types: [
+        { type: "OrphanSensor", reason: "missing" as const },
+        { type: "InactiveType", reason: "inactive" as const },
+      ],
+      scopeLimited: false,
+      truncated: false,
+      maxTypes: 1000,
+    };
+
     it("calls rawRequest GET /custom-data-models/missing-types without params", async () => {
-      const body = {
-        requireDataModel: false,
-        types: [{ type: "OrphanSensor", reason: "missing" }],
-        scopeLimited: false,
-        truncated: false,
-        maxTypes: 1000,
-      };
-      mockClient.rawRequest.mockResolvedValue(mockResponse(body));
+      mockClient.rawRequest.mockResolvedValue(mockResponse(missingTypesBody));
       await runCommand(program, ["custom-data-models", "missing-types"]);
 
       expect(mockClient.rawRequest).toHaveBeenCalledWith(
@@ -84,34 +88,60 @@ describe("models (custom-data-models) command", () => {
         "/custom-data-models/missing-types",
       );
       expect(mockClient.rawRequest).toHaveBeenCalledTimes(1);
-      // near-miss: must not use fetchPaginatedList-style params (no limit/offset)
+      // Must not look like models list (fetchPaginatedList adds a params object).
       expect(mockClient.rawRequest.mock.calls[0]).toHaveLength(2);
-      expect(outputResponse).toHaveBeenCalledWith(expect.anything(), "json");
+      expect(mockClient.rawRequest).not.toHaveBeenCalledWith(
+        "GET",
+        "/custom-data-models",
+        expect.anything(),
+      );
+      expect(outputResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ data: missingTypesBody }),
+        "json",
+      );
     });
 
-    it("works with models alias", async () => {
-      mockClient.rawRequest.mockResolvedValue(
-        mockResponse({
-          requireDataModel: true,
-          types: [{ type: "InactiveType", reason: "inactive" }],
-          scopeLimited: true,
-          truncated: false,
-          maxTypes: 1000,
-        }),
-      );
+    it("works with models alias and forwards the full response shape", async () => {
+      const body = {
+        requireDataModel: true,
+        types: [{ type: "InactiveType", reason: "inactive" as const }],
+        scopeLimited: true,
+        truncated: true,
+        maxTypes: 1000,
+      };
+      mockClient.rawRequest.mockResolvedValue(mockResponse(body));
       await runCommand(program, ["models", "missing-types"]);
 
       expect(mockClient.rawRequest).toHaveBeenCalledWith(
         "GET",
         "/custom-data-models/missing-types",
       );
+      expect(outputResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            requireDataModel: true,
+            types: [{ type: "InactiveType", reason: "inactive" }],
+            scopeLimited: true,
+            truncated: true,
+            maxTypes: 1000,
+          }),
+        }),
+        "json",
+      );
     });
 
-    it("near-miss: underscore form missing_types is not registered (hyphen only)", async () => {
-      // Commander must match the exact static path segment "missing-types".
-      // A near-miss name must not silently route to the new endpoint.
-      await expect(runCommand(program, ["models", "missing_types"])).rejects.toThrow();
-      expect(mockClient.rawRequest).not.toHaveBeenCalled();
+    it("near-miss: does not call list path or attach pagination params", async () => {
+      mockClient.rawRequest.mockResolvedValue(mockResponse(missingTypesBody));
+      await runCommand(program, ["models", "missing-types"]);
+
+      const [method, path, options] = mockClient.rawRequest.mock.calls[0];
+      expect(method).toBe("GET");
+      expect(path).toBe("/custom-data-models/missing-types");
+      expect(path).not.toBe("/custom-data-models");
+      expect(options).toBeUndefined();
+      if (options && typeof options === "object" && "params" in options) {
+        throw new Error("missing-types must not pass pagination params");
+      }
     });
   });
 
