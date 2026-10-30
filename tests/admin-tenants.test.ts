@@ -54,6 +54,7 @@ vi.mock("../src/commands/help.js", () => ({
 import { createClient, getFormat, outputResponse } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
 import { printSuccess } from "../src/output.js";
+import { DryRunSignal, GdbClient } from "../src/client.js";
 import { registerTenantsCommand } from "../src/commands/admin/tenants.js";
 
 describe("admin tenants commands", () => {
@@ -427,6 +428,182 @@ describe("admin tenants commands", () => {
       await runCommand(program, ["admin", "tenants", "deactivate", "t1"]);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants/t1/deactivate");
       expect(printSuccess).toHaveBeenCalledWith("Tenant deactivated.");
+    });
+  });
+
+  describe("tenants users", () => {
+    it("calls GET /admin/tenants/{tenantId}/users", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse([{ userId: "u1", role: "user" }]));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "tenants", "users", "t1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/tenants/t1/users", {
+        params: {},
+      });
+      expect(outputResponse).toHaveBeenCalled();
+    });
+
+    it("encodes special characters in tenant-id", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "tenants", "users", "urn:t:1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/tenants/urn%3At%3A1/users", {
+        params: {},
+      });
+    });
+
+    it("forwards --limit and --offset", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "users",
+        "t1",
+        "--limit",
+        "10",
+        "--offset",
+        "5",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/tenants/t1/users", {
+        params: { limit: "10", offset: "5" },
+      });
+    });
+  });
+
+  describe("tenants add-user", () => {
+    it("PUTs without body when --role is omitted (server defaults to user)", async () => {
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ userId: "u1", tenantId: "t1", role: "user" }),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["admin", "tenants", "add-user", "t1", "u1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith(
+        "PUT",
+        "/admin/tenants/t1/users/u1",
+        undefined,
+      );
+      expect(outputResponse).toHaveBeenCalled();
+      expect(printSuccess).toHaveBeenCalledWith(
+        "User added to tenant (or membership role updated).",
+      );
+    });
+
+    it("PUTs { role } when --role is set", async () => {
+      client.rawRequest.mockResolvedValue(
+        mockResponse({ userId: "u1", tenantId: "t1", role: "tenant_admin" }),
+      );
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "add-user",
+        "t1",
+        "u1",
+        "--role",
+        "tenant_admin",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PUT", "/admin/tenants/t1/users/u1", {
+        body: { role: "tenant_admin" },
+      });
+    });
+
+    it("encodes both tenant-id and user-id", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({}));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "tenants", "add-user", "urn:t:1", "urn:u:2"]);
+      expect(client.rawRequest).toHaveBeenCalledWith(
+        "PUT",
+        "/admin/tenants/urn%3At%3A1/users/urn%3Au%3A2",
+        undefined,
+      );
+    });
+
+    // Near-miss: principal roles accepted by users create must NOT pass as membership roles.
+    it("rejects deployment_admin / super_admin / platform_admin as --role", async () => {
+      const program = makeProgram();
+      for (const bad of ["deployment_admin", "super_admin", "platform_admin", "admin", ""]) {
+        await expect(
+          runCommand(program, ["admin", "tenants", "add-user", "t1", "u1", "--role", bad]),
+        ).rejects.toThrow(/--role must be one of: tenant_admin, user/);
+      }
+      expect(client.rawRequest).not.toHaveBeenCalled();
+    });
+
+    it("accepts user as an explicit --role", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({ role: "user" }));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "tenants", "add-user", "t1", "u1", "--role", "user"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PUT", "/admin/tenants/t1/users/u1", {
+        body: { role: "user" },
+      });
+    });
+
+    it("--dry-run prints PUT curl and does not call fetch or print success", async () => {
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      vi.mocked(createClient).mockReturnValue(
+        new GdbClient({ baseUrl: "http://example.test", dryRun: true }) as never,
+      );
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "admin",
+          "tenants",
+          "add-user",
+          "t1",
+          "u1",
+          "--role",
+          "tenant_admin",
+          "--dry-run",
+        ]),
+      ).rejects.toThrow(DryRunSignal);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(printSuccess).not.toHaveBeenCalled();
+      const curl = String(logSpy.mock.calls[0]?.[0] ?? "");
+      expect(curl).toContain("-X PUT");
+      expect(curl).toContain("/admin/tenants/t1/users/u1");
+      expect(curl).toContain('"role":"tenant_admin"');
+      logSpy.mockRestore();
+      fetchSpy.mockRestore();
+    });
+  });
+
+  describe("tenants remove-user", () => {
+    it("calls DELETE and prints success", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse(undefined, 204));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "tenants", "remove-user", "t1", "u1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("DELETE", "/admin/tenants/t1/users/u1");
+      expect(printSuccess).toHaveBeenCalledWith("User removed from tenant.");
+    });
+
+    it("encodes both tenant-id and user-id", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse(undefined, 204));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "tenants", "remove-user", "urn:t:1", "urn:u:2"]);
+      expect(client.rawRequest).toHaveBeenCalledWith(
+        "DELETE",
+        "/admin/tenants/urn%3At%3A1/users/urn%3Au%3A2",
+      );
+    });
+
+    it("--dry-run prints DELETE curl and does not call fetch or print success", async () => {
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      vi.mocked(createClient).mockReturnValue(
+        new GdbClient({ baseUrl: "http://example.test", dryRun: true }) as never,
+      );
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["admin", "tenants", "remove-user", "t1", "u1", "--dry-run"]),
+      ).rejects.toThrow(DryRunSignal);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(printSuccess).not.toHaveBeenCalled();
+      const curl = String(logSpy.mock.calls[0]?.[0] ?? "");
+      expect(curl).toContain("-X DELETE");
+      expect(curl).toContain("/admin/tenants/t1/users/u1");
+      logSpy.mockRestore();
+      fetchSpy.mockRestore();
     });
   });
 });

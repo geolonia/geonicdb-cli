@@ -198,6 +198,24 @@ describe("entities command", () => {
       expect(mockClient.get).toHaveBeenCalledWith("/entities", expect.objectContaining({ scopeQ: "/restaurants/#" }));
     });
 
+    // #246 / geonicdb#3524: scopeQ AND requires parentheses; levels are letter-first.
+    it("documents scopeQ AND parentheses and letter-first levels in --scope-q help (#246)", () => {
+      const listCmd = program.commands
+        .find((c) => c.name() === "entities")!
+        .commands.find((c) => c.name() === "list")!;
+      const scopeQ = listCmd.options.find((o) => o.long === "--scope-q");
+      expect(scopeQ).toBeDefined();
+      const desc = scopeQ!.description;
+      expect(desc).toContain("parentheses required");
+      expect(desc).toContain("(/A;/B)");
+      expect(desc).toMatch(/start with a letter/i);
+      expect(desc).toContain("/Madrid/1st");
+      // near-miss: bare AND without parens must not be shown as the legal form
+      expect(desc).not.toMatch(/(?<!\()\/A;\/B(?!\))/);
+      // near-miss: digit-leading level must only appear as a rejected example
+      expect(desc).toMatch(/\/Madrid\/1st.*reject/i);
+    });
+
     // #214: selector-less list is a too-wide 400 unless ?local=true.
     it("passes --local as local=true query param (#214)", async () => {
       mockClient.get.mockResolvedValue(mockResponse([]));
@@ -547,6 +565,22 @@ describe("entities command", () => {
       await runCommand(program, ["entities", "purge", "--local", "--yes"]);
 
       expect(mockClient.delete).toHaveBeenCalledWith("/entities", { local: "true" });
+    });
+
+    // #246 / geonicdb#3524: same scopeQ contract as entities list (same-file twin).
+    it("documents scopeQ AND parentheses and letter-first levels in purge --scope-q help (#246)", () => {
+      const purgeCmd = program.commands
+        .find((c) => c.name() === "entities")!
+        .commands.find((c) => c.name() === "purge")!;
+      const scopeQ = purgeCmd.options.find((o) => o.long === "--scope-q");
+      expect(scopeQ).toBeDefined();
+      const desc = scopeQ!.description;
+      expect(desc).toContain("parentheses required");
+      expect(desc).toContain("(/A;/B)");
+      expect(desc).toMatch(/start with a letter/i);
+      expect(desc).toContain("/Madrid/1st");
+      expect(desc).not.toMatch(/(?<!\()\/A;\/B(?!\))/);
+      expect(desc).toMatch(/\/Madrid\/1st.*reject/i);
     });
   });
 });

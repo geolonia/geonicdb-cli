@@ -344,7 +344,7 @@ geonic me oauth-clients update <client-id> --policy-id my-readonly
 
 `--local` (`?local=true`) limits the request to local scope and exempts the too-wide query check, so a selector-less `geonic entities list --local` is allowed.
 
-`--scope-q` filters by NGSI-LD scope (e.g. `/restaurants/#`, `/Japan/Tokyo`, `/Japan/+`). Operators follow ETSI GS CIM 009 clause 4.19: `;` is **AND**, `,`/`|` is **OR** — `;` is *not* a union.
+`--scope-q` filters by NGSI-LD scope (e.g. `/restaurants/#`, `/Japan/Tokyo`, `/Japan/+`). Operators follow ETSI GS CIM 009 clause 4.19: `;` is **AND** (parentheses required, e.g. `(/Japan/Tokyo;/IoT)`), `,`/`|` is **OR** — `;` is *not* a union. Each scope level must start with a letter (digit-leading levels like `/Madrid/1st` are rejected; `.` and `-` remain allowed after the first character).
 
 `--georel` uses NGSI-LD canonical syntax, e.g. `--georel 'near;maxDistance==1000'` (an NGSIv2-style `maxDistance:1000` is also accepted by the server, but `==` is the ETSI-compliant form).
 
@@ -599,6 +599,9 @@ Hint: inspect the model's unique constraints with `geonic models get <model-id>`
 | `admin tenants delete <id>` | Delete a tenant |
 | `admin tenants activate <id>` | Activate a tenant |
 | `admin tenants deactivate <id>` | Deactivate a tenant |
+| `admin tenants users <tenant-id>` | List members of a tenant |
+| `admin tenants add-user <tenant-id> <user-id>` | Add an existing user to a tenant (`--role tenant_admin\|user`) |
+| `admin tenants remove-user <tenant-id> <user-id>` | Remove a user from a tenant |
 
 `admin tenants create` / `admin tenants update` support `--allowed-origins <origins>` for tenant-scoped CORS control. The flag maps to `settings.allowedOrigins`:
 
@@ -633,13 +636,14 @@ When combined with a JSON payload, the flag merges into `settings` without dropp
 |---|---|
 | `admin users list` | List all users |
 | `admin users get <id>` | Get a user by ID |
-| `admin users create [json]` | Create a new user (add `--force-reset` to issue a temporary password and force a first-login change) |
+| `admin users create [json]` | Create a new user (add `--force-reset` to issue a temporary password and force a first-login change). To add an *existing* user to another tenant, use `admin tenants add-user` |
 | `admin users update <id> [json]` | Update a user |
 | `admin users delete <id>` | Delete a user |
 | `admin users activate <id>` | Activate a user |
 | `admin users deactivate <id>` | Deactivate a user |
 | `admin users unlock <id>` | Unlock a user |
 | `admin users reset-password <id>` | Issue a one-time temporary password and force a change on next login |
+| `admin users tenants <user-id>` | List tenants a user belongs to |
 
 #### admin policies
 
