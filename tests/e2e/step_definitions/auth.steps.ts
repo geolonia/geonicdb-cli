@@ -26,6 +26,18 @@ Given("I have invalid authentication tokens", function (this: GdbWorld) {
   });
 });
 
+// Static keys only for local SigV4 signing (API Gateway is absent; server returns 403).
+Given("I have static AWS credentials for SigV4 signing", function (this: GdbWorld) {
+  this.env.AWS_ACCESS_KEY_ID = "AKIAIOSFODNN7EXAMPLE";
+  this.env.AWS_SECRET_ACCESS_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";
+  // Prevent ambient credentials / SSO from hijacking the signer in CI/dev machines.
+  delete this.env.AWS_PROFILE;
+  delete this.env.AWS_SESSION_TOKEN;
+  // fromNodeProviderChain also reads process.env; world.run spreads process.env first,
+  // then this.env — so these keys win. Clear profile selection via empty AWS_PROFILE.
+  this.env.AWS_PROFILE = "";
+});
+
 When("I run login without credentials", async function (this: GdbWorld) {
   await this.run(["login"]);
 });
