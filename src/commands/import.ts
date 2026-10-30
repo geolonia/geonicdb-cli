@@ -88,7 +88,13 @@ export function registerImportCommand(program: Command): void {
       "Bulk-load NGSI-LD entities past the 29s API Gateway limit by chunking the input\n" +
         "into batch-upsert requests with retry, resume, and per-entity error reporting.\n\n" +
         "Input: an NDJSON file (one entity per line, default) or a JSON array (--input-format json).\n" +
-        "Use '-' or a pipe for stdin (resume is not available for stdin).",
+        "Use '-' or a pipe for stdin (resume is not available for stdin). Piped data that arrives\n" +
+        "late is fine — stdin is read as a stream (not readFileSync(0)), so producers that start\n" +
+        "after a short delay do not fail with EAGAIN.\n\n" +
+        "CSV / GeoJSON are not parsed here. Convert to normalized NGSI-LD first, then import.\n" +
+        "For datamodels.jp catalog models, use `datamodels convert … --normalized` (default\n" +
+        "convert output is key-values JSON, which batch upsert rejects) and pipe or file-feed\n" +
+        "the JSON array with `--input-format json`. See README «CSV and other tabular formats».",
     )
     .option("--input-format <fmt>", "Input format: ndjson (default) or json", parseInputFormat, "ndjson")
     .option("--mode <mode>", "upsert (merge, default) or replace", parseMode, "upsert")
@@ -200,6 +206,10 @@ export function registerImportCommand(program: Command): void {
       command: "geonic import entities.ndjson",
     },
     {
+      description: "Load a JSON array",
+      command: "geonic import entities.json --input-format json",
+    },
+    {
       description: "Resumable load with error capture",
       command:
         "geonic import entities.ndjson --resume .import.ckpt --errors-out failed.ndjson --errors-log errors.log",
@@ -211,6 +221,11 @@ export function registerImportCommand(program: Command): void {
     {
       description: "Preview the plan without sending",
       command: "geonic import entities.ndjson --dry-run",
+    },
+    {
+      description: "CSV via datamodels convert (normalized JSON array on stdout)",
+      command:
+        "npx @geolonia/datamodels convert disaster/EvacuationSite jichitai-opendata-site sites.csv --normalized | geonic import --input-format json",
     },
   ]);
 }

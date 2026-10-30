@@ -417,6 +417,9 @@ can resume after an interruption.
 # Load an NDJSON file (one entity per line)
 geonic import entities.ndjson
 
+# Load a JSON array (pretty-printed or compact)
+geonic import entities.json --input-format json
+
 # Resumable load with error capture
 geonic import entities.ndjson \
   --resume .import.ckpt \
@@ -428,7 +431,46 @@ geonic import failed.ndjson
 
 # Preview the plan without sending anything
 geonic import entities.ndjson --dry-run
+
+# Pipe stdin (resume is not available). Delayed producers are fine — import
+# reads stdin as a stream (#236), so `(sleep 1; cat entities.json) | geonic import …`
+# does not fail with EAGAIN.
+cat entities.ndjson | geonic import --dry-run
+cat entities.json | geonic import --input-format json --dry-run
 ```
+
+#### CSV and other tabular formats
+
+`import` does **not** parse CSV (or GeoJSON). Convert to NGSI-LD entities first, then
+feed NDJSON or a JSON array into `import`.
+
+For catalog models on [datamodels.jp](https://datamodels.jp), use
+[`datamodels convert`](https://datamodels.jp/en/toolkit/convert) from
+[`@geolonia/datamodels`](https://www.npmjs.com/package/@geolonia/datamodels)
+(mapping file, your own mapping, or the model's CSV template). Facts that matter for the pipe:
+
+- Default `convert` output is **key-values** JSON. `import` / batch upsert reject
+  `options=keyValues`, so pass **`--normalized`** (Property / Relationship / GeoProperty form).
+- `convert` writes a **JSON array** (pretty-printed) to stdout or `--out file.json` —
+  not NDJSON. Use **`--input-format json`** on `geonic import`.
+- Stdin pipes work; data that arrives after a short delay is fine (see #236).
+
+```bash
+# Pipe: CSV → normalized NGSI-LD JSON array → import
+npx @geolonia/datamodels convert \
+  disaster/EvacuationSite jichitai-opendata-site sites.csv \
+  --normalized \
+  | geonic import --input-format json
+
+# Or write a file, then import (resume-capable)
+npx @geolonia/datamodels convert \
+  disaster/EvacuationSite jichitai-opendata-site sites.csv \
+  --normalized --out sites.json
+geonic import sites.json --input-format json --resume .import.ckpt
+```
+
+Mapping choices and CSV tutorials live on the convert page above; this CLI only
+documents the hand-off into `geonic import`.
 
 | Option | Description |
 |---|---|

@@ -8,6 +8,8 @@
 ## [Unreleased]
 
 ### 2026-10-31
+- **Docs**: `geonic import` の README / help に、CSV 等を CLI では読まず `datamodels convert … --normalized | geonic import --input-format json` で渡す手順を追記した。convert 既定は key-values・出力は JSON 配列である点と、遅延 stdin でも pipe できる前提（#236）を明記。GeoJSON の `--input-format geojson` は本 PR では実装しない (Refs #240)
+- **Fix**: パイプで渡した JSON を stream として読むように修正 (#236, thanks @tahodev)
 - **Feat**: `admin deployments create` / `update` に `--write-mode <normal|read-only>` を追加した（本体 geolonia/geonicdb#3412 / Refs #3285）。DB 移行・リストアの最終同期前に書き込みを止める用途。不正値は `InvalidArgumentError`。未指定時は body に `writeMode` を載せない。`update` help に自ホストを**新たに** `read-only` にする PATCH の 409（既に `read-only` の行への再 PATCH では出ない）、`normal` への戻しは常に許可、反映上限約 6 分を記載。README に移行手順の最小例を追加 (closes #260) (#261)
 - **Feat**: `admin tenants create` / `update` に `--cadde-enabled <true|false>` と `--require-data-model <true|false>` を追加し、`settings.caddeEnabled` / `settings.requireDataModel` を専用フラグで設定できるようにした (closes #248, 本体 geolonia/geonicdb#3580 / #3478)。真偽値はリテラル `true` / `false` のみ受理 (#259)
 - **Feat**: `models missing-types` を追加した。`GET /custom-data-models/missing-types`（本体 geolonia/geonicdb#3477）を呼び、有効なデータモデルが無い生存エンティティ型を返す。ページネーション無し。`models create`/`update` の help に `typeIri` / `contextUrl` を追記した (closes #244) (#258)
