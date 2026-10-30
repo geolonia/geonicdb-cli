@@ -344,7 +344,7 @@ geonic me oauth-clients update <client-id> --policy-id my-readonly
 
 `--local` (`?local=true`) limits the request to local scope and exempts the too-wide query check, so a selector-less `geonic entities list --local` is allowed.
 
-`--scope-q` filters by NGSI-LD scope (e.g. `/restaurants/#`, `/Japan/Tokyo`, `/Japan/+`). Operators follow ETSI GS CIM 009 clause 4.19: `;` is **AND**, `,`/`|` is **OR** — `;` is *not* a union.
+`--scope-q` filters by NGSI-LD scope (e.g. `/restaurants/#`, `/Japan/Tokyo`, `/Japan/+`). Operators follow ETSI GS CIM 009 clause 4.19: `;` is **AND** (parentheses required, e.g. `(/Japan/Tokyo;/IoT)`), `,`/`|` is **OR** — `;` is *not* a union. Each scope level must start with a letter (digit-leading levels like `/Madrid/1st` are rejected; `.` and `-` remain allowed after the first character).
 
 `--georel` uses NGSI-LD canonical syntax, e.g. `--georel 'near;maxDistance==1000'` (an NGSIv2-style `maxDistance:1000` is also accepted by the server, but `==` is the ETSI-compliant form).
 

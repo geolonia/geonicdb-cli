@@ -8,6 +8,7 @@
 ## [Unreleased]
 
 ### 2026-10-31
+- **Docs**: `entities list`/`entities purge` の `--scope-q` ヘルプと README を本体 geolonia/geonicdb#3524 に揃え、AND (`;`) は括弧必須（例: `(/A;/B)`）、レベルは文字始まり必須（`/Madrid/1st` は拒否）と明記した (closes #246)
 - **Docs**: `admin users create` の help に割り当て可能ロール `deployment_admin` を列挙し、`super_admin` を非推奨と明記した (closes #242, 本体 geolonia/geonicdb#3494)。同ファイルの `users update` に `isActive` は `activate`/`deactivate` を使う旨を追記し、例の偽ロール `admin` を `tenant_admin` に直した (本体 #3516) (#250)
 
 ## [0.26.1] - 2026-09-15
