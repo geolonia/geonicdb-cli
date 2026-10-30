@@ -19,7 +19,7 @@
 - **Docs**: `admin users create` の help に割り当て可能ロール `deployment_admin` を列挙し、`super_admin` を非推奨と明記した (closes #242, 本体 geolonia/geonicdb#3494)。同ファイルの `users update` に `isActive` は `activate`/`deactivate` を使う旨を追記し、例の偽ロール `admin` を `tenant_admin` に直した (本体 #3516) (#250)
 
 ### 2026-10-30
-- **Fix**: パイプで渡した JSON を `readFileSync(0)` ではなく stream として読むように修正し、データ未到着時の stdin EAGAIN を解消 (#236, Refs #235, thanks @tahodev) (#262)
+- **Fix**: パイプで渡した JSON を `readFileSync(0)` ではなく stream として読むように修正し、データ未到着時の stdin EAGAIN を解消 (Refs #235, thanks @tahodev) (#236)
 
 ## [0.26.1] - 2026-09-15
 

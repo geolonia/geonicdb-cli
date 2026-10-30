@@ -226,7 +226,7 @@ export function registerImportCommand(program: Command): void {
     {
       description: "CSV via datamodels convert (normalized JSON array on stdout)",
       command:
-        "npx @geolonia/datamodels convert disaster/EvacuationSite jichitai-opendata-site sites.csv --normalized | geonic import --input-format json",
+        "npx @geolonia/datamodels@0.3.19 convert disaster/EvacuationSite jichitai-opendata-site sites.csv --normalized | geonic import --input-format json",
     },
   ]);
 }

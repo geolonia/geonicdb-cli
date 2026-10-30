@@ -466,13 +466,13 @@ for the pipe:
 
 ```bash
 # Pipe: CSV → normalized NGSI-LD JSON array → import (Node.js >= 24 for datamodels)
-npx @geolonia/datamodels convert \
+npx @geolonia/datamodels@0.3.19 convert \
   disaster/EvacuationSite jichitai-opendata-site sites.csv \
   --normalized \
   | geonic import --input-format json
 
 # Or write a file, then import (resume-capable)
-npx @geolonia/datamodels convert \
+npx @geolonia/datamodels@0.3.19 convert \
   disaster/EvacuationSite jichitai-opendata-site sites.csv \
   --normalized --out sites.json
 geonic import sites.json --input-format json --resume .import.ckpt
