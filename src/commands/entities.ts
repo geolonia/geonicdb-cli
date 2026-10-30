@@ -41,7 +41,8 @@ export function registerEntitiesCommand(program: Command): void {
     .option(
       "--scope-q <expr>",
       "Filter by scope (e.g. /restaurants/#, /Japan/Tokyo, /Japan/+). " +
-        "Operators per ETSI GS CIM 009 clause 4.19: ';'=AND, ','/'|'=OR (';' is NOT a union).",
+        "Operators per ETSI GS CIM 009 clause 4.19: ';'=AND (parentheses required, e.g. (/A;/B)), ','/'|'=OR (';' is NOT a union). " +
+        "Each scope level must start with a letter (digit-leading levels like /Madrid/1st are rejected).",
     )
     .option("--count-only", "Only show the total count without listing entities")
     .option("--key-values", "Request simplified key-value format")
@@ -190,7 +191,8 @@ export function registerEntitiesCommand(program: Command): void {
     .option("--coords <coords>", "Coordinates for geo-selector")
     .option(
       "--scope-q <expr>",
-      "Filter by scope (scopeQ). Operators per ETSI GS CIM 009 clause 4.19: ';'=AND, ','/'|'=OR (';' is NOT a union).",
+      "Filter by scope (scopeQ). Operators per ETSI GS CIM 009 clause 4.19: ';'=AND (parentheses required, e.g. (/A;/B)), ','/'|'=OR (';' is NOT a union). " +
+        "Each scope level must start with a letter (digit-leading levels like /Madrid/1st are rejected).",
     )
     .option("--local", "Restrict to local entities")
     .option("--keep <a,b>", "Keep only these attributes on matched entities")
