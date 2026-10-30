@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-10-31
+
 ### 2026-10-31
 - **Docs**: `geonic import` の README / help に、CSV 等を CLI では読まず `datamodels convert … --normalized | geonic import --input-format json` で渡す手順を追記した。convert 既定は key-values・出力は JSON 配列である点と、JSON 経路の遅延 stdin（#236 / #235）でも pipe できる前提を明記。GeoJSON の `--input-format geojson` は本 PR では実装しない (Refs #240) (#262)
 - **Feat**: `admin deployments create` / `update` に `--write-mode <normal|read-only>` を追加した（本体 geolonia/geonicdb#3412 / Refs #3285）。DB 移行・リストアの最終同期前に書き込みを止める用途。不正値は `InvalidArgumentError`。未指定時は body に `writeMode` を載せない。`update` help に自ホストを**新たに** `read-only` にする PATCH の 409（既に `read-only` の行への再 PATCH では出ない）、`normal` への戻しは常に許可、反映上限約 6 分を記載。README に移行手順の最小例を追加 (closes #260) (#261)
@@ -440,7 +442,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.26.1...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.27.0...HEAD
+[0.27.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.26.1...v0.27.0
 [0.26.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.26.0...v0.26.1
 [0.26.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.24.0...v0.25.0
