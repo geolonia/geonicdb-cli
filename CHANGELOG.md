@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-10-31
-- **Feat**: `admin tenants add-user` / `remove-user` / `users` と `admin users tenants` を追加し、既存ユーザーの複数テナントメンバーシップを CLI から追加・削除・一覧できるようにした (closes #247)。`--role` は本体 PUT と同じく `tenant_admin` / `user` のみ（省略時は本文なし＝サーバ既定 `user`）。`admin users create` の help に、既存ユーザーを別テナントへ加えるときは `add-user` を使う旨を追記
+- **Feat**: `admin tenants add-user` / `remove-user` / `users` と `admin users tenants` を追加し、既存ユーザーの複数テナントメンバーシップを CLI から追加・削除・一覧できるようにした (closes #247)。`--role` は本体 PUT と同じく `tenant_admin` / `user` のみ（省略時は本文なし＝サーバ既定 `user`）。`admin users create` の help に、既存ユーザーを別テナントへ加えるときは `add-user` を使う旨を追記 (#256)
 - **Docs**: `admin users create` の help に割り当て可能ロール `deployment_admin` を列挙し、`super_admin` を非推奨と明記した (closes #242, 本体 geolonia/geonicdb#3494)。同ファイルの `users update` に `isActive` は `activate`/`deactivate` を使う旨を追記し、例の偽ロール `admin` を `tenant_admin` に直した (本体 #3516) (#250)
 
 ## [0.26.1] - 2026-09-15
