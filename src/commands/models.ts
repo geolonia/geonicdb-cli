@@ -1,7 +1,9 @@
+import { isDeepStrictEqual } from "node:util";
 import type { Command } from "commander";
+import { GdbClientError } from "../client.js";
 import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, fetchPaginatedList } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
-import { printSuccess, printWarning, printError } from "../output.js";
+import { printSuccess, printWarning, printError, printOutput } from "../output.js";
 import { addExamples } from "./help.js";
 
 /** Shape of PATCH /custom-data-models/{type}?dryRun=true (GeonicDB #2098). */
@@ -22,6 +24,63 @@ export type ModelUpdateDryRunResponse = {
   dryRun?: boolean;
   conformance?: ModelUpdateDryRunConformance;
 };
+
+/** Result values emitted by `models apply` (#238). */
+export type ModelApplyResult = "created" | "updated" | "unchanged" | "would create";
+
+/**
+ * Drop `type` from a model body so the payload is valid for
+ * PATCH /custom-data-models/{type} (UpdateDataModelInputSchema is .strict()).
+ */
+export function stripTypeFromModelBody(body: Record<string, unknown>): Record<string, unknown> {
+  const rest = { ...body };
+  delete rest.type;
+  return rest;
+}
+
+/**
+ * True when every key in `patch` deep-equals the same key on `existing`
+ * (GET response). Extra keys on `existing` are ignored — apply is idempotent
+ * against a full model document when the desired fields already match.
+ */
+export function isModelPatchUnchanged(
+  existing: Record<string, unknown>,
+  patch: Record<string, unknown>,
+): boolean {
+  for (const [key, value] of Object.entries(patch)) {
+    if (!isDeepStrictEqual(existing[key], value)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function modelApplyConformanceHint(type: string): string {
+  return `Hint: run \`geonic models update ${type} --api-dry-run\` to list entity impact.`;
+}
+
+/**
+ * Reject path-segment lookalikes that survive encodeURIComponent unchanged
+ * (`.` / `..`) and would otherwise resolve oddly in `/custom-data-models/{type}`.
+ * Returns an error message, or undefined when the type is acceptable for apply.
+ */
+export function modelApplyTypeError(type: string): string | undefined {
+  if (type === "." || type === "..") {
+    return `Model type must not be "." or ".." (got ${JSON.stringify(type)}).`;
+  }
+  return undefined;
+}
+
+/**
+ * Re-throw PATCH 400 with a one-line dry-run hint. Other statuses / errors
+ * propagate unchanged (do not infer "already exists" from message text).
+ */
+export function rethrowModelApplyPatchError(err: unknown, type: string): never {
+  if (err instanceof GdbClientError && err.status === 400) {
+    throw new Error(`${err.message}\n${modelApplyConformanceHint(type)}`);
+  }
+  throw err;
+}
 
 /**
  * Apply dry-run side effects: warn on truncated / scopeLimited / undetermined,
@@ -255,6 +314,136 @@ export function registerModelsCommand(program: Command): void {
     {
       description: "Preview a tightening update without applying it (API dry-run)",
       command: `geonic models update TemperatureSensor '{"propertyDetails":{"temperature":{"ngsiType":"Property","valueType":"Number","validation":{"maximum":30}}}}' --api-dry-run`,
+    },
+  ]);
+
+  // models apply — upsert by type (#238)
+  const apply = models
+    .command("apply [json]")
+    .summary("Create or update a model by type")
+    .description(
+      "Create a model if missing, or update it if present (idempotent upsert by type).\n\n" +
+        "Looks up GET /custom-data-models/{type} first (does not infer existence from\n" +
+        "create error messages). Missing → POST with the body as-is. Present → strips\n" +
+        "`type` and PATCHes; when every field already matches the stored model, skips\n" +
+        "PATCH and reports unchanged.\n\n" +
+        "Stdout is a machine-readable result:\n" +
+        '  {"type":"<type>","result":"created"|"updated"|"unchanged"|"would create"}\n\n' +
+        "--api-dry-run: if missing, prints result \"would create\" without POSTing;\n" +
+        "if present and changed, sends PATCH ?dryRun=true (same as update --api-dry-run).\n" +
+        "Distinct from the global --dry-run (curl).",
+    )
+    .option(
+      "--api-dry-run",
+      "Preview without writing: would-create when missing, or PATCH ?dryRun=true when updating",
+    )
+    .action(
+      withErrorHandler(async (json: unknown, opts: { apiDryRun?: boolean }, cmd: Command) => {
+        const apiDryRun = !!opts.apiDryRun;
+        const globalDryRun = !!(cmd.optsWithGlobals() as { dryRun?: boolean }).dryRun;
+        if (apiDryRun && globalDryRun) {
+          printError(
+            "Cannot combine --api-dry-run with global --dry-run; omit --dry-run to run the API conformance check.",
+          );
+          process.exitCode = 1;
+          return;
+        }
+
+        const parsed = await parseJsonInput(json as string | undefined);
+        if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+          printError("Model body must be a JSON object with a string \"type\" field.");
+          process.exitCode = 1;
+          return;
+        }
+        const body = parsed as Record<string, unknown>;
+        const type = body.type;
+        if (typeof type !== "string" || type.length === 0) {
+          printError('Model body must include a non-empty string "type" field.');
+          process.exitCode = 1;
+          return;
+        }
+        const typeErr = modelApplyTypeError(type);
+        if (typeErr) {
+          printError(typeErr);
+          process.exitCode = 1;
+          return;
+        }
+
+        const client = createClient(cmd);
+        const format = getFormat(cmd);
+        const encodedPath = `/custom-data-models/${encodeURIComponent(type)}`;
+        const patchBody = stripTypeFromModelBody(body);
+
+        let existing: Record<string, unknown> | undefined;
+        try {
+          const getResponse = await client.rawRequest("GET", encodedPath);
+          existing = (getResponse.data ?? {}) as Record<string, unknown>;
+        } catch (err: unknown) {
+          if (!(err instanceof GdbClientError) || err.status !== 404) {
+            throw err;
+          }
+        }
+
+        if (existing === undefined) {
+          if (apiDryRun) {
+            printOutput({ type, result: "would create" satisfies ModelApplyResult }, format);
+            return;
+          }
+          try {
+            await client.rawRequest("POST", "/custom-data-models", { body });
+          } catch (err: unknown) {
+            // Concurrent create: GET raced. Retry once with PATCH; do not
+            // treat other 4xx (e.g. 400 already-exists wording) as success.
+            if (!(err instanceof GdbClientError) || err.status !== 409) {
+              throw err;
+            }
+            try {
+              await client.rawRequest("PATCH", encodedPath, { body: patchBody });
+            } catch (patchErr: unknown) {
+              rethrowModelApplyPatchError(patchErr, type);
+            }
+            printOutput({ type, result: "updated" satisfies ModelApplyResult }, format);
+            return;
+          }
+          printOutput({ type, result: "created" satisfies ModelApplyResult }, format);
+          return;
+        }
+
+        if (isModelPatchUnchanged(existing, patchBody)) {
+          printOutput({ type, result: "unchanged" satisfies ModelApplyResult }, format);
+          return;
+        }
+
+        try {
+          const response = await client.rawRequest(
+            "PATCH",
+            encodedPath,
+            apiDryRun ? { body: patchBody, params: { dryRun: "true" } } : { body: patchBody },
+          );
+          if (apiDryRun) {
+            outputResponse(response, format);
+            applyModelUpdateDryRunResult(response.data);
+            return;
+          }
+        } catch (err: unknown) {
+          rethrowModelApplyPatchError(err, type);
+        }
+        printOutput({ type, result: "updated" satisfies ModelApplyResult }, format);
+      }),
+    );
+
+  addExamples(apply, [
+    {
+      description: "Create or update from a datamodels.jp definition (type included)",
+      command: "geonic models apply @model.json",
+    },
+    {
+      description: "Idempotent apply from stdin",
+      command: "cat model.json | geonic models apply",
+    },
+    {
+      description: "Preview entity impact before updating an existing model",
+      command: "geonic models apply @model.json --api-dry-run",
     },
   ]);
 

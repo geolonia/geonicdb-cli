@@ -67,6 +67,29 @@ Feature: Custom data model management
     When I run `geonic entities create '{"id":"urn:ngsi-ld:UcReservation:003","type":"UcReservation","room":{"type":"Property","value":"R2"},"date":{"type":"Property","value":"2026-07-15"}}' --service e2e_test`
     Then the exit code should be 0
 
+  @models-apply
+  Scenario: Apply creates then reports unchanged or updated (#238)
+    # valueType はサーバー正規化後の lowercase を使う。PascalCase の Number だと
+    # GET 結果と deep-equal せず 2 回目も updated になる（issue 上は updated|unchanged どちらも可）。
+    Given I am logged in
+    When I run `geonic models apply '{"type":"ApplyModel01","domain":"test","description":"Apply Model 01","propertyDetails":{"temperature":{"ngsiType":"Property","valueType":"number","example":25}}}' --service e2e_test`
+    Then the exit code should be 0
+    And the output should contain "\"result\": \"created\""
+    When I run `geonic models apply '{"type":"ApplyModel01","domain":"test","description":"Apply Model 01","propertyDetails":{"temperature":{"ngsiType":"Property","valueType":"number","example":25}}}' --service e2e_test`
+    Then the exit code should be 0
+    And the output should contain "\"result\": \"unchanged\""
+    When I run `geonic models apply '{"type":"ApplyModel01","domain":"test","description":"Apply Model 01 updated","propertyDetails":{"temperature":{"ngsiType":"Property","valueType":"number","example":25}}}' --service e2e_test`
+    Then the exit code should be 0
+    And the output should contain "\"result\": \"updated\""
+
+  @models-apply
+  Scenario: Apply accepts type-bearing body without preprocessing (#238)
+    Given I am logged in
+    And I run `geonic models create '{"type":"ApplyModel02","domain":"test","description":"Apply Model 02","propertyDetails":{"humidity":{"ngsiType":"Property","valueType":"number","example":60}}}' --service e2e_test`
+    When I run `geonic models apply '{"type":"ApplyModel02","domain":"test","description":"Apply Model 02 via apply","propertyDetails":{"humidity":{"ngsiType":"Property","valueType":"number","example":60}}}' --service e2e_test`
+    Then the exit code should be 0
+    And the output should contain "\"result\": \"updated\""
+
   Scenario: Remove unique constraints via update (geonicdb#1268)
     Given I am logged in
     And I run `geonic models create '{"type":"UcSlot","domain":"test","description":"Slot with removable constraint","propertyDetails":{"code":{"ngsiType":"Property","valueType":"string","example":"A1"}},"uniqueConstraints":[{"name":"unique-code","fields":["code"]}]}' --service e2e_test`
