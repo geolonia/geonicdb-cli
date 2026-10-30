@@ -222,9 +222,7 @@ describe("admin users commands", () => {
         .commands.find((c) => c.name() === "users")!
         .commands.find((c) => c.name() === "create")!;
       const desc = createCmd.description();
-      expect(desc).toContain("deployment_admin");
-      expect(desc).toContain("tenant_admin");
-      expect(desc).toMatch(/user/);
+      expect(desc).toContain("Roles: deployment_admin, tenant_admin, user");
       expect(desc).toMatch(/super_admin.*deprecated/i);
       // Near-miss: platform_admin is a principal role but not assignable via POST /admin/users.
       expect(desc).not.toContain("platform_admin");
