@@ -52,11 +52,34 @@ When(/^I run `([^`]+)` replacing ID$/, async function (this: GdbWorld, command: 
   await this.run(args);
 });
 
+When(/^I run `([^`]+)` replacing URL$/, async function (this: GdbWorld, command: string) {
+  const savedUrl = (this as Record<string, unknown>).savedUrl as string;
+  assert.ok(savedUrl, "No saved URL available. Run 'I save the url from the JSON output' first.");
+  const resolved = command.replace(/\$URL/g, savedUrl);
+  const args = stripCommandPrefix(parseArgs(resolved));
+  await this.run(args);
+});
+
 Given("I save the ID from the JSON output", function (this: GdbWorld) {
   const item = findItemInJsonOutput(this.lastResult.stdout);
   const id = extractId(item);
   assert.ok(id, `Could not extract ID from: ${JSON.stringify(item)}`);
   (this as Record<string, unknown>).savedId = String(id);
+});
+
+/** Save `url` from a single JSON object (e.g. `geonic contexts create` output, #241). */
+Given("I save the url from the JSON output", function (this: GdbWorld) {
+  const json = extractJson(this.lastResult.stdout);
+  assert.ok(json !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);
+  const url = json.url;
+  assert.ok(typeof url === "string" && url, `Expected JSON.url to be a non-empty string.\nJSON: ${JSON.stringify(json)}`);
+  (this as Record<string, unknown>).savedUrl = url;
+  // Hosted get/delete resolve by localId (URN), not by the broker's serve URL.
+  const marker = "/jsonldContexts/";
+  const idx = url.lastIndexOf(marker);
+  if (idx >= 0) {
+    (this as Record<string, unknown>).savedId = decodeURIComponent(url.slice(idx + marker.length));
+  }
 });
 
 Given(/^I save the ID from the JSON output where "([^"]+)" is "([^"]+)"$/, function (this: GdbWorld, field: string, value: string) {

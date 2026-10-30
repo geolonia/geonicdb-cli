@@ -862,6 +862,26 @@ geonic entities get urn:ngsi-ld:Building:v1        # uses the saved context
 
 The URI must be an ASCII, absolute `http`/`https` URL that the server can resolve — either publicly reachable or registered with the tenant via `POST /ngsi-ld/v1/jsonldContexts`. An unresolvable context makes the server return `504 LdContextNotAvailable` instead of quietly falling back. Non-ASCII URIs are rejected up front — HTTP headers cannot carry them — so pass the percent-encoded path and punycode host (the error message shows the form to use).
 
+## JSON-LD @context registration
+
+Register, list, inspect, and delete tenant-hosted `@context` documents with the `contexts` command (`jsonld-contexts` is an alias). This wraps `GET`/`POST`/`DELETE /ngsi-ld/v1/jsonldContexts`.
+
+```bash
+# Register a context document (Add @context — always Hosted)
+geonic contexts create '{"@context":{"Vehicle":"https://example.org/ns#Vehicle","plateNumber":"https://example.org/ns#plateNumber"}}'
+# → prints the registered URL (use it with --context)
+
+# List registered URLs (or metadata with --details)
+geonic contexts list
+geonic contexts list --details --kind Hosted
+
+# Fetch the stored document / delete by localId
+geonic contexts get urn:ngsi-ld:JsonLdContext:abc123
+geonic contexts delete urn:ngsi-ld:JsonLdContext:abc123
+```
+
+`create` prints `{ "url": "<registered URL>" }` (table format puts `url` on the first line) so you can pipe the value into `--context` on subsequent reads and writes. Do not send `kind` on create — the server always stores Hosted and rejects a client-supplied kind with 400.
+
 ## Dry Run
 
 Use `--dry-run` on any command to print the equivalent `curl` command instead of executing the request. The output can be copied and run directly in a terminal.

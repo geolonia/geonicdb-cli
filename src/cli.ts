@@ -14,6 +14,7 @@ import { registerSnapshotsCommand } from "./commands/snapshots.js";
 import { registerAdminCommand } from "./commands/admin/index.js";
 import { registerRulesCommand } from "./commands/rules.js";
 import { registerModelsCommand } from "./commands/models.js";
+import { registerContextsCommand } from "./commands/contexts.js";
 import { registerCatalogCommand } from "./commands/catalog.js";
 import { registerHealthCommand, registerVersionCommand } from "./commands/health.js";
 import { enforceKnownCommandHelp, registerHelpCommand } from "./commands/help.js";
@@ -59,6 +60,7 @@ export function createProgram(): Command {
   registerAdminCommand(program);
   registerRulesCommand(program);
   registerModelsCommand(program);
+  registerContextsCommand(program);
   registerCatalogCommand(program);
   registerHealthCommand(program);
   registerVersionCommand(program);
