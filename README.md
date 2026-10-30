@@ -762,6 +762,8 @@ geonic admin deployments update tenant-a.geonicdb.com \
 # Newly setting the host you are connected through to read-only is refused (409) —
 # run from another host. Re-PATCHing a row that is already read-only does not 409.
 geonic admin deployments update tenant-a.geonicdb.com --write-mode read-only
+# 設定の反映には最大約6分かかる (キャッシュ 30 秒 + 実行中ジョブ最長 300 秒)。
+# 最終コピーの前に、最大約6分待つか、書き込みが 503 + Retry-After を返すことを確認する。
 # … final copy of the database …
 geonic admin deployments update tenant-a.geonicdb.com \
   --secret geonicdb/tenant-a/mongodb-uri-new
