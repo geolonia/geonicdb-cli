@@ -230,6 +230,17 @@ describe("admin users commands", () => {
       expect(desc).not.toMatch(/Roles:\s*super_admin,\s*tenant_admin,\s*user\b/);
     });
 
+    it("help steers existing-user multi-tenant add to tenants add-user", () => {
+      const program = makeProgram();
+      const createCmd = program.commands
+        .find((c) => c.name() === "admin")!
+        .commands.find((c) => c.name() === "users")!
+        .commands.find((c) => c.name() === "create")!;
+      const desc = createCmd.description();
+      expect(desc).toContain("admin tenants add-user");
+      expect(desc).toMatch(/already exists/i);
+    });
+
     it("uses primaryTenantId in registered example payloads", () => {
       makeProgram();
       const addExamplesMock = vi.mocked(addExamples);
@@ -358,6 +369,49 @@ describe("admin users commands", () => {
         "POST",
         "/admin/users/urn%3Auser%3A1/reset-password",
       );
+    });
+  });
+
+  describe("users tenants", () => {
+    it("calls GET /admin/users/{userId}/tenants", async () => {
+      client.rawRequest.mockResolvedValue(
+        mockResponse([{ tenantId: "t1", role: "tenant_admin" }]),
+      );
+      const program = makeProgram();
+      await runCommand(program, ["admin", "users", "tenants", "u1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/users/u1/tenants", {
+        params: {},
+      });
+      expect(outputResponse).toHaveBeenCalled();
+    });
+
+    it("encodes special characters in user-id", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "users", "tenants", "urn:u:1"]);
+      expect(client.rawRequest).toHaveBeenCalledWith(
+        "GET",
+        "/admin/users/urn%3Au%3A1/tenants",
+        { params: {} },
+      );
+    });
+
+    it("forwards --limit and --offset", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse([]));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "users",
+        "tenants",
+        "u1",
+        "--limit",
+        "10",
+        "--offset",
+        "5",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("GET", "/admin/users/u1/tenants", {
+        params: { limit: "10", offset: "5" },
+      });
     });
   });
 });
