@@ -122,7 +122,8 @@ export function registerUsersCommand(parent: Command): void {
         '    "role": "tenant_admin",\n' +
         '    "primaryTenantId": "<tenant-id>"\n' +
         "  }\n\n" +
-        "Roles: super_admin, tenant_admin, user\n" +
+        "Roles: deployment_admin, tenant_admin, user\n" +
+        "(super_admin is deprecated but still accepted; prefer deployment_admin)\n" +
         "primaryTenantId is required for tenant_admin and user roles.",
     )
     .option(
@@ -194,7 +195,8 @@ export function registerUsersCommand(parent: Command): void {
     .description(
       "Update a user\n\n" +
         "JSON payload: only specified fields are updated.\n" +
-        '  e.g. {"role": "admin"}',
+        '  e.g. {"role": "tenant_admin"}\n\n' +
+        "isActive cannot be changed via update; use activate / deactivate.",
     )
     .action(
       withErrorHandler(
@@ -216,7 +218,7 @@ export function registerUsersCommand(parent: Command): void {
   addExamples(update, [
     {
       description: "Update role with inline JSON",
-      command: `geonic admin users update <user-id> '{"role":"admin"}'`,
+      command: `geonic admin users update <user-id> '{"role":"tenant_admin"}'`,
     },
     {
       description: "Update from a JSON file",
