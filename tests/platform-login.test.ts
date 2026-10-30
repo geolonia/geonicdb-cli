@@ -301,6 +301,30 @@ describe("platform-login helpers", () => {
       }
     });
 
+    it("sanitizes control characters from non-403 error bodies", async () => {
+      let caught: unknown;
+      try {
+        await requestPlatformToken({
+          baseUrl: "https://example.execute-api.ap-northeast-1.amazonaws.com/prod/",
+          region: "ap-northeast-1",
+          fetchImpl: (async () =>
+            new Response("oops\u001b[31mRED\u001b[0m", { status: 500 })) as typeof fetch,
+          signRequest: async () => ({
+            authorization: "AWS4-HMAC-SHA256 Credential=AKIA/x, Signature=abc",
+            "content-type": "application/json",
+          }),
+        });
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toBeInstanceOf(PlatformLoginError);
+      const err = caught as PlatformLoginError;
+      expect(err.status).toBe(500);
+      expect(err.message.includes("\u001b")).toBe(false);
+      expect(err.message).toContain("oops");
+      expect(err.message).toContain("RED");
+    });
+
     it("rejects invalid success JSON (L1)", async () => {
       await expect(
         requestPlatformToken({

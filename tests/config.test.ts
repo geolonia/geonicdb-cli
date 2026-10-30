@@ -45,11 +45,15 @@ describe("config", () => {
   it("writes config.json with mode 0o600 and chmods existing files (M1)", () => {
     saveConfig({ url: "http://localhost:3000", token: "secret" });
     const path = getConfigPath();
-    expect(statSync(path).mode & 0o777).toBe(CONFIG_FILE_MODE);
-    // Existing world-readable file must be tightened on rewrite.
-    chmodSync(path, 0o644);
-    saveConfig({ url: "http://localhost:3000", token: "secret2" });
-    expect(statSync(path).mode & 0o777).toBe(CONFIG_FILE_MODE);
+    expect(statSync(path).isFile()).toBe(true);
+    // Windows reports writable files as 0o666 — POSIX-only mode assert.
+    if (process.platform !== "win32") {
+      expect(statSync(path).mode & 0o777).toBe(CONFIG_FILE_MODE);
+      // Existing world-readable file must be tightened on rewrite.
+      chmodSync(path, 0o644);
+      saveConfig({ url: "http://localhost:3000", token: "secret2" });
+      expect(statSync(path).mode & 0o777).toBe(CONFIG_FILE_MODE);
+    }
   });
 
   it("sets individual config values", () => {

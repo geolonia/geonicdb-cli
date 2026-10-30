@@ -434,6 +434,21 @@ describe("helpers", () => {
       );
     });
 
+    it("resolves platform_admin hint from --profile, not current profile", async () => {
+      saveConfig({ token: "plain-user-token" }, "default");
+      const payload = Buffer.from(
+        JSON.stringify({ role: "platform_admin", exp: Math.floor(Date.now() / 1000) + 60 }),
+      ).toString("base64url");
+      saveConfig({ token: `hdr.${payload}.sig` }, "ops");
+      const fn = vi.fn().mockRejectedValue(new GdbClientError("Unauthorized", 401));
+      const wrapped = withErrorHandler(fn);
+      const cmd = fakeCmd({ profile: "ops" });
+      await expect(wrapped(cmd)).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("geonic auth platform-login"),
+      );
+    });
+
     it("prints error message and exits on generic Error", async () => {
       const fn = vi.fn().mockRejectedValue(new Error("something broke"));
       const wrapped = withErrorHandler(fn);

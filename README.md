@@ -214,7 +214,7 @@ geonic auth platform-login --aws-region ap-northeast-1 --dry-run   # curl with A
 | `--aws-profile <profile>` | AWS shared-credentials / config profile |
 | `--aws-region <region>` | SigV4 region (else `AWS_REGION`, else the profile's `region`) |
 
-On success the CLI clears `refreshToken` / `clientId` / `clientSecret` from the profile so automatic re-auth cannot run against `/auth/refresh`. A 403 means the caller ARN is not on the server allowlist.
+On success the CLI clears `refreshToken` / `clientId` / `clientSecret` from the profile so automatic re-auth cannot run against `/auth/refresh`. A 403 means the caller is not an allowed IAM principal — the same message also covers bad SigV4 signatures, wrong region, or invalid credentials (API Gateway / Lambda both surface 403).
 
 #### API Key Token Exchange
 

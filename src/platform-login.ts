@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { GdbClient } from "./client.js";
+import { sanitizeServerText } from "./sanitize.js";
 
 const PLATFORM_TOKEN_PATH = "/auth/platform-token";
 const EXECUTE_API_SERVICE = "execute-api";
@@ -290,7 +291,8 @@ export async function requestPlatformToken(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new PlatformLoginError(text || `HTTP ${response.status}`, response.status);
+    const safe = sanitizeServerText(text);
+    throw new PlatformLoginError(safe || `HTTP ${response.status}`, response.status);
   }
 
   let raw: unknown;

@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-10-31
-- **Feat**: `geonic auth platform-login` を追加し、現在の AWS IAM 認証で `POST /auth/platform-token` を SigV4 署名して 15 分の `platform_admin` トークンを取得・保存する (closes #243, 本体 geolonia/geonicdb#3495)。`--aws-profile` / `--aws-region` 対応。保存時に `refreshToken` / `clientId` / `clientSecret` を消し自動再認証を無効化。403 は「許可された IAM 呼び出し元ではない」（署名・region・資格情報不正の可能性を併記）。`saveConfigFile` は `config.json` を mode `0o600` で書き既存ファイルも chmod（`auth login` 等すべての保存経路に効く）。依存: `@aws-sdk/credential-providers` / `@smithy/signature-v4` / `@aws-crypto/sha256-js`（dynamic import）
+- **Feat**: `geonic auth platform-login` を追加し、現在の AWS IAM 認証で `POST /auth/platform-token` を SigV4 署名して 15 分の `platform_admin` トークンを取得・保存する (closes #243, 本体 geolonia/geonicdb#3495)。`--aws-profile` / `--aws-region` 対応。保存時に `refreshToken` / `clientId` / `clientSecret` を消し自動再認証を無効化。403 は「許可された IAM 呼び出し元ではない」（署名・region・資格情報不正の可能性を併記）。`saveConfigFile` は `config.json` を mode `0o600` で書き既存ファイルも chmod（`auth login` 等すべての保存経路に効く）。依存: `@aws-sdk/credential-providers` / `@smithy/signature-v4` / `@aws-crypto/sha256-js`（dynamic import） (#257)
 - **Feat**: `models apply` を追加した。GET で有無を見て無ければ POST、あれば `type` を除いて PATCH する idempotent upsert。結果は `created` / `updated` / `unchanged`（モデル未登録時に `--api-dry-run` を指定すると `would create`）。`.` / `..` は実行前に拒否する (closes #238) (#252)
 - **Docs**: `admin users create` の help に割り当て可能ロール `deployment_admin` を列挙し、`super_admin` を非推奨と明記した (closes #242, 本体 geolonia/geonicdb#3494)。同ファイルの `users update` に `isActive` は `activate`/`deactivate` を使う旨を追記し、例の偽ロール `admin` を `tenant_admin` に直した (本体 #3516) (#250)
 

@@ -280,6 +280,15 @@ export async function fetchPaginatedList(
 /**
  * Wrap an async command handler with error handling.
  */
+function profileFromHandlerArgs(args: unknown[]): string | undefined {
+  const last = args[args.length - 1];
+  if (last && typeof last === "object" && typeof (last as Command).optsWithGlobals === "function") {
+    const opts = (last as Command).optsWithGlobals() as GlobalOptions;
+    return opts.profile;
+  }
+  return undefined;
+}
+
 export function withErrorHandler<T extends unknown[]>(fn: (...args: T) => Promise<void>) {
   return async (...args: T) => {
     try {
@@ -288,10 +297,11 @@ export function withErrorHandler<T extends unknown[]>(fn: (...args: T) => Promis
       if (err instanceof DryRunSignal) {
         return;
       }
+      const profileName = profileFromHandlerArgs(args as unknown[]);
       if (err instanceof GdbClientError && err.status === 401) {
-        printError(authenticationFailedMessage());
+        printError(authenticationFailedMessage(profileName));
       } else if (err instanceof GdbClientError && err.status === 403 && /not assigned to any tenant|invalid token/i.test(err.message)) {
-        printError(authenticationFailedMessage());
+        printError(authenticationFailedMessage(profileName));
       } else if (err instanceof GdbClientError && err.status === 403) {
         const detail = (err.ngsiError?.detail ?? err.ngsiError?.description ?? "").toLowerCase();
         if (detail.includes("entity type") || detail.includes("allowedentitytypes")) {

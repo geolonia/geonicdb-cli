@@ -95,7 +95,12 @@ export function loadConfigFile(): GdbConfigFile {
 export function saveConfigFile(configFile: GdbConfigFile): void {
   ensureConfigDir();
   const path = getConfigFile();
-  // mode applies on create; chmod covers in-place rewrites of an existing file.
+  // Tighten perms before rewriting an existing world-readable file so a new
+  // token is never briefly readable by others; mode on writeFileSync only
+  // applies when creating. Final chmod covers create + any umask quirks.
+  if (existsSync(path)) {
+    chmodSync(path, CONFIG_FILE_MODE);
+  }
   writeFileSync(path, JSON.stringify(configFile, null, 2) + "\n", {
     encoding: "utf-8",
     mode: CONFIG_FILE_MODE,
