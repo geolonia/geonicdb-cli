@@ -935,7 +935,13 @@ geonic entities list --local --api-key gdb_your_api_key_here
 GDB_API_KEY=gdb_your_api_key_here geonic entities list --local
 ```
 
-When both a Bearer token and an API key are configured, headers are sent exclusively — the API key takes precedence when present.
+Authentication headers are mutually exclusive. Precedence:
+
+1. `--api-key` on the command line (overrides a saved login token)
+2. Bearer token (`--token` or a token saved by `geonic auth login`)
+3. `GDB_API_KEY` or a configured `apiKey`
+
+Passing both `--token` and `--api-key` is an error. When both a token and an API key are only in config / env (no CLI auth flags), the token wins.
 
 ### Authorization Model
 

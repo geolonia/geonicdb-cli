@@ -196,6 +196,61 @@ describe("helpers", () => {
       expect(client).toBeInstanceOf(GdbClient);
     });
 
+    // #237: CLI --api-key must override a saved login token (README contract).
+    it("uses --api-key over a saved token in dry-run headers", async () => {
+      saveConfig({ url: "http://localhost:3000", token: "saved-login-token" });
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const client = createClient(fakeCmd({ apiKey: "gdb_cli_key", dryRun: true }));
+      await expect(client.get("/entities")).rejects.toThrow(DryRunSignal);
+      const curl = String(logSpy.mock.calls[0]?.[0] ?? "");
+      expect(curl).toContain("X-Api-Key");
+      expect(curl).toContain("gdb_cli_key");
+      expect(curl).not.toContain("Authorization");
+      expect(curl).not.toContain("saved-login-token");
+      logSpy.mockRestore();
+    });
+
+    // near-miss: GDB_API_KEY is NOT "explicit" — saved token still wins.
+    it("keeps saved token when only GDB_API_KEY is set (not CLI --api-key)", async () => {
+      saveConfig({ url: "http://localhost:3000", token: "saved-login-token" });
+      process.env.GDB_API_KEY = "gdb_env_key";
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const client = createClient(fakeCmd({ dryRun: true }));
+      await expect(client.get("/entities")).rejects.toThrow(DryRunSignal);
+      const curl = String(logSpy.mock.calls[0]?.[0] ?? "");
+      expect(curl).toContain("Authorization");
+      expect(curl).toContain("saved-login-token");
+      expect(curl).not.toContain("X-Api-Key");
+      logSpy.mockRestore();
+    });
+
+    it("rejects --token and --api-key together", () => {
+      saveConfig({ url: "http://localhost:3000" });
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+        throw new Error("process.exit");
+      });
+      expect(() =>
+        createClient(fakeCmd({ token: "cli-token", apiKey: "gdb_cli_key" })),
+      ).toThrow("process.exit");
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(printError).toHaveBeenCalledWith(
+        "Cannot use --token and --api-key together. Specify only one.",
+      );
+      exitSpy.mockRestore();
+    });
+
+    // near-miss: explicit empty --api-key must not fall back to a saved token.
+    it("rejects empty --api-key without falling back to saved token", () => {
+      saveConfig({ url: "http://localhost:3000", token: "saved-login-token" });
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+        throw new Error("process.exit");
+      });
+      expect(() => createClient(fakeCmd({ apiKey: "" }))).toThrow("process.exit");
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(printError).toHaveBeenCalledWith("--api-key must not be empty.");
+      exitSpy.mockRestore();
+    });
+
     it("throws when URL lacks protocol (via --url flag)", () => {
       expect(() => createClient(fakeCmd({ url: "localhost:3000" }))).toThrow(
         'Invalid URL: "localhost:3000". URL must start with http:// or https://.',
