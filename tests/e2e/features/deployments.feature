@@ -67,6 +67,30 @@ Feature: Admin deployment routing management
     Then the JSON output key "defaultQuotaPlan" should be "ENTERPRISE"
     And the output should contain "sales"
 
+  # geonicdb#3412 / CLI #260: pause writes before a final DB sync.
+  # The 503 + Retry-After path for entity writes needs the request Host to be
+  # the read-only row; standalone E2E talks to localhost, and patching that
+  # self-host to read-only is refused (409). Round-trip the field here; the
+  # PATCH body shape is covered by unit dry-run.
+  Scenario: Set writeMode to read-only and back to normal
+    Given I am logged in as super admin
+    And I run `geonic admin deployments create dep-wm.example.com --database dep_wm --plan STANDARD --secret geonicdb/dep-wm/uri`
+    When I run `geonic admin deployments update dep-wm.example.com --write-mode read-only`
+    Then the exit code should be 0
+    When I run `geonic admin deployments get dep-wm.example.com`
+    Then the JSON output key "writeMode" should be "read-only"
+    When I run `geonic admin deployments update dep-wm.example.com --write-mode normal`
+    Then the exit code should be 0
+    When I run `geonic admin deployments get dep-wm.example.com`
+    Then the JSON output key "writeMode" should be "normal"
+
+  Scenario: Create with --write-mode read-only
+    Given I am logged in as super admin
+    When I run `geonic admin deployments create dep-wm-c.example.com --database dep_wm_c --plan STANDARD --secret geonicdb/dep-wm-c/uri --write-mode read-only`
+    Then the exit code should be 0
+    When I run `geonic admin deployments get dep-wm-c.example.com`
+    Then the JSON output key "writeMode" should be "read-only"
+
   # --clear-* sends an explicit null, the server's "remove this field" signal.
   Scenario: Clear an optional field
     Given I am logged in as super admin
@@ -134,6 +158,12 @@ Feature: Admin deployment routing management
     When I run `geonic admin deployments create dep-l.example.com --database dep_l --plan GOLD --secret geonicdb/dep-l/uri`
     Then the exit code should be 1
     And stderr should contain "--plan must be one of"
+
+  Scenario: An unknown write-mode is refused before the request
+    Given I am logged in as super admin
+    When I run `geonic admin deployments update dep-wm-bad.example.com --write-mode readonly`
+    Then the exit code should be 1
+    And stderr should contain "Must be one of: normal, read-only"
 
   Scenario: An update with no fields is refused
     Given I am logged in as super admin
