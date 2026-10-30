@@ -235,6 +235,93 @@ describe("admin tenants commands", () => {
       expect(parseJsonInput).toHaveBeenCalledWith(undefined);
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", { body });
     });
+
+    it("merges --cadde-enabled true into settings.caddeEnabled", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ name: "cadde-tenant" });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t7" }, 201));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "create",
+        '{"name":"cadde-tenant"}',
+        "--cadde-enabled",
+        "true",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", {
+        body: {
+          name: "cadde-tenant",
+          settings: { caddeEnabled: true },
+        },
+      });
+    });
+
+    it("merges --require-data-model false into settings.requireDataModel", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ name: "strict" });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t8" }, 201));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "create",
+        '{"name":"strict"}',
+        "--require-data-model",
+        "false",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", {
+        body: {
+          name: "strict",
+          settings: { requireDataModel: false },
+        },
+      });
+    });
+
+    it("preserves existing settings when merging --cadde-enabled and --require-data-model", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({
+        name: "combo",
+        settings: { allowedOrigins: ["https://app.example.com"] },
+      });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t9" }, 201));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "create",
+        '{"name":"combo","settings":{"allowedOrigins":["https://app.example.com"]}}',
+        "--cadde-enabled",
+        "true",
+        "--require-data-model",
+        "true",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", {
+        body: {
+          name: "combo",
+          settings: {
+            allowedOrigins: ["https://app.example.com"],
+            caddeEnabled: true,
+            requireDataModel: true,
+          },
+        },
+      });
+    });
+
+    it("rejects near-miss --cadde-enabled values other than true/false on create", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ name: "bad" });
+      const program = makeProgram();
+      for (const value of ["TRUE", "1", "yes", "true ", ""]) {
+        await expect(
+          runCommand(program, [
+            "admin",
+            "tenants",
+            "create",
+            '{"name":"bad"}',
+            "--cadde-enabled",
+            value,
+          ]),
+        ).rejects.toThrow(/--cadde-enabled must be true or false/);
+      }
+      expect(client.rawRequest).not.toHaveBeenCalled();
+    });
   });
 
   describe("tenants update", () => {
@@ -398,6 +485,80 @@ describe("admin tenants commands", () => {
       expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
         body: { description: "no flag" },
       });
+    });
+
+    it("merges --cadde-enabled false into settings.caddeEnabled", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({});
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "update",
+        "t1",
+        "--cadde-enabled",
+        "false",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
+        body: { settings: { caddeEnabled: false } },
+      });
+    });
+
+    it("merges --require-data-model true into settings.requireDataModel", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({});
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "update",
+        "t1",
+        "--require-data-model",
+        "true",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
+        body: { settings: { requireDataModel: true } },
+      });
+    });
+
+    it("overwrites JSON settings.caddeEnabled when --cadde-enabled is given", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({
+        settings: { caddeEnabled: true, someOtherFlag: 1 },
+      });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "update",
+        "t1",
+        '{"settings":{"caddeEnabled":true,"someOtherFlag":1}}',
+        "--cadde-enabled",
+        "false",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
+        body: {
+          settings: { caddeEnabled: false, someOtherFlag: 1 },
+        },
+      });
+    });
+
+    it("rejects near-miss --require-data-model values other than true/false on update", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({});
+      const program = makeProgram();
+      for (const value of ["False", "0", "no", " false"]) {
+        await expect(
+          runCommand(program, [
+            "admin",
+            "tenants",
+            "update",
+            "t1",
+            "--require-data-model",
+            value,
+          ]),
+        ).rejects.toThrow(/--require-data-model must be true or false/);
+      }
+      expect(client.rawRequest).not.toHaveBeenCalled();
     });
   });
 

@@ -602,7 +602,9 @@ Hint: inspect the model's unique constraints with `geonic models get <model-id>`
 | `admin tenants add-user <tenant-id> <user-id>` | Add an existing user to a tenant (`--role tenant_admin\|user`) |
 | `admin tenants remove-user <tenant-id> <user-id>` | Remove a user from a tenant |
 
-`admin tenants create` / `admin tenants update` support `--allowed-origins <origins>` for tenant-scoped CORS control. The flag maps to `settings.allowedOrigins`:
+`admin tenants create` / `admin tenants update` support settings flags that merge into `settings` without dropping other `settings.*` keys from a JSON payload.
+
+**`--allowed-origins <origins>`** — tenant-scoped CORS (`settings.allowedOrigins`):
 
 | Value | Behavior |
 |---|---|
@@ -612,6 +614,10 @@ Hint: inspect the model's unique constraints with `geonic models get <model-id>`
 | `--allowed-origins "https://a,https://b"` | List of origins (max 50 entries); each entry is an exact match or a subdomain wildcard |
 
 Each entry may be an exact origin (`https://app.example.com`) or a subdomain wildcard (`https://*.example.com`). A wildcard matches one or more subdomain labels (`https://a.example.com`, `https://a.b.example.com`) but **not** the apex itself (`https://example.com`) and **not** a hyphenated look-alike domain (`https://evil-example.com`); scheme and port must match exactly. Useful for origins that vary per deploy, such as Cloudflare Pages preview URLs (`https://*.<project>.pages.dev`).
+
+**`--cadde-enabled <true|false>`** — CADDE route access (`settings.caddeEnabled`, geonicdb #3580). Only the literals `true` and `false` are accepted. `true` opts the tenant into `/cadde/**` when CADDE is configured; `false` (or unset on the server) yields 403 on `/cadde/**`.
+
+**`--require-data-model <true|false>`** — require an active data model for entity writes (`settings.requireDataModel`, geonicdb #3478). Only the literals `true` and `false` are accepted.
 
 ```bash
 # Restrict to specific origins
@@ -625,9 +631,13 @@ geonic admin tenants update <tenant-id> --allowed-origins "*"
 
 # Deny all
 geonic admin tenants update <tenant-id> --allowed-origins ""
-```
 
-When combined with a JSON payload, the flag merges into `settings` without dropping other `settings.*` keys.
+# Enable CADDE routes for a tenant
+geonic admin tenants update <tenant-id> --cadde-enabled true
+
+# Require data models on entity writes
+geonic admin tenants update <tenant-id> --require-data-model true
+```
 
 #### admin users
 
