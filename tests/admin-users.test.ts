@@ -214,6 +214,22 @@ describe("admin users commands", () => {
       expect(desc).not.toContain("tenantId is required");
     });
 
+    // #242: ASSIGNABLE_USER_ROLES includes deployment_admin; super_admin remains accepted but deprecated.
+    it("lists assignable roles including deployment_admin and marks super_admin deprecated", () => {
+      const program = makeProgram();
+      const createCmd = program.commands
+        .find((c) => c.name() === "admin")!
+        .commands.find((c) => c.name() === "users")!
+        .commands.find((c) => c.name() === "create")!;
+      const desc = createCmd.description();
+      expect(desc).toContain("Roles: deployment_admin, tenant_admin, user");
+      expect(desc).toMatch(/super_admin.*deprecated/i);
+      // Near-miss: platform_admin is a principal role but not assignable via POST /admin/users.
+      expect(desc).not.toContain("platform_admin");
+      // Stale three-role line without deployment_admin must not remain.
+      expect(desc).not.toMatch(/Roles:\s*super_admin,\s*tenant_admin,\s*user\b/);
+    });
+
     it("uses primaryTenantId in registered example payloads", () => {
       makeProgram();
       const addExamplesMock = vi.mocked(addExamples);
@@ -245,6 +261,38 @@ describe("admin users commands", () => {
       expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/users/u1", { body });
       expect(outputResponse).toHaveBeenCalled();
       expect(printSuccess).toHaveBeenCalledWith("User updated.");
+    });
+
+    // #242 / DESIGN: PATCH rejects isActive (#3516); help must steer to activate/deactivate.
+    // Example role must be an assignable role (not the fictitious "admin").
+    it("help steers isActive to activate/deactivate and uses an assignable role example", () => {
+      const program = makeProgram();
+      const updateCmd = program.commands
+        .find((c) => c.name() === "admin")!
+        .commands.find((c) => c.name() === "users")!
+        .commands.find((c) => c.name() === "update")!;
+      const desc = updateCmd.description();
+      // DESIGN: wording must track geonicdb user.schemas.ts:96
+      expect(desc).toContain(
+        "isActive cannot be changed via PATCH /admin/users/{userId}; use POST /admin/users/{userId}/activate or POST /admin/users/{userId}/deactivate",
+      );
+      expect(desc).toContain('"role": "tenant_admin"');
+      expect(desc).not.toContain('"role": "admin"');
+
+      makeProgram();
+      const addExamplesMock = vi.mocked(addExamples);
+      const updateCalls = addExamplesMock.mock.calls.filter(
+        ([cmd]) => (cmd as Command).name() === "update",
+      );
+      const examples = updateCalls.flatMap(
+        ([, exs]) => exs as ReadonlyArray<{ description: string; command: string }>,
+      );
+      const roleExamples = examples.filter((e) => e.command.includes('"role":'));
+      expect(roleExamples.length).toBeGreaterThan(0);
+      for (const ex of roleExamples) {
+        expect(ex.command).not.toMatch(/"role"\s*:\s*"admin"/);
+        expect(ex.command).toMatch(/"role"\s*:\s*"(deployment_admin|tenant_admin|user|super_admin)"/);
+      }
     });
   });
 

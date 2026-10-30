@@ -208,8 +208,55 @@ describe("me oauth-clients commands", () => {
         expect(printInfo).toHaveBeenCalledWith(
           "Client credentials saved to config. Auto-reauth enabled.",
         );
+        expect(printInfo).toHaveBeenCalledWith(
+          "Note: the saved token is an OAuth client principal — /me self-service (api-keys/oauth-clients/policies/password) returns 403; `geonic me` still works.",
+        );
         expect(printWarning).not.toHaveBeenCalled();
         expect(printSuccess).toHaveBeenCalledWith("OAuth client created.");
+      } finally {
+        process.stdin.isTTY = isTTY;
+      }
+    });
+
+    // #245 near-miss: restriction note must name the forbidden self-service paths,
+    // not a vague "limited" warning that would still pass if the list were dropped.
+    it("--save restriction note lists each forbidden /me self-service path", async () => {
+      const isTTY = process.stdin.isTTY;
+      process.stdin.isTTY = true;
+      try {
+        vi.mocked(resolveOptions).mockReturnValue({
+          url: "https://example.com/",
+          profile: "default",
+        });
+        client.rawRequest.mockResolvedValue(
+          mockResponse({ clientId: "c4b", clientSecret: "s3cret" }, 201),
+        );
+        vi.mocked(clientCredentialsGrant).mockResolvedValue({
+          access_token: "new-token",
+          token_type: "Bearer",
+        });
+
+        const program = makeProgram();
+        await runCommand(program, [
+          "me",
+          "oauth-clients",
+          "create",
+          "--name",
+          "near-miss-saved",
+          "--save",
+        ]);
+
+        const notes = vi
+          .mocked(printInfo)
+          .mock.calls.map((c) => String(c[0]))
+          .filter((m) => m.includes("OAuth client principal"));
+        expect(notes).toHaveLength(1);
+        const note = notes[0]!;
+        for (const path of ["api-keys", "oauth-clients", "policies", "password"] as const) {
+          expect(note).toContain(path);
+        }
+        // Near-miss: a shorter allow-list omitting oauth-clients must not satisfy this test.
+        expect(note).not.toMatch(/self-service \(api-keys\/policies\/password\)/);
       } finally {
         process.stdin.isTTY = isTTY;
       }

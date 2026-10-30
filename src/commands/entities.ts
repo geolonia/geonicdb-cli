@@ -6,10 +6,16 @@ import {
   outputResponse,
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
-import { printCount, printSuccess } from "../output.js";
+import { printCount, printError, printSuccess } from "../output.js";
 import { isInteractive, promptConfirm } from "../prompt.js";
 import { registerAttrsSubcommand } from "./attrs.js";
 import { addExamples } from "./help.js";
+
+/** Reject --key-values on write paths the broker does not accept (POST create / batch upsert). */
+function rejectUnsupportedKeyValuesWrite(operation: "create" | "upsert"): void {
+  printError(`server does not accept keyValues on ${operation}`);
+  process.exit(1);
+}
 
 export function registerEntitiesCommand(program: Command): void {
   const entities = program
@@ -317,11 +323,18 @@ export function registerEntitiesCommand(program: Command): void {
         '    "type": "Sensor",\n' +
         '    "scope": ["/Japan/Tokyo"],\n' +
         '    "temperature": {"type": "Property", "value": 25}\n' +
-        "  }",
+        "  }\n\n" +
+        "Normalized attribute form is required. --key-values is rejected because\n" +
+        "POST /entities does not accept options=keyValues.",
     )
     .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
+    .option(
+      "--key-values",
+      "Not supported on create (server rejects options=keyValues on POST /entities)",
+    )
     .action(
-      withErrorHandler(async (json: string | undefined, _opts: unknown, cmd: Command) => {
+      withErrorHandler(async (json: string | undefined, opts: Record<string, unknown>, cmd: Command) => {
+        if (opts.keyValues) rejectUnsupportedKeyValuesWrite("create");
         const client = createClient(cmd);
         const data = await parseJsonInput(json);
 
@@ -364,20 +377,24 @@ export function registerEntitiesCommand(program: Command): void {
     .description(
       "Update attributes of an entity (PATCH)\n\n" +
         "JSON payload: only specified attributes are modified.\n" +
-        '  e.g. {"temperature": {"type": "Property", "value": 30}}',
+        '  e.g. {"temperature": {"type": "Property", "value": 30}}\n' +
+        '  With --key-values: {"temperature": 30}',
     )
     .argument("<id>", "Entity ID")
     .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
+    .option("--key-values", "Send payload in simplified key-value format (options=keyValues)")
     .action(
       withErrorHandler(
-        async (id: string, json: string | undefined, _opts: unknown, cmd: Command) => {
+        async (id: string, json: string | undefined, opts: Record<string, unknown>, cmd: Command) => {
           const client = createClient(cmd);
           const data = await parseJsonInput(json);
+          const path = `/entities/${encodeURIComponent(id)}/attrs`;
 
-          await client.patch(
-            `/entities/${encodeURIComponent(id)}/attrs`,
-            data,
-          );
+          if (opts.keyValues) {
+            await client.patch(path, data, { options: "keyValues" });
+          } else {
+            await client.patch(path, data);
+          }
           printSuccess("Entity updated.");
         },
       ),
@@ -388,6 +405,10 @@ export function registerEntitiesCommand(program: Command): void {
       description: "Update a Property attribute",
       command:
         `geonic entities update urn:ngsi-ld:Sensor:001 '{"temperature":{"type":"Property","value":30}}'`,
+    },
+    {
+      description: "Update with keyValues payload",
+      command: `geonic entities update urn:ngsi-ld:Sensor:001 '{"temperature":30}' --key-values`,
     },
     {
       description: "Update from a file",
@@ -407,23 +428,27 @@ export function registerEntitiesCommand(program: Command): void {
       "Replace all attributes of an entity (PUT)\n\n" +
         "JSON payload: a full NGSI-LD Entity Representation (id, type, attributes).\n" +
         "  e.g. {\"id\":\"urn:ngsi-ld:Sensor:001\",\"type\":\"Sensor\"," +
-        '"temperature":{"type":"Property","value":20}}\n\n' +
+        '"temperature":{"type":"Property","value":20}}\n' +
+        '  With --key-values: {"id":"...","type":"Sensor","temperature":20}\n\n' +
         "Per NGSI-LD spec 5.6.4 (Replace Entity), the body should be a complete\n" +
         "Entity Representation. Server may accept attribute-only bodies but a full\n" +
         "representation is recommended for spec compliance.",
     )
     .argument("<id>", "Entity ID")
     .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
+    .option("--key-values", "Send payload in simplified key-value format (options=keyValues)")
     .action(
       withErrorHandler(
-        async (id: string, json: string | undefined, _opts: unknown, cmd: Command) => {
+        async (id: string, json: string | undefined, opts: Record<string, unknown>, cmd: Command) => {
           const client = createClient(cmd);
           const data = await parseJsonInput(json);
+          const path = `/entities/${encodeURIComponent(id)}`;
 
-          await client.put(
-            `/entities/${encodeURIComponent(id)}`,
-            data,
-          );
+          if (opts.keyValues) {
+            await client.put(path, data, { options: "keyValues" });
+          } else {
+            await client.put(path, data);
+          }
           printSuccess("Entity replaced.");
         },
       ),
@@ -433,6 +458,10 @@ export function registerEntitiesCommand(program: Command): void {
     {
       description: "Replace with full Entity Representation (recommended, spec 5.6.4)",
       command: `geonic entities replace urn:ngsi-ld:Sensor:001 '{"id":"urn:ngsi-ld:Sensor:001","type":"Sensor","temperature":{"type":"Property","value":20}}'`,
+    },
+    {
+      description: "Replace with keyValues payload",
+      command: `geonic entities replace urn:ngsi-ld:Sensor:001 '{"id":"urn:ngsi-ld:Sensor:001","type":"Sensor","temperature":20}' --key-values`,
     },
     {
       description: "Replace from a file",
@@ -447,10 +476,19 @@ export function registerEntitiesCommand(program: Command): void {
   // entities upsert
   const upsert = entities
     .command("upsert")
-    .description("Create or update entities")
+    .description(
+      "Create or update entities\n\n" +
+        "Normalized attribute form is required. --key-values is rejected because\n" +
+        "POST /entityOperations/upsert does not accept options=keyValues.",
+    )
     .argument("[json]", "JSON payload (inline, @file, - for stdin, or omit for interactive/pipe)")
+    .option(
+      "--key-values",
+      "Not supported on upsert (server rejects options=keyValues on batch upsert)",
+    )
     .action(
-      withErrorHandler(async (json: string | undefined, _opts: unknown, cmd: Command) => {
+      withErrorHandler(async (json: string | undefined, opts: Record<string, unknown>, cmd: Command) => {
+        if (opts.keyValues) rejectUnsupportedKeyValuesWrite("upsert");
         const client = createClient(cmd);
         const data = await parseJsonInput(json);
 

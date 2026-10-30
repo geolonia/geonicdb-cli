@@ -105,6 +105,9 @@ export function addMeOAuthClientsSubcommand(me: Command): void {
           saveConfig(config, globalOpts.profile);
 
           printInfo("Client credentials saved to config. Auto-reauth enabled.");
+          printInfo(
+            "Note: the saved token is an OAuth client principal — /me self-service (api-keys/oauth-clients/policies/password) returns 403; `geonic me` still works.",
+          );
         } else {
           printWarning(
             "Save the clientSecret now — it will not be shown again.",

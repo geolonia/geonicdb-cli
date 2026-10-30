@@ -189,6 +189,8 @@ For machine-to-machine authentication (CI/CD, scripts), use the OAuth Client Cre
 geonic auth login --client-credentials --client-id MY_ID --client-secret MY_SECRET
 ```
 
+A client-credentials token is an OAuth client principal: `/me` self-service endpoints (`api-keys`, `oauth-clients`, `policies`, `password`) return 403; `geonic me` (GET `/me`) still works.
+
 | Option | Description |
 |---|---|
 | `--client-credentials` | Use OAuth 2.0 Client Credentials flow |
@@ -230,7 +232,7 @@ Displays the current authenticated user, token expiry, and active profile.
 | `me oauth-clients regenerate-secret <clientId>` | Regenerate client secret |
 | `me oauth-clients delete <id>` | Delete an OAuth client |
 
-`me oauth-clients create` supports flag options: `--name`, `--policy`, `--save`. Use `--save` to store client credentials in config for automatic re-authentication.
+`me oauth-clients create` supports flag options: `--name`, `--policy`, `--save`. Use `--save` to store client credentials in config for automatic re-authentication. The saved token is an OAuth client principal — `/me` self-service (`api-keys`/`oauth-clients`/`policies`/`password`) returns 403; `geonic me` still works.
 
 `me oauth-clients update` supports: `--name`, `--description`, `--policy-id` (use `null` to unbind), `--active`, `--inactive`.
 
@@ -862,6 +864,26 @@ geonic entities get urn:ngsi-ld:Building:v1        # uses the saved context
 
 The URI must be an ASCII, absolute `http`/`https` URL that the server can resolve — either publicly reachable or registered with the tenant via `POST /ngsi-ld/v1/jsonldContexts`. An unresolvable context makes the server return `504 LdContextNotAvailable` instead of quietly falling back. Non-ASCII URIs are rejected up front — HTTP headers cannot carry them — so pass the percent-encoded path and punycode host (the error message shows the form to use).
 
+## JSON-LD @context registration
+
+Register, list, inspect, and delete tenant-hosted `@context` documents with the `contexts` command (`jsonld-contexts` is an alias). This wraps `GET`/`POST`/`DELETE /ngsi-ld/v1/jsonldContexts`.
+
+```bash
+# Register a context document (Add @context — always Hosted)
+geonic contexts create '{"@context":{"Vehicle":"https://example.org/ns#Vehicle","plateNumber":"https://example.org/ns#plateNumber"}}'
+# → prints the registered URL (use it with --context)
+
+# List registered URLs (or metadata with --details)
+geonic contexts list
+geonic contexts list --details --kind Hosted
+
+# Fetch the stored document / delete by localId
+geonic contexts get urn:ngsi-ld:JsonLdContext:abc123
+geonic contexts delete urn:ngsi-ld:JsonLdContext:abc123
+```
+
+`create` prints `{ "url": "<registered URL>" }` (table format puts `url` on the first line) so you can pipe the value into `--context` on subsequent reads and writes. Do not send `kind` on create — the server always stores Hosted and rejects a client-supplied kind with 400.
+
 ## Dry Run
 
 Use `--dry-run` on any command to print the equivalent `curl` command instead of executing the request. The output can be copied and run directly in a terminal.
@@ -935,7 +957,13 @@ geonic entities list --local --api-key gdb_your_api_key_here
 GDB_API_KEY=gdb_your_api_key_here geonic entities list --local
 ```
 
-When both a Bearer token and an API key are configured, headers are sent exclusively — the API key takes precedence when present.
+Authentication headers are mutually exclusive. Precedence:
+
+1. `--api-key` on the command line (overrides a saved login token)
+2. Bearer token (`--token` or a token saved by `geonic auth login`)
+3. `GDB_API_KEY` or a configured `apiKey`
+
+Passing both `--token` and `--api-key` is an error. When both a token and an API key are only in config / env (no CLI auth flags), the token wins.
 
 ### Authorization Model
 
@@ -951,6 +979,8 @@ See the [admin policies](#admin-policies) section for details on the XACML autho
 ## Development
 
 Requires Node.js >= 20.
+
+E2E tests (`npm run test:e2e`) import the pinned `geonicdb` package, which currently requires Node.js >= 24.22.1. The CLI package itself still supports Node.js >= 20; use Node.js 24+ when running E2E locally (CI already runs E2E on Node.js 24).
 
 ```bash
 # Install dependencies

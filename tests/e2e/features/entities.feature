@@ -146,6 +146,35 @@ Feature: Entity management
     Then the exit code should be 0
     And stdout should be valid JSON
 
+  @key-values-write
+  Scenario: Update entity with --key-values
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:KVW1","type":"Room","temperature":{"value":10,"type":"Property"}}'`
+    When I run `geonic entities update urn:ngsi-ld:Room:KVW1 '{"temperature":25}' --key-values`
+    Then the exit code should be 0
+    And the output should contain "Entity updated."
+    When I run `geonic entities get urn:ngsi-ld:Room:KVW1 --key-values`
+    Then the exit code should be 0
+    And the JSON output key "temperature" should be "25"
+
+  @key-values-write
+  Scenario: Replace entity with --key-values
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:Room:KVW2","type":"Room","temperature":{"value":10,"type":"Property"}}'`
+    When I run `geonic entities replace urn:ngsi-ld:Room:KVW2 '{"id":"urn:ngsi-ld:Room:KVW2","type":"Room","temperature":40}' --key-values`
+    Then the exit code should be 0
+    And the output should contain "Entity replaced."
+    When I run `geonic entities get urn:ngsi-ld:Room:KVW2 --key-values`
+    Then the exit code should be 0
+    And the JSON output key "temperature" should be "40"
+
+  @key-values-write
+  Scenario: Create with --key-values is rejected
+    Given I am logged in
+    When I run `geonic entities create '{"id":"urn:ngsi-ld:Room:KVW3","type":"Room","temperature":25}' --key-values`
+    Then the exit code should be 1
+    And the output should contain "server does not accept keyValues on create"
+
   # Geo-query
 
   Scenario: Geo-query with --coords near a point
