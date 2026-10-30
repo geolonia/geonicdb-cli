@@ -469,6 +469,16 @@ describe("models (custom-data-models) command", () => {
       };
       expect(isModelPatchUnchanged(existing, patch)).toBe(false);
     });
+
+    it("near-miss: valueType casing mismatch is not unchanged (server stores lowercase)", () => {
+      const existing = {
+        propertyDetails: { temperature: { ngsiType: "Property", valueType: "number", example: 25 } },
+      };
+      const patch = {
+        propertyDetails: { temperature: { ngsiType: "Property", valueType: "Number", example: 25 } },
+      };
+      expect(isModelPatchUnchanged(existing, patch)).toBe(false);
+    });
   });
 
   describe("modelApplyTypeError (#238)", () => {
