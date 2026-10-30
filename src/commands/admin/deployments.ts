@@ -1,4 +1,4 @@
-import type { Command } from "commander";
+import { type Command, InvalidArgumentError } from "commander";
 import {
   withErrorHandler,
   createClient,
@@ -31,6 +31,13 @@ import { addExamples, addNotes } from "../help.js";
 /** Quota plans accepted by the server (`QUOTAS.PLAN_VALUES`). */
 const QUOTA_PLANS = ["FREE", "STANDARD", "PREMIUM", "ENTERPRISE", "CUSTOM"] as const;
 
+/**
+ * Write modes accepted by the server (`DEPLOYMENTS.WRITE_MODES`, geonicdb#3412).
+ * Used to pause writes before a final DB sync during migration/restore.
+ */
+const WRITE_MODES = ["normal", "read-only"] as const;
+type WriteMode = (typeof WRITE_MODES)[number];
+
 interface CreateOptions {
   database?: string;
   plan?: string;
@@ -39,6 +46,7 @@ interface CreateOptions {
   rateLimitTable?: string;
   disabled?: boolean;
   metadata?: string;
+  writeMode?: WriteMode;
 }
 
 interface UpdateOptions {
@@ -54,6 +62,7 @@ interface UpdateOptions {
   clearMongodbUri?: boolean;
   clearRateLimitTable?: boolean;
   clearMetadata?: boolean;
+  writeMode?: WriteMode;
 }
 
 /**
@@ -97,6 +106,14 @@ function assertKnownPlan(plan: string): string {
     throw new Error(`--plan must be one of: ${QUOTA_PLANS.join(", ")}.`);
   }
   return upper;
+}
+
+/** Commander option parser — reject unknown values before the request leaves. */
+function parseWriteMode(value: string): WriteMode {
+  if (!(WRITE_MODES as readonly string[]).includes(value)) {
+    throw new InvalidArgumentError(`Must be one of: ${WRITE_MODES.join(", ")}.`);
+  }
+  return value as WriteMode;
 }
 
 /**
@@ -164,6 +181,7 @@ function buildCreateBody(hostname: string, opts: CreateOptions): Record<string, 
   if (opts.rateLimitTable) body.rateLimitTableName = opts.rateLimitTable;
   if (opts.disabled) body.enabled = false;
   if (opts.metadata) body.metadata = parseMetadata(opts.metadata);
+  if (opts.writeMode) body.writeMode = opts.writeMode;
   return body;
 }
 
@@ -200,6 +218,7 @@ function buildUpdateBody(opts: UpdateOptions): Record<string, unknown> {
   if (opts.clearRateLimitTable) body.rateLimitTableName = null;
   if (opts.metadata) body.metadata = parseMetadata(opts.metadata);
   if (opts.clearMetadata) body.metadata = null;
+  if (opts.writeMode) body.writeMode = opts.writeMode;
 
   if (Object.keys(body).length === 0) {
     throw new Error("Nothing to update — specify at least one field to change.");
@@ -296,6 +315,11 @@ export function registerDeploymentsCommand(parent: Command): void {
     .option("--rate-limit-table <name>", "Deployment-specific rate limit table")
     .option("--disabled", "Create the row disabled (no routing until enabled)")
     .option("--metadata <json>", "Free-form JSON object stored with the row")
+    .option(
+      "--write-mode <mode>",
+      `Write mode: ${WRITE_MODES.join(", ")} (server DEPLOYMENTS.WRITE_MODES)`,
+      parseWriteMode,
+    )
     .action(
       withErrorHandler(async (hostname: string, opts: CreateOptions, cmd: Command) => {
         const body = buildCreateBody(hostname, opts);
@@ -360,6 +384,11 @@ export function registerDeploymentsCommand(parent: Command): void {
     .option("--clear-mongodb-uri", "Remove the stored plaintext connection string")
     .option("--clear-rate-limit-table", "Remove the deployment-specific rate limit table")
     .option("--clear-metadata", "Remove the stored metadata")
+    .option(
+      "--write-mode <mode>",
+      `Write mode: ${WRITE_MODES.join(", ")} (server DEPLOYMENTS.WRITE_MODES)`,
+      parseWriteMode,
+    )
     .action(
       withErrorHandler(async (hostname: string, opts: UpdateOptions, cmd: Command) => {
         const body = buildUpdateBody(opts);
@@ -379,6 +408,12 @@ export function registerDeploymentsCommand(parent: Command): void {
     "  one connection source, so clearing the last of --secret / --mongodb-uri is refused.",
     "Disabling the row that serves the current request is refused (409) — it would make",
     "  every API on that host, including this one, return 404. Run it from another host.",
+    "--write-mode read-only pauses writes on that deployment (DB migrate/restore final sync).",
+    "  Newly setting the hostname you are connected through to read-only is refused (409) —",
+    "  run it from another host. Re-PATCHing a row that is already read-only does not 409.",
+    "  Switching back to normal is always allowed.",
+    "  Propagation upper bound is the settings cache (30s) plus the longest in-flight job",
+    "  (300s) — about 6 minutes before every warm instance observes the new mode.",
   ]);
 
   addExamples(update, [
@@ -403,6 +438,14 @@ export function registerDeploymentsCommand(parent: Command): void {
     {
       description: "Take a hostname out of service",
       command: "geonic admin deployments update tenant-a.geonicdb.com --disable",
+    },
+    {
+      description: "Pause writes before a final DB sync (run from another host)",
+      command: "geonic admin deployments update tenant-a.geonicdb.com --write-mode read-only",
+    },
+    {
+      description: "Resume writes after migration",
+      command: "geonic admin deployments update tenant-a.geonicdb.com --write-mode normal",
     },
   ]);
 
