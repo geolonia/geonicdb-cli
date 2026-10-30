@@ -54,3 +54,34 @@ Feature: Admin tenant management
     When I run `geonic admin tenants activate $ID` replacing ID
     Then the exit code should be 0
     And the output should contain "Tenant activated."
+
+  Scenario: Add, list, and remove a tenant membership
+    Given I am logged in as super admin
+    And I run `geonic admin tenants create '{"name":"test_tenant_membership_01","description":"Membership primary tenant"}'`
+    And I run `geonic admin tenants list --format json`
+    And I save the ID from the JSON output where "name" is "test_tenant_membership_01" as TENANT1
+    And I run `geonic admin users create '{"email":"membership01@example.com","password":"TestPassword123!","role":"user","primaryTenantId":"$TENANT1"}'` replacing vars
+    And I run `geonic admin users list --format json`
+    And I save the ID from the JSON output where "email" is "membership01@example.com" as USER1
+    And I run `geonic admin tenants create '{"name":"test_tenant_membership_02","description":"Membership second tenant"}'`
+    And I run `geonic admin tenants list --format json`
+    And I save the ID from the JSON output where "name" is "test_tenant_membership_02" as TENANT2
+    When I run `geonic admin tenants add-user $TENANT2 $USER1 --role tenant_admin` replacing vars
+    Then the exit code should be 0
+    And the output should contain "User added to tenant (or membership role updated)."
+    When I run `geonic admin tenants users $TENANT2` replacing vars
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the output should contain "membership01@example.com"
+    And the output should contain "tenant_admin"
+    When I run `geonic admin users tenants $USER1` replacing vars
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the output should contain "test_tenant_membership_02"
+    When I run `geonic admin tenants remove-user $TENANT2 $USER1` replacing vars
+    Then the exit code should be 0
+    And the output should contain "User removed from tenant."
+    When I run `geonic admin tenants users $TENANT2` replacing vars
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the output should not contain "membership01@example.com"

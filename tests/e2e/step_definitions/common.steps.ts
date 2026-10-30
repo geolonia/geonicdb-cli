@@ -52,6 +52,16 @@ When(/^I run `([^`]+)` replacing ID$/, async function (this: GdbWorld, command: 
   await this.run(args);
 });
 
+When(/^I run `([^`]+)` replacing vars$/, async function (this: GdbWorld, command: string) {
+  const vars = ((this as Record<string, unknown>).savedVars ?? {}) as Record<string, string>;
+  const resolved = command.replace(/\$([A-Z][A-Z0-9_]*)/g, (_match, name: string) => {
+    assert.ok(vars[name], `No saved var $${name}. Run 'I save the ID ... as ${name}' first.`);
+    return vars[name];
+  });
+  const args = stripCommandPrefix(parseArgs(resolved));
+  await this.run(args);
+});
+
 When(/^I run `([^`]+)` replacing URL$/, async function (this: GdbWorld, command: string) {
   const savedUrl = (this as Record<string, unknown>).savedUrl as string;
   assert.ok(savedUrl, "No saved URL available. Run 'I save the url from the JSON output' first.");
@@ -88,6 +98,19 @@ Given(/^I save the ID from the JSON output where "([^"]+)" is "([^"]+)"$/, funct
   assert.ok(id, `Could not extract ID from: ${JSON.stringify(item)}`);
   (this as Record<string, unknown>).savedId = String(id);
 });
+
+Given(
+  /^I save the ID from the JSON output where "([^"]+)" is "([^"]+)" as ([A-Z][A-Z0-9_]*)$/,
+  function (this: GdbWorld, field: string, value: string, name: string) {
+    const item = findItemInJsonOutput(this.lastResult.stdout, field, value);
+    const id = extractId(item);
+    assert.ok(id, `Could not extract ID from: ${JSON.stringify(item)}`);
+    const world = this as Record<string, unknown>;
+    const vars = (world.savedVars ?? {}) as Record<string, string>;
+    vars[name] = String(id);
+    world.savedVars = vars;
+  },
+);
 
 Then("the exit code should be {int}", function (this: GdbWorld, code: number) {
   assert.equal(this.lastResult.exitCode, code, `Expected exit code ${code}, got ${this.lastResult.exitCode}.\nstdout: ${this.lastResult.stdout}\nstderr: ${this.lastResult.stderr}`);
