@@ -52,7 +52,7 @@ Feature: Admin tenant management
     And I run `geonic admin tenants create '{"name":"test_tenant_cadde_02","description":"CADDE settings update"}'`
     And I run `geonic admin tenants list --format json`
     And I save the ID from the JSON output where "name" is "test_tenant_cadde_02"
-    When I run `geonic admin tenants update $ID --cadde-enabled true --require-data-model false` replacing ID
+    When I run `geonic admin tenants update $ID '{}' --cadde-enabled true --require-data-model false` replacing ID
     Then the exit code should be 0
     And the output should contain "Tenant updated."
     When I run `geonic admin tenants get $ID` replacing ID
