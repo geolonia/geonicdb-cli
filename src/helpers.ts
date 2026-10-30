@@ -31,6 +31,12 @@ export function resolveOptions(cmd: Command): GlobalOptions {
 
 /**
  * Create a GdbClient from resolved options.
+ *
+ * Auth precedence (#237):
+ *   1. CLI `--api-key` (explicit; suppresses saved/CLI token)
+ *   2. Bearer token (`--token` or saved config)
+ *   3. `GDB_API_KEY` / config `apiKey`
+ * `--token` and `--api-key` together are rejected as ambiguous.
  */
 export function createClient(cmd: Command): GdbClient {
   const opts = resolveOptions(cmd);
@@ -41,7 +47,28 @@ export function createClient(cmd: Command): GdbClient {
   opts.url = validateUrl(opts.url);
   const cliOpts = cmd.optsWithGlobals() as GlobalOptions;
   const usingCliToken = !!cliOpts.token;
+  const usingCliApiKey = !!cliOpts.apiKey;
+
+  if (usingCliToken && usingCliApiKey) {
+    printError("Cannot use --token and --api-key together. Specify only one.");
+    process.exit(1);
+  }
+
   const config = loadConfig(opts.profile);
+
+  // Explicit CLI --api-key wins over any saved (or --token) Bearer credential.
+  // Do not pass refresh material either — this request is API-key auth only.
+  if (usingCliApiKey) {
+    return new GdbClient({
+      baseUrl: opts.url,
+      service: opts.service,
+      apiKey: cliOpts.apiKey,
+      verbose: opts.verbose,
+      dryRun: opts.dryRun,
+      context: opts.context,
+    });
+  }
+
   return new GdbClient({
     baseUrl: opts.url,
     service: opts.service,

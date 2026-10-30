@@ -30,3 +30,17 @@ Feature: API key authentication
     Then the exit code should be 0
     And stdout should contain "Authorization"
     And stdout should not contain "X-Api-Key"
+
+  Scenario: CLI --api-key overrides saved login token in dry-run
+    Given I am logged in with token and invalid apiKey in config
+    When I run `geonic entities list --api-key gdb_cli_override --dry-run`
+    Then the exit code should be 0
+    And stdout should contain "X-Api-Key"
+    And stdout should contain "gdb_cli_override"
+    And stdout should not contain "Authorization"
+
+  Scenario: --token and --api-key together are rejected
+    Given I have a config with url
+    When I run `geonic entities list --token saved-token --api-key gdb_cli_key --dry-run`
+    Then the exit code should be 1
+    And stderr should contain "Cannot use --token and --api-key together"
