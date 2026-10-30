@@ -49,6 +49,7 @@ describe("contexts (jsonldContexts) command (#241)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(console, "error").mockImplementation(() => {});
     mockClient = createMockClient();
     vi.mocked(createClient).mockReturnValue(mockClient as never);
     vi.mocked(getFormat).mockReturnValue("json");
@@ -215,7 +216,7 @@ describe("contexts (jsonldContexts) command (#241)", () => {
         },
         "json",
       );
-      expect(printSuccess).toHaveBeenCalledWith("Context created.");
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Context created."));
     });
 
     it("fails loudly when Location is missing", async () => {
@@ -265,7 +266,7 @@ describe("contexts (jsonldContexts) command (#241)", () => {
       await runCommand(program, ["contexts", "create", '{"@context":{}}']);
 
       expect(printOutput).toHaveBeenCalledWith({ url: abs }, "json");
-      expect(printSuccess).toHaveBeenCalledWith("Context created.");
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining("Context created."));
     });
   });
 

@@ -1,5 +1,6 @@
 import type { Command } from "commander";
 import { InvalidArgumentError } from "commander";
+import chalk from "chalk";
 import {
   withErrorHandler,
   createClient,
@@ -193,9 +194,10 @@ export function registerContextsCommand(program: Command): void {
           throw err;
         }
         // Table format shows `url` on the first line so the value is easy to copy
-        // into `--context`.
+        // into `--context`. Success text goes to stderr so stdout stays
+        // jq-parseable (`jq -r .url`).
         printOutput({ url }, format);
-        printSuccess("Context created.");
+        console.error(chalk.green("Context created."));
       }),
     );
 
