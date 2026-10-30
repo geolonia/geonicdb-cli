@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-10-31
+- **Feat**: `models apply` を追加した。GET で有無を見て無ければ POST、あれば `type` を除いて PATCH する idempotent upsert。結果は `created` / `updated` / `unchanged`（`--api-dry-run` の欠落時は `would create`）。`.` / `..` は実行前に拒否する (closes #238) (#252)
+
 ## [0.26.1] - 2026-09-15
 
 ### 2026-09-15
