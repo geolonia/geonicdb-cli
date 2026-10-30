@@ -73,10 +73,15 @@ Feature: Custom data model management
     # 生存エンティティを用意し、未登録=missing / isActive:false=inactive / 有効モデルは出ないことを assert する。
     Given I am logged in
     And I run `geonic entities create '{"id":"urn:ngsi-ld:MissingTypesOrphan244:001","type":"MissingTypesOrphan244"}' --service e2e_test`
+    And the exit code should be 0
     And I run `geonic models create '{"type":"MissingTypesInactive244","domain":"test","description":"inactive gap","isActive":false,"propertyDetails":{"x":{"ngsiType":"Property","valueType":"string","example":"a"}}}' --service e2e_test`
+    And the exit code should be 0
     And I run `geonic entities create '{"id":"urn:ngsi-ld:MissingTypesInactive244:001","type":"MissingTypesInactive244","x":{"type":"Property","value":"a"}}' --service e2e_test`
+    And the exit code should be 0
     And I run `geonic models create '{"type":"MissingTypesCovered244","domain":"test","description":"active covered","isActive":true,"propertyDetails":{"x":{"ngsiType":"Property","valueType":"string","example":"a"}}}' --service e2e_test`
+    And the exit code should be 0
     And I run `geonic entities create '{"id":"urn:ngsi-ld:MissingTypesCovered244:001","type":"MissingTypesCovered244","x":{"type":"Property","value":"a"}}' --service e2e_test`
+    And the exit code should be 0
     When I run `geonic models missing-types --service e2e_test`
     Then the exit code should be 0
     And stdout should be valid JSON
@@ -85,11 +90,9 @@ Feature: Custom data model management
     And the JSON output should have key "scopeLimited"
     And the JSON output should have key "truncated"
     And the JSON output should have key "maxTypes"
-    And the output should contain "MissingTypesOrphan244"
-    And the output should contain "\"reason\": \"missing\""
-    And the output should contain "MissingTypesInactive244"
-    And the output should contain "\"reason\": \"inactive\""
-    And the output should not contain "MissingTypesCovered244"
+    And the JSON output array "types" should contain an object with "type" "MissingTypesOrphan244" and "reason" "missing"
+    And the JSON output array "types" should contain an object with "type" "MissingTypesInactive244" and "reason" "inactive"
+    And the JSON output array "types" should not contain an object with "type" "MissingTypesCovered244"
 
   @models-apply
   Scenario: Apply creates then reports unchanged or updated (#238)

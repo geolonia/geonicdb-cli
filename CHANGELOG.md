@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-10-31
-- **Feat**: `models missing-types` を追加した。`GET /custom-data-models/missing-types`（本体 geolonia/geonicdb#3477）を呼び、有効なデータモデルが無い生存エンティティ型を返す。ページネーション無し。`models create`/`update` の help に `typeIri` / `contextUrl` を追記した (closes #244)
+- **Feat**: `models missing-types` を追加した。`GET /custom-data-models/missing-types`（本体 geolonia/geonicdb#3477）を呼び、有効なデータモデルが無い生存エンティティ型を返す。ページネーション無し。`models create`/`update` の help に `typeIri` / `contextUrl` を追記した (closes #244) (#258)
 - **Docs**: `entities list`/`entities purge` の `--scope-q` ヘルプと README を本体 geolonia/geonicdb#3524 に揃え、AND (`;`) は括弧必須（例: `(/A;/B)`）、レベルは文字始まり必須（`/Madrid/1st` は拒否）と明記した (closes #246) (#255)
 - **Feat**: `admin tenants add-user` / `remove-user` / `users` と `admin users tenants` を追加し、既存ユーザーの複数テナントメンバーシップを CLI から追加・削除・一覧できるようにした (closes #247)。`--role` は本体 PUT と同じく `tenant_admin` / `user` のみ（省略時は本文なし＝サーバ既定 `user`）。`admin users create` の help に、既存ユーザーを別テナントへ加えるときは `add-user` を使う旨を追記 (#256)
 - **Feat**: `models apply` を追加した。GET で有無を見て無ければ POST、あれば `type` を除いて PATCH する idempotent upsert。結果は `created` / `updated` / `unchanged`（モデル未登録時に `--api-dry-run` を指定すると `would create`）。`.` / `..` は実行前に拒否する (closes #238) (#252)

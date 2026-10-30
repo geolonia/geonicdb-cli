@@ -197,9 +197,11 @@ export function registerModelsCommand(program: Command): void {
     .description(
       "List live entity types that have no active custom data model (GeonicDB extension).\n\n" +
         "Calls GET /custom-data-models/missing-types. Different axis from `types list`\n" +
-        "(types that exist): this returns types whose model is missing or inactive, so\n" +
-        "settings.requireDataModel can be turned on safely. No pagination; the server may\n" +
-        "set truncated: true when the type cap is hit. type is the stored string (not compacted).",
+        "(types that exist): this returns types whose model is missing or inactive\n" +
+        "(useful before enabling settings.requireDataModel). No pagination; the server may\n" +
+        "set truncated: true when the type cap is hit. type is the stored string (not compacted).\n" +
+        "If scopeLimited or truncated is true, types may be incomplete even when empty —\n" +
+        "do not treat that alone as proof that requireDataModel is safe to enable.",
     )
     .action(
       withErrorHandler(async (_opts: unknown, cmd: Command) => {
