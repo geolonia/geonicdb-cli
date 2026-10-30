@@ -168,6 +168,13 @@ Then("the JSON output key {string} should be {string}", function (this: GdbWorld
   assert.equal(String(json[key]), value, `Expected json.${key} to be "${value}", got "${json[key]}".`);
 });
 
+Then("the JSON output path {string} should be {string}", function (this: GdbWorld, path: string, value: string) {
+  const json = extractJson(this.lastResult.stdout);
+  assert.ok(json !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);
+  const actual = getJsonPath(json, path);
+  assert.equal(String(actual), value, `Expected json.${path} to be "${value}", got "${actual}".`);
+});
+
 Then("the JSON array length should be {int}", function (this: GdbWorld, expected: number) {
   const data = JSON.parse(this.lastResult.stdout);
   const arr = Array.isArray(data) ? data : [];
@@ -188,6 +195,19 @@ Then("the config should not have key {string}", function (this: GdbWorld, key: s
   const config = this.readProfileConfig();
   assert.ok(!(key in config), `Expected config NOT to have key "${key}". Config: ${JSON.stringify(config)}`);
 });
+
+/** Resolve a dotted path (e.g. settings.caddeEnabled) against a JSON object. */
+function getJsonPath(root: Record<string, unknown>, path: string): unknown {
+  const parts = path.split(".");
+  let cur: unknown = root;
+  for (const part of parts) {
+    if (cur === null || typeof cur !== "object" || Array.isArray(cur)) {
+      return undefined;
+    }
+    cur = (cur as Record<string, unknown>)[part];
+  }
+  return cur;
+}
 
 /** Extract the first JSON object or array from stdout (ignoring leading/trailing non-JSON lines) */
 function extractJson(text: string): Record<string, unknown> | null {

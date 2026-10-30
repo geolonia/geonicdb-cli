@@ -236,6 +236,40 @@ describe("admin tenants commands", () => {
       expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", { body });
     });
 
+    it("does not add settings when --cadde-enabled and --require-data-model are omitted on create", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ name: "plain" });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t6b" }, 201));
+      const program = makeProgram();
+      await runCommand(program, ["admin", "tenants", "create", '{"name":"plain"}']);
+      const body = (client.rawRequest.mock.calls[0][2] as { body: Record<string, unknown> }).body;
+      expect(body).toEqual({ name: "plain" });
+      expect(body).not.toHaveProperty("settings");
+    });
+
+    it("does not mix caddeEnabled/requireDataModel when creating with --allowed-origins alone", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ name: "cors-only" });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t6c" }, 201));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "create",
+        '{"name":"cors-only"}',
+        "--allowed-origins",
+        "https://app.example.com",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/tenants", {
+        body: {
+          name: "cors-only",
+          settings: { allowedOrigins: ["https://app.example.com"] },
+        },
+      });
+      const body = (client.rawRequest.mock.calls[0][2] as { body: { settings: Record<string, unknown> } })
+        .body;
+      expect(body.settings).not.toHaveProperty("caddeEnabled");
+      expect(body.settings).not.toHaveProperty("requireDataModel");
+    });
+
     it("merges --cadde-enabled true into settings.caddeEnabled", async () => {
       vi.mocked(parseJsonInput).mockResolvedValue({ name: "cadde-tenant" });
       client.rawRequest.mockResolvedValue(mockResponse({ id: "t7" }, 201));
@@ -485,6 +519,46 @@ describe("admin tenants commands", () => {
       expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
         body: { description: "no flag" },
       });
+    });
+
+    it("does not add settings when --cadde-enabled and --require-data-model are omitted", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ description: "no bool flags" });
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "update",
+        "t1",
+        '{"description":"no bool flags"}',
+      ]);
+      const call = client.rawRequest.mock.calls[0];
+      const body = (call[2] as { body: Record<string, unknown> }).body;
+      expect(body).toEqual({ description: "no bool flags" });
+      expect(body).not.toHaveProperty("settings");
+    });
+
+    it("does not mix caddeEnabled/requireDataModel when updating with --allowed-origins alone", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({});
+      client.rawRequest.mockResolvedValue(mockResponse({ id: "t1" }));
+      const program = makeProgram();
+      await runCommand(program, [
+        "admin",
+        "tenants",
+        "update",
+        "t1",
+        "--allowed-origins",
+        "https://app.example.com",
+      ]);
+      expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/tenants/t1", {
+        body: {
+          settings: { allowedOrigins: ["https://app.example.com"] },
+        },
+      });
+      const body = (client.rawRequest.mock.calls[0][2] as { body: { settings: Record<string, unknown> } })
+        .body;
+      expect(body.settings).not.toHaveProperty("caddeEnabled");
+      expect(body.settings).not.toHaveProperty("requireDataModel");
     });
 
     it("merges --cadde-enabled false into settings.caddeEnabled", async () => {
