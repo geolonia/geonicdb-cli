@@ -28,6 +28,7 @@ Feature: JSON-LD @context registration via `geonic contexts`
     When I run `geonic contexts list --kind Hosted`
     Then the exit code should be 0
     And stdout should be valid JSON
+    And stdout should contain the saved URL
     When I run `geonic contexts list --details --kind Hosted`
     Then the exit code should be 0
     And the output should contain "Hosted"
@@ -38,6 +39,9 @@ Feature: JSON-LD @context registration via `geonic contexts`
     When I run `geonic contexts delete $ID` replacing ID
     Then the exit code should be 0
     And the output should contain "Context deleted."
+    When I run `geonic contexts get $ID` replacing ID
+    Then the exit code should be 1
+    And stderr should contain "not found"
 
   Scenario: jsonld-contexts alias works
     Given I am logged in

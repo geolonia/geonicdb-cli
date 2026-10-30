@@ -39,6 +39,7 @@ import { printSuccess, printOutput, printError } from "../src/output.js";
 import {
   parseJsonLdContextKind,
   resolveRegisteredContextUrl,
+  CrossOriginContextLocationError,
   registerContextsCommand,
 } from "../src/commands/contexts.js";
 
@@ -82,10 +83,49 @@ describe("contexts (jsonldContexts) command (#241)", () => {
       ).toBe("http://localhost:3000/ngsi-ld/v1/jsonldContexts/urn:ngsi-ld:JsonLdContext:abc");
     });
 
-    it("keeps an absolute Location unchanged", () => {
+    // near-miss (allowed): same-origin absolute Location is kept
+    it("keeps a same-origin absolute Location", () => {
       const abs =
-        "https://broker.example/ngsi-ld/v1/jsonldContexts/urn:ngsi-ld:JsonLdContext:abc";
+        "http://localhost:3000/ngsi-ld/v1/jsonldContexts/urn:ngsi-ld:JsonLdContext:abc";
       expect(resolveRegisteredContextUrl(abs, "http://localhost:3000")).toBe(abs);
+    });
+
+    // near-miss (allowed): same origin with different path is fine
+    it("accepts a same-origin absolute Location with a different path", () => {
+      expect(
+        resolveRegisteredContextUrl(
+          "http://localhost:3000/other/path/ctx",
+          "http://localhost:3000",
+        ),
+      ).toBe("http://localhost:3000/other/path/ctx");
+    });
+
+    it("strips control characters from Location before resolving", () => {
+      expect(
+        resolveRegisteredContextUrl(
+          "/ngsi-ld/v1/jsonldContexts/urn:ngsi-ld:JsonLdContext:abc\u001b[31m",
+          "http://localhost:3000",
+        ),
+      ).toBe("http://localhost:3000/ngsi-ld/v1/jsonldContexts/urn:ngsi-ld:JsonLdContext:abc[31m");
+    });
+
+    // near-miss (forbidden): absolute Location on another origin must not be printed
+    it("rejects a cross-origin absolute Location", () => {
+      expect(() =>
+        resolveRegisteredContextUrl(
+          "https://broker.example/ngsi-ld/v1/jsonldContexts/urn:ngsi-ld:JsonLdContext:abc",
+          "http://localhost:3000",
+        ),
+      ).toThrow(CrossOriginContextLocationError);
+    });
+
+    it("rejects a same-host different-scheme Location as cross-origin", () => {
+      expect(() =>
+        resolveRegisteredContextUrl(
+          "https://localhost:3000/ngsi-ld/v1/jsonldContexts/x",
+          "http://localhost:3000",
+        ),
+      ).toThrow(CrossOriginContextLocationError);
     });
   });
 
@@ -190,6 +230,42 @@ describe("contexts (jsonldContexts) command (#241)", () => {
       expect(printOutput).not.toHaveBeenCalled();
       expect(process.exitCode).toBe(1);
       process.exitCode = undefined;
+    });
+
+    it("errors without printing url when Location is cross-origin", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ "@context": {} });
+      mockClient.post.mockResolvedValue({
+        status: 201,
+        headers: new Headers({
+          Location: "https://evil.example/ngsi-ld/v1/jsonldContexts/x",
+        }),
+        data: "",
+      });
+
+      await runCommand(program, ["contexts", "create", '{"@context":{}}']);
+
+      expect(printOutput).not.toHaveBeenCalled();
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("Refusing to print context URL"),
+      );
+      expect(process.exitCode).toBe(1);
+      process.exitCode = undefined;
+    });
+
+    it("accepts a same-origin absolute Location on create", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ "@context": {} });
+      const abs =
+        "http://localhost:3000/ngsi-ld/v1/jsonldContexts/urn:ngsi-ld:JsonLdContext:abc";
+      mockClient.post.mockResolvedValue({
+        status: 201,
+        headers: new Headers({ Location: abs }),
+        data: "",
+      });
+
+      await runCommand(program, ["contexts", "create", '{"@context":{}}']);
+
+      expect(printOutput).toHaveBeenCalledWith({ url: abs }, "json");
+      expect(printSuccess).toHaveBeenCalledWith("Context created.");
     });
   });
 

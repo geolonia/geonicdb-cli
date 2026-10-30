@@ -107,6 +107,15 @@ Then("stdout should contain {string}", function (this: GdbWorld, text: string) {
   assert.ok(this.lastResult.stdout.includes(text), `Expected stdout to contain "${text}".\nstdout: ${this.lastResult.stdout}`);
 });
 
+Then("stdout should contain the saved URL", function (this: GdbWorld) {
+  const savedUrl = (this as Record<string, unknown>).savedUrl as string;
+  assert.ok(savedUrl, "No saved URL available. Run 'I save the url from the JSON output' first.");
+  assert.ok(
+    this.lastResult.stdout.includes(savedUrl),
+    `Expected stdout to contain saved URL "${savedUrl}".\nstdout: ${this.lastResult.stdout}`,
+  );
+});
+
 Then("stdout should not contain {string}", function (this: GdbWorld, text: string) {
   assert.ok(!this.lastResult.stdout.includes(text), `Expected stdout NOT to contain "${text}".\nstdout: ${this.lastResult.stdout}`);
 });

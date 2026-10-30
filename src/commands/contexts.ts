@@ -9,6 +9,7 @@ import {
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess, printOutput, printError } from "../output.js";
+import { sanitizeServerText } from "../sanitize.js";
 import { addExamples } from "./help.js";
 
 /**
@@ -40,11 +41,34 @@ export function parseJsonLdContextKind(value: string): string {
 }
 
 /**
+ * Thrown when `Location` resolves to an origin other than the configured server.
+ * A hostile or misconfigured broker must not steer `--context` at a third party.
+ */
+export class CrossOriginContextLocationError extends Error {
+  constructor(resolvedHref: string, baseUrl: string) {
+    super(
+      `Refusing to print context URL: Location origin differs from the configured server (${baseUrl} → ${resolvedHref}).`,
+    );
+    this.name = "CrossOriginContextLocationError";
+  }
+}
+
+/**
  * Turn the `Location` header from `POST /jsonldContexts` into an absolute URL
  * suitable for `--context`. The server returns a path (`/ngsi-ld/v1/jsonldContexts/...`).
+ *
+ * - Control characters are stripped via {@link sanitizeServerText} (same as
+ *   `surfaceNgsiWarning` / helpers.ts) before resolution and again on the result.
+ * - Absolute Locations whose origin ≠ the CLI base URL are rejected.
  */
 export function resolveRegisteredContextUrl(location: string, baseUrl: string): string {
-  return new URL(location, baseUrl).href;
+  const sanitized = sanitizeServerText(location);
+  const resolved = new URL(sanitized, baseUrl);
+  const base = new URL(baseUrl);
+  if (resolved.origin !== base.origin) {
+    throw new CrossOriginContextLocationError(resolved.href, baseUrl);
+  }
+  return sanitizeServerText(resolved.href);
 }
 
 export function registerContextsCommand(program: Command): void {
@@ -157,7 +181,17 @@ export function registerContextsCommand(program: Command): void {
           return;
         }
 
-        const url = resolveRegisteredContextUrl(location, opts.url);
+        let url: string;
+        try {
+          url = resolveRegisteredContextUrl(location, opts.url);
+        } catch (err) {
+          if (err instanceof CrossOriginContextLocationError) {
+            printError(err.message);
+            process.exitCode = 1;
+            return;
+          }
+          throw err;
+        }
         // Table format shows `url` on the first line so the value is easy to copy
         // into `--context`.
         printOutput({ url }, format);
