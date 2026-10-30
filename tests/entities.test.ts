@@ -38,22 +38,30 @@ vi.mock("../src/prompt.js", () => ({
 
 import { createClient, getFormat, outputResponse } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
-import { printCount, printSuccess } from "../src/output.js";
+import { printCount, printError, printSuccess } from "../src/output.js";
 import { isInteractive, promptConfirm } from "../src/prompt.js";
 import { registerEntitiesCommand } from "../src/commands/entities.js";
 
 describe("entities command", () => {
   let mockClient: MockClient;
   let program: ReturnType<typeof createTestProgram>;
+  let exitSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: number) => {
+      throw new Error(`exit:${code}`);
+    }) as never);
     mockClient = createMockClient();
     vi.mocked(createClient).mockReturnValue(mockClient as never);
     vi.mocked(getFormat).mockReturnValue("json");
     vi.mocked(isInteractive).mockReturnValue(false);
     vi.mocked(promptConfirm).mockResolvedValue(false);
     program = createTestProgram(registerEntitiesCommand);
+  });
+
+  afterEach(() => {
+    exitSpy.mockRestore();
   });
 
   describe("list", () => {
@@ -275,6 +283,15 @@ describe("entities command", () => {
       expect(mockClient.post).toHaveBeenCalledWith("/entities", entityData);
       expect(printSuccess).toHaveBeenCalledWith("Entity created.");
     });
+
+    it("rejects --key-values without calling the API", async () => {
+      await expect(
+        runCommand(program, ["entities", "create", "{}", "--key-values"]),
+      ).rejects.toThrow("exit:1");
+      expect(printError).toHaveBeenCalledWith("server does not accept keyValues on create");
+      expect(mockClient.post).not.toHaveBeenCalled();
+      expect(parseJsonInput).not.toHaveBeenCalled();
+    });
   });
 
   describe("update", () => {
@@ -291,6 +308,46 @@ describe("entities command", () => {
         attrData,
       );
       expect(printSuccess).toHaveBeenCalledWith("Entity updated.");
+    });
+
+    it("passes options=keyValues when --key-values is set", async () => {
+      const attrData = { temperature: 25 };
+      vi.mocked(parseJsonInput).mockResolvedValue(attrData);
+      mockClient.patch.mockResolvedValue(mockResponse(undefined, 204));
+
+      await runCommand(program, [
+        "entities",
+        "update",
+        "urn:ngsi-ld:Sensor:001",
+        '{"temperature":25}',
+        "--key-values",
+      ]);
+
+      expect(mockClient.patch).toHaveBeenCalledWith(
+        `/entities/${encodeURIComponent("urn:ngsi-ld:Sensor:001")}/attrs`,
+        attrData,
+        { options: "keyValues" },
+      );
+      expect(printSuccess).toHaveBeenCalledWith("Entity updated.");
+    });
+
+    // near-miss: omitting --key-values must not send options at all
+    // (accidentally always attaching options=keyValues would break normalized writes).
+    it("does not send options when --key-values is omitted (near-miss)", async () => {
+      const attrData = { temperature: { type: "Property", value: 25 } };
+      vi.mocked(parseJsonInput).mockResolvedValue(attrData);
+      mockClient.patch.mockResolvedValue(mockResponse(undefined, 204));
+
+      await runCommand(program, [
+        "entities",
+        "update",
+        "urn:ngsi-ld:Sensor:001",
+        '{"temperature":{"type":"Property","value":25}}',
+      ]);
+
+      expect(mockClient.patch).toHaveBeenCalledTimes(1);
+      expect(mockClient.patch.mock.calls[0]).toHaveLength(2);
+      expect(mockClient.patch.mock.calls[0]?.[2]).toBeUndefined();
     });
   });
 
@@ -309,6 +366,40 @@ describe("entities command", () => {
       );
       expect(printSuccess).toHaveBeenCalledWith("Entity replaced.");
     });
+
+    it("passes options=keyValues when --key-values is set", async () => {
+      const entityData = { id: "urn:ngsi-ld:Sensor:001", type: "Sensor", temperature: 20 };
+      vi.mocked(parseJsonInput).mockResolvedValue(entityData);
+      mockClient.put.mockResolvedValue(mockResponse(undefined, 204));
+
+      await runCommand(program, [
+        "entities",
+        "replace",
+        "urn:ngsi-ld:Sensor:001",
+        '{"id":"urn:ngsi-ld:Sensor:001","type":"Sensor","temperature":20}',
+        "--key-values",
+      ]);
+
+      expect(mockClient.put).toHaveBeenCalledWith(
+        `/entities/${encodeURIComponent("urn:ngsi-ld:Sensor:001")}`,
+        entityData,
+        { options: "keyValues" },
+      );
+      expect(printSuccess).toHaveBeenCalledWith("Entity replaced.");
+    });
+
+    // near-miss: omitting --key-values must not send options at all.
+    it("does not send options when --key-values is omitted (near-miss)", async () => {
+      const entityData = { id: "e1", type: "Sensor", temperature: { type: "Property", value: 20 } };
+      vi.mocked(parseJsonInput).mockResolvedValue(entityData);
+      mockClient.put.mockResolvedValue(mockResponse(undefined, 204));
+
+      await runCommand(program, ["entities", "replace", "e1", "{}"]);
+
+      expect(mockClient.put).toHaveBeenCalledTimes(1);
+      expect(mockClient.put.mock.calls[0]).toHaveLength(2);
+      expect(mockClient.put.mock.calls[0]?.[2]).toBeUndefined();
+    });
   });
 
   describe("upsert", () => {
@@ -322,6 +413,15 @@ describe("entities command", () => {
       expect(parseJsonInput).toHaveBeenCalledWith('[{"id":"e1","type":"T"}]');
       expect(mockClient.post).toHaveBeenCalledWith("/entityOperations/upsert", entities);
       expect(printSuccess).toHaveBeenCalledWith("Entity upserted.");
+    });
+
+    it("rejects --key-values without calling the API", async () => {
+      await expect(
+        runCommand(program, ["entities", "upsert", "[]", "--key-values"]),
+      ).rejects.toThrow("exit:1");
+      expect(printError).toHaveBeenCalledWith("server does not accept keyValues on upsert");
+      expect(mockClient.post).not.toHaveBeenCalled();
+      expect(parseJsonInput).not.toHaveBeenCalled();
     });
   });
 

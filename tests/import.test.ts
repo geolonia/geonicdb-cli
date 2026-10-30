@@ -108,6 +108,14 @@ describe("import command", () => {
     expect(ctorSpy).not.toHaveBeenCalled();
   });
 
+  it("rejects --key-values without starting the importer", async () => {
+    await expect(runCommand(program, ["import", "data.ndjson", "--key-values"])).rejects.toThrow(
+      "exit:1",
+    );
+    expect(output.printError).toHaveBeenCalledWith("server does not accept keyValues on import");
+    expect(ctorSpy).not.toHaveBeenCalled();
+  });
+
   it("rejects --resume with stdin input", async () => {
     await expect(runCommand(program, ["import", "-", "--resume", "ck"])).rejects.toThrow("exit:1");
     expect(output.printError).toHaveBeenCalledWith(expect.stringContaining("stdin"));
