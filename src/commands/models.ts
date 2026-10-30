@@ -33,7 +33,8 @@ export type ModelApplyResult = "created" | "updated" | "unchanged" | "would crea
  * PATCH /custom-data-models/{type} (UpdateDataModelInputSchema is .strict()).
  */
 export function stripTypeFromModelBody(body: Record<string, unknown>): Record<string, unknown> {
-  const { type: _type, ...rest } = body;
+  const rest = { ...body };
+  delete rest.type;
   return rest;
 }
 
