@@ -432,11 +432,12 @@ geonic import failed.ndjson
 # Preview the plan without sending anything
 geonic import entities.ndjson --dry-run
 
-# Pipe stdin (resume is not available). Delayed producers are fine — import
-# reads stdin as a stream (#236), so `(sleep 1; cat entities.json) | geonic import …`
-# does not fail with EAGAIN.
+# Pipe stdin (resume is not available).
+# NDJSON stdin has always been streamed (streamNdjsonFrom).
+# JSON-array stdin uses readStdin() in src/input.ts — #236 fixed that path so
+# delayed producers no longer hit EAGAIN from readFileSync(0) (Refs #235).
 cat entities.ndjson | geonic import --dry-run
-cat entities.json | geonic import --input-format json --dry-run
+(sleep 1; cat entities.json) | geonic import --input-format json --dry-run
 ```
 
 #### CSV and other tabular formats
@@ -453,7 +454,9 @@ For catalog models on [datamodels.jp](https://datamodels.jp), use
   `options=keyValues`, so pass **`--normalized`** (Property / Relationship / GeoProperty form).
 - `convert` writes a **JSON array** (pretty-printed) to stdout or `--out file.json` —
   not NDJSON. Use **`--input-format json`** on `geonic import`.
-- Stdin pipes work; data that arrives after a short delay is fine (see #236).
+- Stdin pipes work. NDJSON was already streamed; for `--input-format json`, #236
+  made `readStdin()` wait for late data so delayed producers do not hit EAGAIN
+  (Refs #235).
 
 ```bash
 # Pipe: CSV → normalized NGSI-LD JSON array → import

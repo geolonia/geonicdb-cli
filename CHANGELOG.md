@@ -8,8 +8,7 @@
 ## [Unreleased]
 
 ### 2026-10-31
-- **Docs**: `geonic import` の README / help に、CSV 等を CLI では読まず `datamodels convert … --normalized | geonic import --input-format json` で渡す手順を追記した。convert 既定は key-values・出力は JSON 配列である点と、遅延 stdin でも pipe できる前提（#236）を明記。GeoJSON の `--input-format geojson` は本 PR では実装しない (Refs #240)
-- **Fix**: パイプで渡した JSON を stream として読むように修正 (#236, thanks @tahodev)
+- **Docs**: `geonic import` の README / help に、CSV 等を CLI では読まず `datamodels convert … --normalized | geonic import --input-format json` で渡す手順を追記した。convert 既定は key-values・出力は JSON 配列である点と、JSON 経路の遅延 stdin（#236 / #235）でも pipe できる前提を明記。GeoJSON の `--input-format geojson` は本 PR では実装しない (Refs #240)
 - **Feat**: `admin deployments create` / `update` に `--write-mode <normal|read-only>` を追加した（本体 geolonia/geonicdb#3412 / Refs #3285）。DB 移行・リストアの最終同期前に書き込みを止める用途。不正値は `InvalidArgumentError`。未指定時は body に `writeMode` を載せない。`update` help に自ホストを**新たに** `read-only` にする PATCH の 409（既に `read-only` の行への再 PATCH では出ない）、`normal` への戻しは常に許可、反映上限約 6 分を記載。README に移行手順の最小例を追加 (closes #260) (#261)
 - **Feat**: `admin tenants create` / `update` に `--cadde-enabled <true|false>` と `--require-data-model <true|false>` を追加し、`settings.caddeEnabled` / `settings.requireDataModel` を専用フラグで設定できるようにした (closes #248, 本体 geolonia/geonicdb#3580 / #3478)。真偽値はリテラル `true` / `false` のみ受理 (#259)
 - **Feat**: `models missing-types` を追加した。`GET /custom-data-models/missing-types`（本体 geolonia/geonicdb#3477）を呼び、有効なデータモデルが無い生存エンティティ型を返す。ページネーション無し。`models create`/`update` の help に `typeIri` / `contextUrl` を追記した (closes #244) (#258)
@@ -18,6 +17,9 @@
 - **Feat**: `admin tenants add-user` / `remove-user` / `users` と `admin users tenants` を追加し、既存ユーザーの複数テナントメンバーシップを CLI から追加・削除・一覧できるようにした (closes #247)。`--role` は本体 PUT と同じく `tenant_admin` / `user` のみ（省略時は本文なし＝サーバ既定 `user`）。`admin users create` の help に、既存ユーザーを別テナントへ加えるときは `add-user` を使う旨を追記 (#256)
 - **Feat**: `models apply` を追加した。GET で有無を見て無ければ POST、あれば `type` を除いて PATCH する idempotent upsert。結果は `created` / `updated` / `unchanged`（モデル未登録時に `--api-dry-run` を指定すると `would create`）。`.` / `..` は実行前に拒否する (closes #238) (#252)
 - **Docs**: `admin users create` の help に割り当て可能ロール `deployment_admin` を列挙し、`super_admin` を非推奨と明記した (closes #242, 本体 geolonia/geonicdb#3494)。同ファイルの `users update` に `isActive` は `activate`/`deactivate` を使う旨を追記し、例の偽ロール `admin` を `tenant_admin` に直した (本体 #3516) (#250)
+
+### 2026-10-30
+- **Fix**: パイプで渡した JSON を `readFileSync(0)` ではなく stream として読むように修正し、データ未到着時の stdin EAGAIN を解消 (#236, Refs #235, thanks @tahodev)
 
 ## [0.26.1] - 2026-09-15
 

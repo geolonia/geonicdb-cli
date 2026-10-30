@@ -88,9 +88,10 @@ export function registerImportCommand(program: Command): void {
       "Bulk-load NGSI-LD entities past the 29s API Gateway limit by chunking the input\n" +
         "into batch-upsert requests with retry, resume, and per-entity error reporting.\n\n" +
         "Input: an NDJSON file (one entity per line, default) or a JSON array (--input-format json).\n" +
-        "Use '-' or a pipe for stdin (resume is not available for stdin). Piped data that arrives\n" +
-        "late is fine — stdin is read as a stream (not readFileSync(0)), so producers that start\n" +
-        "after a short delay do not fail with EAGAIN.\n\n" +
+        "Use '-' or a pipe for stdin (resume is not available for stdin).\n" +
+        "NDJSON stdin has always been streamed. JSON-array stdin goes through readStdin()\n" +
+        "in src/input.ts; #236 fixed that path so delayed producers no longer hit EAGAIN\n" +
+        "from readFileSync(0) (Refs #235).\n\n" +
         "CSV / GeoJSON are not parsed here. Convert to normalized NGSI-LD first, then import.\n" +
         "For datamodels.jp catalog models, use `datamodels convert … --normalized` (default\n" +
         "convert output is key-values JSON, which batch upsert rejects) and pipe or file-feed\n" +
