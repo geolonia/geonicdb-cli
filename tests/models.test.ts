@@ -5,10 +5,15 @@ import type { MockClient } from "./test-helpers.js";
 
 import { createClient, getFormat, outputResponse } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
-import { printSuccess, printWarning, printError } from "../src/output.js";
+import { printSuccess, printWarning, printError, printOutput } from "../src/output.js";
+import { GdbClientError } from "../src/client.js";
 import {
   applyModelUpdateDryRunResult,
+  isModelPatchUnchanged,
+  modelApplyTypeError,
   registerModelsCommand,
+  rethrowModelApplyPatchError,
+  stripTypeFromModelBody,
 } from "../src/commands/models.js";
 
 describe("models (custom-data-models) command", () => {
@@ -424,6 +429,399 @@ describe("models (custom-data-models) command", () => {
         `/custom-data-models/${encodeURIComponent("model1")}`,
       );
       expect(printSuccess).toHaveBeenCalledWith("Model deleted.");
+    });
+  });
+
+  describe("stripTypeFromModelBody / isModelPatchUnchanged (#238)", () => {
+    it("strips type and leaves other fields", () => {
+      expect(
+        stripTypeFromModelBody({
+          type: "Sensor",
+          domain: "iot",
+          description: "x",
+        }),
+      ).toEqual({ domain: "iot", description: "x" });
+    });
+
+    it("near-miss: unchanged when patch is a matching subset of existing", () => {
+      const existing = {
+        type: "Sensor",
+        domain: "iot",
+        description: "IoT Sensor",
+        propertyDetails: { temperature: { ngsiType: "Property", valueType: "Number" } },
+        version: 3,
+        tenantId: "t1",
+      };
+      const patch = {
+        domain: "iot",
+        description: "IoT Sensor",
+        propertyDetails: { temperature: { ngsiType: "Property", valueType: "Number" } },
+      };
+      expect(isModelPatchUnchanged(existing, patch)).toBe(true);
+    });
+
+    it("near-miss: not unchanged when a nested value differs by one field", () => {
+      const existing = {
+        propertyDetails: { temperature: { ngsiType: "Property", valueType: "Number", example: 25 } },
+      };
+      const patch = {
+        propertyDetails: { temperature: { ngsiType: "Property", valueType: "Number", example: 26 } },
+      };
+      expect(isModelPatchUnchanged(existing, patch)).toBe(false);
+    });
+
+    it("near-miss: valueType casing mismatch is not unchanged (server stores lowercase)", () => {
+      const existing = {
+        propertyDetails: { temperature: { ngsiType: "Property", valueType: "number", example: 25 } },
+      };
+      const patch = {
+        propertyDetails: { temperature: { ngsiType: "Property", valueType: "Number", example: 25 } },
+      };
+      expect(isModelPatchUnchanged(existing, patch)).toBe(false);
+    });
+  });
+
+  describe("modelApplyTypeError (#238)", () => {
+    it('rejects "." and ".."', () => {
+      expect(modelApplyTypeError(".")).toMatch(/\./);
+      expect(modelApplyTypeError("..")).toMatch(/\.\./);
+    });
+
+    it("near-miss: accepts ordinary and punctuation-bearing types", () => {
+      expect(modelApplyTypeError("Sensor")).toBeUndefined();
+      expect(modelApplyTypeError("a/b")).toBeUndefined();
+      expect(modelApplyTypeError("a?b")).toBeUndefined();
+    });
+  });
+
+  describe("rethrowModelApplyPatchError (#238)", () => {
+    it("appends dry-run hint on PATCH 400", () => {
+      expect(() =>
+        rethrowModelApplyPatchError(new GdbClientError("entities violate model", 400), "Sensor"),
+      ).toThrow(/entities violate model[\s\S]*models update Sensor --api-dry-run/);
+    });
+
+    it("near-miss: does not rewrite non-400 errors", () => {
+      const err = new GdbClientError("Custom data model already exists", 409);
+      expect(() => rethrowModelApplyPatchError(err, "Sensor")).toThrow(err);
+    });
+  });
+
+  describe("apply (#238)", () => {
+    const originalExitCode = process.exitCode;
+    const modelBody = {
+      type: "ApplySensor",
+      domain: "iot",
+      description: "Apply sensor",
+      propertyDetails: {
+        temperature: { ngsiType: "Property", valueType: "Number", example: 25 },
+      },
+    };
+
+    afterEach(() => {
+      process.exitCode = originalExitCode;
+    });
+
+    it("GETs by type then POSTs when missing → created", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue(modelBody);
+      mockClient.rawRequest
+        .mockRejectedValueOnce(new GdbClientError("Not Found", 404))
+        .mockResolvedValueOnce(mockResponse({ type: "ApplySensor" }, 201));
+
+      await runCommand(program, ["models", "apply", JSON.stringify(modelBody)]);
+
+      expect(mockClient.rawRequest).toHaveBeenNthCalledWith(
+        1,
+        "GET",
+        `/custom-data-models/${encodeURIComponent("ApplySensor")}`,
+      );
+      expect(mockClient.rawRequest).toHaveBeenNthCalledWith(2, "POST", "/custom-data-models", {
+        body: modelBody,
+      });
+      expect(printOutput).toHaveBeenCalledWith(
+        { type: "ApplySensor", result: "created" },
+        "json",
+      );
+    });
+
+    it("strips type and PATCHes when present and changed → updated", async () => {
+      const existing = {
+        ...modelBody,
+        description: "old",
+        version: 1,
+        id: "x",
+      };
+      vi.mocked(parseJsonInput).mockResolvedValue(modelBody);
+      mockClient.rawRequest
+        .mockResolvedValueOnce(mockResponse(existing))
+        .mockResolvedValueOnce(mockResponse({ type: "ApplySensor" }));
+
+      await runCommand(program, ["models", "apply", JSON.stringify(modelBody)]);
+
+      expect(mockClient.rawRequest).toHaveBeenNthCalledWith(
+        2,
+        "PATCH",
+        `/custom-data-models/${encodeURIComponent("ApplySensor")}`,
+        {
+          body: {
+            domain: "iot",
+            description: "Apply sensor",
+            propertyDetails: modelBody.propertyDetails,
+          },
+        },
+      );
+      expect(printOutput).toHaveBeenCalledWith(
+        { type: "ApplySensor", result: "updated" },
+        "json",
+      );
+    });
+
+    it("skips PATCH when fields already match → unchanged", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue(modelBody);
+      mockClient.rawRequest.mockResolvedValueOnce(
+        mockResponse({
+          ...modelBody,
+          version: 2,
+          tenantId: "e2e_test",
+          createdAt: "2026-01-01T00:00:00.000Z",
+        }),
+      );
+
+      await runCommand(program, ["models", "apply", JSON.stringify(modelBody)]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledTimes(1);
+      expect(mockClient.rawRequest).toHaveBeenCalledWith(
+        "GET",
+        `/custom-data-models/${encodeURIComponent("ApplySensor")}`,
+      );
+      expect(printOutput).toHaveBeenCalledWith(
+        { type: "ApplySensor", result: "unchanged" },
+        "json",
+      );
+    });
+
+    it("passes datamodels.jp-style body with type through create without stripping", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue(modelBody);
+      mockClient.rawRequest
+        .mockRejectedValueOnce(new GdbClientError("Not Found", 404))
+        .mockResolvedValueOnce(mockResponse(modelBody, 201));
+
+      await runCommand(program, ["models", "apply", JSON.stringify(modelBody)]);
+
+      expect(mockClient.rawRequest).toHaveBeenNthCalledWith(2, "POST", "/custom-data-models", {
+        body: modelBody,
+      });
+      expect(modelBody).toHaveProperty("type", "ApplySensor");
+    });
+
+    it("--api-dry-run when missing prints would create without POST", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue(modelBody);
+      mockClient.rawRequest.mockRejectedValueOnce(new GdbClientError("Not Found", 404));
+
+      await runCommand(program, [
+        "models",
+        "apply",
+        JSON.stringify(modelBody),
+        "--api-dry-run",
+      ]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledTimes(1);
+      expect(printOutput).toHaveBeenCalledWith(
+        { type: "ApplySensor", result: "would create" },
+        "json",
+      );
+    });
+
+    it("--api-dry-run when changed sends PATCH dryRun=true", async () => {
+      const conformingReport = {
+        type: "ApplySensor",
+        dryRun: true,
+        conformance: {
+          scanned: 0,
+          violating: 0,
+          undetermined: 0,
+          truncated: false,
+          maxScan: 10000,
+          scopeLimited: false,
+          samples: [],
+        },
+      };
+      vi.mocked(parseJsonInput).mockResolvedValue(modelBody);
+      mockClient.rawRequest
+        .mockResolvedValueOnce(mockResponse({ ...modelBody, description: "old" }))
+        .mockResolvedValueOnce(mockResponse(conformingReport));
+      process.exitCode = undefined;
+
+      await runCommand(program, [
+        "models",
+        "apply",
+        JSON.stringify(modelBody),
+        "--api-dry-run",
+      ]);
+
+      expect(mockClient.rawRequest).toHaveBeenNthCalledWith(
+        2,
+        "PATCH",
+        `/custom-data-models/${encodeURIComponent("ApplySensor")}`,
+        {
+          body: {
+            domain: "iot",
+            description: "Apply sensor",
+            propertyDetails: modelBody.propertyDetails,
+          },
+          params: { dryRun: "true" },
+        },
+      );
+      expect(outputResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ data: conformingReport }),
+        "json",
+      );
+      expect(process.exitCode).toBeUndefined();
+    });
+
+    it("retries PATCH once when POST races with 409", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue(modelBody);
+      mockClient.rawRequest
+        .mockRejectedValueOnce(new GdbClientError("Not Found", 404))
+        .mockRejectedValueOnce(new GdbClientError("Custom data model already exists", 409))
+        .mockResolvedValueOnce(mockResponse({ type: "ApplySensor" }));
+
+      await runCommand(program, ["models", "apply", JSON.stringify(modelBody)]);
+
+      expect(mockClient.rawRequest).toHaveBeenNthCalledWith(
+        3,
+        "PATCH",
+        `/custom-data-models/${encodeURIComponent("ApplySensor")}`,
+        {
+          body: {
+            domain: "iot",
+            description: "Apply sensor",
+            propertyDetails: modelBody.propertyDetails,
+          },
+        },
+      );
+      expect(printOutput).toHaveBeenCalledWith(
+        { type: "ApplySensor", result: "updated" },
+        "json",
+      );
+    });
+
+    it("near-miss: POST 400 already-exists wording is not treated as success", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue(modelBody);
+      mockClient.rawRequest
+        .mockRejectedValueOnce(new GdbClientError("Not Found", 404))
+        .mockRejectedValueOnce(new GdbClientError("Custom data model already exists", 400));
+
+      await expect(
+        runCommand(program, ["models", "apply", JSON.stringify(modelBody)]),
+      ).rejects.toThrow(/Custom data model already exists/);
+      expect(mockClient.rawRequest).toHaveBeenCalledTimes(2);
+      expect(printOutput).not.toHaveBeenCalled();
+    });
+
+    it("near-miss: GET non-404 errors are not treated as missing", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue(modelBody);
+      mockClient.rawRequest.mockRejectedValueOnce(new GdbClientError("forbidden", 403));
+
+      await expect(
+        runCommand(program, ["models", "apply", JSON.stringify(modelBody)]),
+      ).rejects.toThrow(/forbidden/);
+      expect(mockClient.rawRequest).toHaveBeenCalledTimes(1);
+      expect(printOutput).not.toHaveBeenCalled();
+    });
+
+    it("rejects body without type", async () => {
+      process.exitCode = undefined;
+      vi.mocked(parseJsonInput).mockResolvedValue({ domain: "iot" });
+
+      await runCommand(program, ["models", "apply", '{"domain":"iot"}']);
+
+      expect(mockClient.rawRequest).not.toHaveBeenCalled();
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining('"type"'));
+      expect(process.exitCode).toBe(1);
+    });
+
+    it.each([".", ".."] as const)("rejects path-segment type %j before any request", async (badType) => {
+      process.exitCode = undefined;
+      const body = { ...modelBody, type: badType };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+
+      await runCommand(program, ["models", "apply", JSON.stringify(body)]);
+
+      expect(mockClient.rawRequest).not.toHaveBeenCalled();
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining(badType));
+      expect(process.exitCode).toBe(1);
+    });
+
+    it.each([
+      ["slash", "Type/With/Slash"],
+      ["question", "Type?Query"],
+      ["hash", "Type#Frag"],
+      ["space", "Type With Space"],
+    ] as const)(
+      "encodes %s characters in GET/PATCH paths",
+      async (_label, typeName) => {
+        const body = {
+          ...modelBody,
+          type: typeName,
+          description: "changed",
+        };
+        const existing = {
+          type: typeName,
+          domain: "iot",
+          description: "old",
+          propertyDetails: modelBody.propertyDetails,
+        };
+        vi.mocked(parseJsonInput).mockResolvedValue(body);
+        mockClient.rawRequest
+          .mockResolvedValueOnce(mockResponse(existing))
+          .mockResolvedValueOnce(mockResponse({ type: typeName }));
+
+        await runCommand(program, ["models", "apply", JSON.stringify(body)]);
+
+        const encoded = `/custom-data-models/${encodeURIComponent(typeName)}`;
+        expect(encoded).not.toBe(`/custom-data-models/${typeName}`);
+        expect(mockClient.rawRequest).toHaveBeenNthCalledWith(1, "GET", encoded);
+        expect(mockClient.rawRequest).toHaveBeenNthCalledWith(
+          2,
+          "PATCH",
+          encoded,
+          {
+            body: {
+              domain: "iot",
+              description: "changed",
+              propertyDetails: modelBody.propertyDetails,
+            },
+          },
+        );
+        expect(printOutput).toHaveBeenCalledWith({ type: typeName, result: "updated" }, "json");
+      },
+    );
+
+    it("rejects combining --api-dry-run with global --dry-run", async () => {
+      process.exitCode = undefined;
+      await runCommand(program, [
+        "models",
+        "apply",
+        JSON.stringify(modelBody),
+        "--api-dry-run",
+        "--dry-run",
+      ]);
+
+      expect(mockClient.rawRequest).not.toHaveBeenCalled();
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("Cannot combine"));
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("on PATCH 400 appends api-dry-run hint", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue(modelBody);
+      mockClient.rawRequest
+        .mockResolvedValueOnce(mockResponse({ ...modelBody, description: "old" }))
+        .mockRejectedValueOnce(new GdbClientError("existing entities violate constraints", 400));
+
+      await expect(
+        runCommand(program, ["models", "apply", JSON.stringify(modelBody)]),
+      ).rejects.toThrow(/existing entities violate constraints[\s\S]*--api-dry-run/);
     });
   });
 });
