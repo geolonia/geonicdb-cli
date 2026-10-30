@@ -124,7 +124,10 @@ export function registerUsersCommand(parent: Command): void {
         "  }\n\n" +
         "Roles: deployment_admin, tenant_admin, user\n" +
         "(super_admin is deprecated but still accepted; prefer deployment_admin)\n" +
-        "primaryTenantId is required for tenant_admin and user roles.",
+        "primaryTenantId is required for tenant_admin and user roles.\n\n" +
+        "To add an *existing* user to another tenant, do not re-run create\n" +
+        "(that fails with \"User with email ... already exists\").\n" +
+        "Use: geonic admin tenants add-user <tenant-id> <user-id> [--role tenant_admin|user]",
     )
     .option(
       "--force-reset",
@@ -355,6 +358,36 @@ export function registerUsersCommand(parent: Command): void {
     {
       description: "Show the response in JSON format",
       command: "geonic admin users reset-password <user-id> --format json",
+    },
+  ]);
+
+  // users tenants — list tenants a user belongs to
+  const tenants = users
+    .command("tenants <user-id>")
+    .description("List tenants a user belongs to")
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
+    .action(
+      withErrorHandler(async (userId: unknown, _opts: unknown, cmd: Command) => {
+        const client = createClient(cmd);
+        const format = getFormat(cmd);
+        const response = await fetchPaginatedList(
+          client,
+          `/admin/users/${encodeURIComponent(String(userId))}/tenants`,
+          cmd.opts(),
+        );
+        outputResponse(response, format);
+      }),
+    );
+
+  addExamples(tenants, [
+    {
+      description: "List tenants for a user",
+      command: "geonic admin users tenants <user-id>",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic admin users tenants <user-id> --limit 50 --offset 0",
     },
   ]);
 }

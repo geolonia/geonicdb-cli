@@ -304,4 +304,115 @@ export function registerTenantsCommand(parent: Command): void {
       command: "geonic admin tenants deactivate <tenant-id>",
     },
   ]);
+
+  // tenants users — list members of a tenant
+  const users = tenants
+    .command("users <tenant-id>")
+    .description("List users who are members of a tenant")
+    .option("--limit <n>", "Maximum number of results", parseNonNegativeInt)
+    .option("--offset <n>", "Skip N results", parseNonNegativeInt)
+    .action(
+      withErrorHandler(async (tenantId: unknown, _opts: unknown, cmd: Command) => {
+        const client = createClient(cmd);
+        const format = getFormat(cmd);
+        const response = await fetchPaginatedList(
+          client,
+          `/admin/tenants/${encodeURIComponent(String(tenantId))}/users`,
+          cmd.opts(),
+        );
+        outputResponse(response, format);
+      }),
+    );
+
+  addExamples(users, [
+    {
+      description: "List members of a tenant",
+      command: "geonic admin tenants users <tenant-id>",
+    },
+    {
+      description: "List with pagination",
+      command: "geonic admin tenants users <tenant-id> --limit 50 --offset 0",
+    },
+  ]);
+
+  // tenants add-user — add (or update role of) a user in a tenant
+  const addUser = tenants
+    .command("add-user <tenant-id> <user-id>")
+    .summary("Add a user to a tenant")
+    .description(
+      "Add an existing user to a tenant (or update their membership role).\n\n" +
+        "Maps to PUT /admin/tenants/{tenantId}/users/{userId}.\n" +
+        "Role defaults to \"user\" when --role is omitted (server default).\n" +
+        "Membership roles: tenant_admin, user\n" +
+        "(deployment_admin / super_admin / platform_admin are not membership roles).",
+    )
+    .option("--role <role>", "Membership role: tenant_admin or user (default: user)")
+    .action(
+      withErrorHandler(
+        async (tenantId: unknown, userId: unknown, _opts: unknown, cmd: Command) => {
+          const roleOpt = (cmd.opts() as { role?: string }).role;
+          const body =
+            roleOpt === undefined
+              ? undefined
+              : { role: parseTenantMemberRole(roleOpt) };
+          const client = createClient(cmd);
+          const format = getFormat(cmd);
+          const path =
+            `/admin/tenants/${encodeURIComponent(String(tenantId))}` +
+            `/users/${encodeURIComponent(String(userId))}`;
+          const response = await client.rawRequest(
+            "PUT",
+            path,
+            body === undefined ? undefined : { body },
+          );
+          outputResponse(response, format);
+          printSuccess("User added to tenant.");
+        },
+      ),
+    );
+
+  addExamples(addUser, [
+    {
+      description: "Add a user as a regular member (default role)",
+      command: "geonic admin tenants add-user <tenant-id> <user-id>",
+    },
+    {
+      description: "Add a user as tenant_admin",
+      command: "geonic admin tenants add-user <tenant-id> <user-id> --role tenant_admin",
+    },
+  ]);
+
+  // tenants remove-user — remove a user from a tenant
+  const removeUser = tenants
+    .command("remove-user <tenant-id> <user-id>")
+    .description("Remove a user from a tenant (does not delete the user account)")
+    .action(
+      withErrorHandler(
+        async (tenantId: unknown, userId: unknown, _opts: unknown, cmd: Command) => {
+          const client = createClient(cmd);
+          const path =
+            `/admin/tenants/${encodeURIComponent(String(tenantId))}` +
+            `/users/${encodeURIComponent(String(userId))}`;
+          await client.rawRequest("DELETE", path);
+          printSuccess("User removed from tenant.");
+        },
+      ),
+    );
+
+  addExamples(removeUser, [
+    {
+      description: "Remove a user from a tenant",
+      command: "geonic admin tenants remove-user <tenant-id> <user-id>",
+    },
+  ]);
+}
+
+/** Membership roles accepted by PUT /admin/tenants/{tenantId}/users/{userId}. */
+const TENANT_MEMBER_ROLES = ["tenant_admin", "user"] as const;
+
+function parseTenantMemberRole(role: string): (typeof TENANT_MEMBER_ROLES)[number] {
+  if (!(TENANT_MEMBER_ROLES as readonly string[]).includes(role)) {
+    throw new Error(`--role must be one of: ${TENANT_MEMBER_ROLES.join(", ")}.`);
+  }
+  return role as (typeof TENANT_MEMBER_ROLES)[number];
 }
