@@ -8,6 +8,7 @@
 ## [Unreleased]
 
 ### 2026-10-31
+- **Feat**: `models apply` を追加した。GET で有無を見て無ければ POST、あれば `type` を除いて PATCH する idempotent upsert。結果は `created` / `updated` / `unchanged`（モデル未登録時に `--api-dry-run` を指定すると `would create`）。`.` / `..` は実行前に拒否する (closes #238) (#252)
 - **Docs**: `admin users create` の help に割り当て可能ロール `deployment_admin` を列挙し、`super_admin` を非推奨と明記した (closes #242, 本体 geolonia/geonicdb#3494)。同ファイルの `users update` に `isActive` は `activate`/`deactivate` を使う旨を追記し、例の偽ロール `admin` を `tenant_admin` に直した (本体 #3516) (#250)
 
 ## [0.26.1] - 2026-09-15
