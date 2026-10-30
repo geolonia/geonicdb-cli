@@ -272,9 +272,15 @@ export function withErrorHandler<T extends unknown[]>(fn: (...args: T) => Promis
         return;
       }
       if (err instanceof GdbClientError && err.status === 401) {
-        printError("Authentication failed. Please re-authenticate (e.g., `geonic auth login` or check your API key).");
+        printError(
+          "Authentication failed. Please re-authenticate (e.g., `geonic auth login` or check your API key). " +
+            "platform token は 15 分。`geonic auth platform-login` をやり直す",
+        );
       } else if (err instanceof GdbClientError && err.status === 403 && /not assigned to any tenant|invalid token/i.test(err.message)) {
-        printError("Authentication failed. Please re-authenticate (e.g., `geonic auth login` or check your API key).");
+        printError(
+          "Authentication failed. Please re-authenticate (e.g., `geonic auth login` or check your API key). " +
+            "platform token は 15 分。`geonic auth platform-login` をやり直す",
+        );
       } else if (err instanceof GdbClientError && err.status === 403) {
         const detail = (err.ngsiError?.detail ?? err.ngsiError?.description ?? "").toLowerCase();
         if (detail.includes("entity type") || detail.includes("allowedentitytypes")) {

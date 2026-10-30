@@ -60,12 +60,26 @@ vi.mock("../src/oauth.js", () => ({
   clientCredentialsGrant: vi.fn(),
 }));
 
+vi.mock("../src/platform-login.js", () => ({
+  PlatformLoginError: class PlatformLoginError extends Error {
+    status?: number;
+    constructor(message: string, status?: number) {
+      super(message);
+      this.name = "PlatformLoginError";
+      this.status = status;
+    }
+  },
+  resolveAwsRegion: vi.fn(),
+  requestPlatformToken: vi.fn(),
+}));
+
 import { createClient, getFormat, outputResponse, resolveOptions } from "../src/helpers.js";
 import { printSuccess, printError, printInfo, printWarning } from "../src/output.js";
 import { loadConfig, saveConfig, getCurrentProfile, validateUrl } from "../src/config.js";
 import { isInteractive, promptEmail, promptPassword } from "../src/prompt.js";
 import { getTokenStatus, formatDuration } from "../src/token.js";
 import { clientCredentialsGrant } from "../src/oauth.js";
+import { resolveAwsRegion, requestPlatformToken, PlatformLoginError } from "../src/platform-login.js";
 import { registerAuthCommands } from "../src/commands/auth.js";
 import { GdbClientError } from "../src/client.js";
 
@@ -1549,6 +1563,104 @@ describe("auth commands", () => {
       });
       const program = makeProgram();
       await expect(runCommand(program, ["auth", "token-exchange"])).rejects.toThrow("Token exchange failed: HTTP 401");
+    });
+  });
+
+  describe("auth platform-login (#243)", () => {
+    it("saves accessToken, shows expiresIn, and clears refresh/client credentials", async () => {
+      vi.mocked(resolveAwsRegion).mockReturnValue("ap-northeast-1");
+      vi.mocked(requestPlatformToken).mockResolvedValue({
+        data: {
+          accessToken: "platform-jwt",
+          expiresIn: 900,
+          tokenType: "Bearer",
+          user: { id: "arn:aws:iam::1:user/x", role: "platform_admin", tenantId: null },
+        },
+      });
+      vi.mocked(loadConfig).mockReturnValue({
+        token: "old",
+        refreshToken: "old-refresh",
+        clientId: "cid",
+        clientSecret: "csecret",
+        service: "demo",
+        tenantId: "tid",
+        availableTenants: [{ tenantId: "tid", role: "user" }],
+      } as never);
+
+      const program = makeProgram();
+      await runCommand(program, ["auth", "platform-login", "--aws-region", "ap-northeast-1"]);
+
+      expect(requestPlatformToken).toHaveBeenCalledWith(
+        expect.objectContaining({
+          baseUrl: "http://localhost:3000/",
+          region: "ap-northeast-1",
+          dryRun: false,
+        }),
+      );
+      expect(saveConfig).toHaveBeenCalledWith(
+        expect.objectContaining({
+          token: "platform-jwt",
+          url: "http://localhost:3000/",
+        }),
+        "default",
+      );
+      const saved = vi.mocked(saveConfig).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved.refreshToken).toBeUndefined();
+      expect(saved.clientId).toBeUndefined();
+      expect(saved.clientSecret).toBeUndefined();
+      expect(saved.service).toBeUndefined();
+      expect(saved.tenantId).toBeUndefined();
+      expect(saved.availableTenants).toBeUndefined();
+      expect(printSuccess).toHaveBeenCalledWith(
+        expect.stringContaining("expiresIn=900"),
+      );
+    });
+
+    it("prints Japanese message on 403 PlatformLoginError", async () => {
+      vi.mocked(resolveAwsRegion).mockReturnValue("ap-northeast-1");
+      vi.mocked(requestPlatformToken).mockRejectedValue(
+        new PlatformLoginError("許可された IAM 呼び出し元ではない", 403),
+      );
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["auth", "platform-login", "--aws-region", "ap-northeast-1"]),
+      ).rejects.toThrow("process.exit");
+      expect(printError).toHaveBeenCalledWith("許可された IAM 呼び出し元ではない");
+    });
+
+    it("prints dry-run curl without saving config", async () => {
+      vi.mocked(resolveAwsRegion).mockReturnValue("ap-northeast-1");
+      vi.mocked(requestPlatformToken).mockResolvedValue({
+        dryRunCurl:
+          "curl -X POST -H 'authorization: AWS4-HMAC-SHA256 <redacted>' 'https://example/auth/platform-token'",
+      });
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const program = createTestProgram((prog) => registerAuthCommands(prog));
+      await runCommand(program, [
+        "auth",
+        "platform-login",
+        "--aws-region",
+        "ap-northeast-1",
+        "--dry-run",
+      ]);
+      expect(requestPlatformToken).toHaveBeenCalledWith(
+        expect.objectContaining({ dryRun: true }),
+      );
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("AWS4-HMAC-SHA256 <redacted>"));
+      expect(saveConfig).not.toHaveBeenCalled();
+      logSpy.mockRestore();
+    });
+
+    it("exits when region cannot be resolved", async () => {
+      vi.mocked(resolveAwsRegion).mockImplementation(() => {
+        throw new PlatformLoginError("AWS region is required. Pass --aws-region...");
+      });
+      const program = makeProgram();
+      await expect(runCommand(program, ["auth", "platform-login"])).rejects.toThrow(
+        "process.exit",
+      );
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining("AWS region is required"));
+      expect(requestPlatformToken).not.toHaveBeenCalled();
     });
   });
 

@@ -150,6 +150,7 @@ geonic profile use geolonia   # operate as geolonia tenant
 | `auth logout` | Clear saved authentication token |
 | `auth nonce` | Get a nonce and PoW challenge for API key authentication |
 | `auth token-exchange` | Exchange API key for a session JWT via nonce + PoW |
+| `auth platform-login` | Exchange AWS IAM (SigV4) for a 15-minute `platform_admin` token |
 
 #### Email/Password Login
 
@@ -197,6 +198,23 @@ A client-credentials token is an OAuth client principal: `/me` self-service endp
 | `--client-id <id>` | OAuth client ID (or `GDB_OAUTH_CLIENT_ID` env var) |
 | `--client-secret <secret>` | OAuth client secret (or `GDB_OAUTH_CLIENT_SECRET` env var) |
 | `--scope <scopes>` | OAuth scopes (space-separated) |
+
+#### Platform admin (IAM / SigV4)
+
+`auth platform-login` signs `POST /auth/platform-token` with the current AWS credentials (SigV4 / `execute-api`) and saves the returned 15-minute `platform_admin` Bearer token. There is no refresh — re-run the command when it expires. Local servers without API Gateway IAM return 403.
+
+```bash
+geonic auth platform-login --aws-region ap-northeast-1
+geonic auth platform-login --aws-profile geonic-ops --aws-region ap-northeast-1
+geonic auth platform-login --aws-region ap-northeast-1 --dry-run   # curl with Authorization masked
+```
+
+| Option | Description |
+|---|---|
+| `--aws-profile <profile>` | AWS shared-credentials / config profile |
+| `--aws-region <region>` | SigV4 region (else `AWS_REGION`, else the profile's `region`) |
+
+On success the CLI clears `refreshToken` / `clientId` / `clientSecret` from the profile so automatic re-auth cannot run against `/auth/refresh`. A 403 means the caller ARN is not on the server allowlist.
 
 #### API Key Token Exchange
 

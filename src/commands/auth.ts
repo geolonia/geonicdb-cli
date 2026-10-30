@@ -14,6 +14,11 @@ import { isInteractive, promptEmail, promptPassword } from "../prompt.js";
 import type { TenantInfo } from "../types.js";
 import { getTokenStatus, formatDuration } from "../token.js";
 import { clientCredentialsGrant } from "../oauth.js";
+import {
+  PlatformLoginError,
+  requestPlatformToken,
+  resolveAwsRegion,
+} from "../platform-login.js";
 import { addExamples } from "./help.js";
 import { addMeOAuthClientsSubcommand } from "./me-oauth-clients.js";
 import { addMeApiKeysSubcommand } from "./me-api-keys.js";
@@ -495,6 +500,87 @@ function solvePoW(challenge: string, difficulty: number): number {
   throw new Error(`PoW could not be solved within ${MAX_POW_ITERATIONS} iterations`);
 }
 
+function createPlatformLoginCommand(): Command {
+  return new Command("platform-login")
+    .description(
+      "Exchange current AWS IAM credentials (SigV4) for a 15-minute platform_admin token",
+    )
+    .option("--aws-profile <profile>", "AWS shared-credentials profile name")
+    .option("--aws-region <region>", "AWS region for SigV4 (else AWS_REGION, else profile region)")
+    .action(
+      withErrorHandler(async (...args: unknown[]) => {
+        const cmd = args[args.length - 1] as Command;
+        const platOpts = cmd.opts() as { awsProfile?: string; awsRegion?: string };
+        const globalOpts = resolveOptions(cmd);
+
+        if (!globalOpts.url) {
+          printError("No URL configured. Use `geonic config set url <url>` or pass --url.");
+          process.exit(1);
+        }
+
+        let baseUrl: string;
+        try {
+          baseUrl = validateUrl(globalOpts.url);
+        } catch (err) {
+          printError((err as Error).message);
+          process.exit(1);
+        }
+
+        let region: string;
+        try {
+          region = resolveAwsRegion({
+            awsRegion: platOpts.awsRegion,
+            awsProfile: platOpts.awsProfile,
+          });
+        } catch (err) {
+          printError(err instanceof Error ? err.message : String(err));
+          process.exit(1);
+        }
+
+        const dryRun = !!(cmd.optsWithGlobals() as { dryRun?: boolean }).dryRun;
+
+        let result: Awaited<ReturnType<typeof requestPlatformToken>>;
+        try {
+          result = await requestPlatformToken({
+            baseUrl,
+            region,
+            awsProfile: platOpts.awsProfile,
+            dryRun,
+          });
+        } catch (err) {
+          if (err instanceof PlatformLoginError) {
+            printError(err.message);
+            process.exit(1);
+          }
+          throw err;
+        }
+
+        if (result.dryRunCurl) {
+          console.log(result.dryRunCurl);
+          return;
+        }
+
+        const data = result.data!;
+        const config = loadConfig(globalOpts.profile);
+        config.url = baseUrl;
+        config.token = data.accessToken;
+        // platform_admin has no refresh and must not trigger auto-reauth (DESIGN).
+        delete config.refreshToken;
+        delete config.clientId;
+        delete config.clientSecret;
+        // platform_admin is tenantless — mirror auth login's tenantless branch.
+        delete config.service;
+        delete config.tenantId;
+        delete config.availableTenants;
+        saveConfig(config, globalOpts.profile);
+
+        printSuccess(
+          `Platform login successful (platform_admin). Token saved to config. expiresIn=${data.expiresIn}`,
+        );
+      }),
+    );
+}
+
 function createTokenExchangeCommand(): Command {
   return new Command("token-exchange")
     .description("Exchange an API key for a session JWT (fetches nonce, solves PoW, returns token)")
@@ -643,6 +729,23 @@ export function registerAuthCommands(program: Command): void {
     },
   ]);
   auth.addCommand(tokenExchange);
+
+  const platformLogin = createPlatformLoginCommand();
+  addExamples(platformLogin, [
+    {
+      description: "Exchange current AWS IAM credentials for a platform_admin token",
+      command: "geonic auth platform-login --aws-region ap-northeast-1",
+    },
+    {
+      description: "Use a named AWS profile",
+      command: "geonic auth platform-login --aws-profile geonic-ops --aws-region ap-northeast-1",
+    },
+    {
+      description: "Dry-run: print SigV4 curl (Authorization value masked)",
+      command: "geonic auth platform-login --aws-region ap-northeast-1 --dry-run",
+    },
+  ]);
+  auth.addCommand(platformLogin);
 
   // me command (top-level, maps to /me API endpoint)
   const me = program

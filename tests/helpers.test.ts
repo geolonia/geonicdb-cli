@@ -415,6 +415,9 @@ describe("helpers", () => {
       expect(printError).toHaveBeenCalledWith(
         expect.stringContaining("Authentication failed"),
       );
+      expect(printError).toHaveBeenCalledWith(
+        expect.stringContaining("geonic auth platform-login"),
+      );
       expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
