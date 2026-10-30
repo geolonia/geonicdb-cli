@@ -27,6 +27,7 @@ interface ImportCliOptions {
   errorsLog?: string;
   bisect?: boolean;
   bisectMax: number;
+  keyValues?: boolean;
 }
 
 function parsePositiveInt(value: string): number {
@@ -106,6 +107,10 @@ export function registerImportCommand(program: Command): void {
     .option("--errors-log <file>", "Write failure details (reason/status/line) as NDJSON")
     .option("--bisect", "On a 400/413 chunk, binary-split to isolate the offending entity")
     .option("--bisect-max <n>", "Max bisect depth", parsePositiveInt, 8)
+    .option(
+      "--key-values",
+      "Not supported on import (server rejects options=keyValues on batch upsert)",
+    )
     .action(
       withErrorHandler(async (file: string | undefined, _opts: unknown, command: Command) => {
         const cli = command.optsWithGlobals() as ImportCliOptions;
@@ -113,6 +118,10 @@ export function registerImportCommand(program: Command): void {
         const isStdin = file === undefined || file === "-";
 
         // Validate resume constraints up front, before consuming any input.
+        if (cli.keyValues) {
+          printError("server does not accept keyValues on import");
+          process.exit(1);
+        }
         if (cli.resume && cli.mode === "replace") {
           printError("--resume is only supported with --mode upsert (replace re-sends overwrite latest state).");
           process.exit(1);
