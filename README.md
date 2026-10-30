@@ -616,6 +616,9 @@ Hint: inspect the model's unique constraints with `geonic models get <model-id>`
 | `admin tenants delete <id>` | Delete a tenant |
 | `admin tenants activate <id>` | Activate a tenant |
 | `admin tenants deactivate <id>` | Deactivate a tenant |
+| `admin tenants users <tenant-id>` | List members of a tenant |
+| `admin tenants add-user <tenant-id> <user-id>` | Add an existing user to a tenant (`--role tenant_admin\|user`) |
+| `admin tenants remove-user <tenant-id> <user-id>` | Remove a user from a tenant |
 
 `admin tenants create` / `admin tenants update` support `--allowed-origins <origins>` for tenant-scoped CORS control. The flag maps to `settings.allowedOrigins`:
 
@@ -650,13 +653,14 @@ When combined with a JSON payload, the flag merges into `settings` without dropp
 |---|---|
 | `admin users list` | List all users |
 | `admin users get <id>` | Get a user by ID |
-| `admin users create [json]` | Create a new user (add `--force-reset` to issue a temporary password and force a first-login change) |
+| `admin users create [json]` | Create a new user (add `--force-reset` to issue a temporary password and force a first-login change). To add an *existing* user to another tenant, use `admin tenants add-user` |
 | `admin users update <id> [json]` | Update a user |
 | `admin users delete <id>` | Delete a user |
 | `admin users activate <id>` | Activate a user |
 | `admin users deactivate <id>` | Deactivate a user |
 | `admin users unlock <id>` | Unlock a user |
 | `admin users reset-password <id>` | Issue a one-time temporary password and force a change on next login |
+| `admin users tenants <user-id>` | List tenants a user belongs to |
 
 #### admin policies
 
