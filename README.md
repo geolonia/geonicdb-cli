@@ -954,6 +954,8 @@ See the [admin policies](#admin-policies) section for details on the XACML autho
 
 Requires Node.js >= 20.
 
+E2E tests (`npm run test:e2e`) import the pinned `geonicdb` package, which currently requires Node.js >= 24.22.1. The CLI package itself still supports Node.js >= 20; use Node.js 24+ when running E2E locally (CI already runs E2E on Node.js 24).
+
 ```bash
 # Install dependencies
 npm install
