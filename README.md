@@ -411,11 +411,17 @@ geonic batch query '{"entities":[{"id":"urn:ngsi-ld:Sensor:001"}]}' --local
 server's batch size and the API Gateway 29-second timeout. For nationwide-scale loads
 (hundreds of thousands to millions of entities), use `import`, which streams the input, splits it
 into batch-upsert requests (by entity count **and** byte size), retries transient failures, and
-can resume after an interruption.
+can resume after an interruption. Prefer **NDJSON** for large datasets (streamed one entity per
+line). `--input-format json` loads the **entire JSON array into memory**, so it is for small or
+medium payloads only.
 
 ```bash
-# Load an NDJSON file (one entity per line)
+# Load an NDJSON file (one entity per line) — preferred for large datasets
 geonic import entities.ndjson
+
+# Load a JSON array (pretty-printed or compact). Whole array is held in memory —
+# not suitable for very large files; prefer NDJSON above.
+geonic import entities.json --input-format json
 
 # Resumable load with error capture
 geonic import entities.ndjson \
@@ -428,7 +434,52 @@ geonic import failed.ndjson
 
 # Preview the plan without sending anything
 geonic import entities.ndjson --dry-run
+
+# Pipe stdin (resume is not available).
+# NDJSON stdin has always been streamed (streamNdjsonFrom).
+# JSON-array stdin uses readStdin() in src/input.ts — #236 fixed that path so
+# delayed producers no longer hit EAGAIN from readFileSync(0) (Refs #235).
+cat entities.ndjson | geonic import --dry-run
+(sleep 1; cat entities.json) | geonic import --input-format json --dry-run
 ```
+
+#### CSV and other tabular formats
+
+`import` does **not** parse CSV (or GeoJSON). Convert to NGSI-LD entities first, then
+feed NDJSON or a JSON array into `import`.
+
+For catalog models on [datamodels.jp](https://datamodels.jp), use
+[`datamodels convert`](https://datamodels.jp/en/toolkit/convert) from
+[`@geolonia/datamodels`](https://www.npmjs.com/package/@geolonia/datamodels)
+(mapping file, your own mapping, or the model's CSV template). **`datamodels` requires
+Node.js >= 24** (the CLI package itself still supports Node.js >= 20). Facts that matter
+for the pipe:
+
+- Default `convert` output is **key-values** JSON. `import` / batch upsert reject
+  `options=keyValues`, so pass **`--normalized`** (Property / Relationship / GeoProperty form).
+- `convert` writes a **JSON array** (pretty-printed) to stdout or `--out file.json` —
+  not NDJSON. Use **`--input-format json`** on `geonic import` (entire array in memory; for
+  huge lists, write the array then split to NDJSON yourself, or import in smaller batches).
+- Stdin pipes work. NDJSON was already streamed; for `--input-format json`, #236
+  made `readStdin()` wait for late data so delayed producers do not hit EAGAIN
+  (Refs #235).
+
+```bash
+# Pipe: CSV → normalized NGSI-LD JSON array → import (Node.js >= 24 for datamodels)
+npx @geolonia/datamodels@0.3.19 convert \
+  disaster/EvacuationSite jichitai-opendata-site sites.csv \
+  --normalized \
+  | geonic import --input-format json
+
+# Or write a file, then import (resume-capable)
+npx @geolonia/datamodels@0.3.19 convert \
+  disaster/EvacuationSite jichitai-opendata-site sites.csv \
+  --normalized --out sites.json
+geonic import sites.json --input-format json --resume .import.ckpt
+```
+
+Mapping choices and CSV tutorials live on the convert page above; this CLI only
+documents the hand-off into `geonic import`.
 
 | Option | Description |
 |---|---|
