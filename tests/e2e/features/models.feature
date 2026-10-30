@@ -67,6 +67,25 @@ Feature: Custom data model management
     When I run `geonic entities create '{"id":"urn:ngsi-ld:UcReservation:003","type":"UcReservation","room":{"type":"Property","value":"R2"},"date":{"type":"Property","value":"2026-07-15"}}' --service e2e_test`
     Then the exit code should be 0
 
+  Scenario: Apply creates then reports unchanged or updated (#238)
+    Given I am logged in
+    When I run `geonic models apply '{"type":"ApplyModel01","domain":"test","description":"Apply Model 01","propertyDetails":{"temperature":{"ngsiType":"Property","valueType":"Number","example":25}}}' --service e2e_test`
+    Then the exit code should be 0
+    And the output should contain "\"result\": \"created\""
+    When I run `geonic models apply '{"type":"ApplyModel01","domain":"test","description":"Apply Model 01","propertyDetails":{"temperature":{"ngsiType":"Property","valueType":"Number","example":25}}}' --service e2e_test`
+    Then the exit code should be 0
+    And the output should contain "\"result\": \"unchanged\""
+    When I run `geonic models apply '{"type":"ApplyModel01","domain":"test","description":"Apply Model 01 updated","propertyDetails":{"temperature":{"ngsiType":"Property","valueType":"Number","example":25}}}' --service e2e_test`
+    Then the exit code should be 0
+    And the output should contain "\"result\": \"updated\""
+
+  Scenario: Apply accepts type-bearing body without preprocessing (#238)
+    Given I am logged in
+    And I run `geonic models create '{"type":"ApplyModel02","domain":"test","description":"Apply Model 02","propertyDetails":{"humidity":{"ngsiType":"Property","valueType":"Number","example":60}}}' --service e2e_test`
+    When I run `geonic models apply '{"type":"ApplyModel02","domain":"test","description":"Apply Model 02 via apply","propertyDetails":{"humidity":{"ngsiType":"Property","valueType":"Number","example":60}}}' --service e2e_test`
+    Then the exit code should be 0
+    And the output should contain "\"result\": \"updated\""
+
   Scenario: Remove unique constraints via update (geonicdb#1268)
     Given I am logged in
     And I run `geonic models create '{"type":"UcSlot","domain":"test","description":"Slot with removable constraint","propertyDetails":{"code":{"ngsiType":"Property","valueType":"string","example":"A1"}},"uniqueConstraints":[{"name":"unique-code","fields":["code"]}]}' --service e2e_test`
