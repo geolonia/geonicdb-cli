@@ -337,15 +337,15 @@ export function registerTenantsCommand(parent: Command): void {
     },
     {
       description: "Enable CADDE routes for the tenant",
-      command: `geonic admin tenants update <tenant-id> --cadde-enabled true`,
+      command: `geonic admin tenants update <tenant-id> '{}' --cadde-enabled true`,
     },
     {
       description: "Disable CADDE routes (403 on /cadde/**)",
-      command: `geonic admin tenants update <tenant-id> --cadde-enabled false`,
+      command: `geonic admin tenants update <tenant-id> '{}' --cadde-enabled false`,
     },
     {
       description: "Require data models on entity writes",
-      command: `geonic admin tenants update <tenant-id> --require-data-model true`,
+      command: `geonic admin tenants update <tenant-id> '{}' --require-data-model true`,
     },
   ]);
 

@@ -652,10 +652,10 @@ geonic admin tenants update <tenant-id> --allowed-origins "*"
 geonic admin tenants update <tenant-id> --allowed-origins ""
 
 # Enable CADDE routes for a tenant
-geonic admin tenants update <tenant-id> --cadde-enabled true
+geonic admin tenants update <tenant-id> '{}' --cadde-enabled true
 
 # Require data models on entity writes
-geonic admin tenants update <tenant-id> --require-data-model true
+geonic admin tenants update <tenant-id> '{}' --require-data-model true
 ```
 
 #### admin users
