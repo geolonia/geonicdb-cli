@@ -67,6 +67,33 @@ Feature: Custom data model management
     When I run `geonic entities create '{"id":"urn:ngsi-ld:UcReservation:003","type":"UcReservation","room":{"type":"Property","value":"R2"},"date":{"type":"Property","value":"2026-07-15"}}' --service e2e_test`
     Then the exit code should be 0
 
+  @models-missing-types @issue-244
+  Scenario: List types with no active data model (#244)
+    # requireDataModel は off のままでよい（一覧 API は設定値を返すだけで、スキャン条件には使わない）。
+    # 生存エンティティを用意し、未登録=missing / isActive:false=inactive / 有効モデルは出ないことを assert する。
+    Given I am logged in
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:MissingTypesOrphan244:001","type":"MissingTypesOrphan244"}' --service e2e_test`
+    And the exit code should be 0
+    And I run `geonic models create '{"type":"MissingTypesInactive244","domain":"test","description":"inactive gap","isActive":false,"propertyDetails":{"x":{"ngsiType":"Property","valueType":"string","example":"a"}}}' --service e2e_test`
+    And the exit code should be 0
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:MissingTypesInactive244:001","type":"MissingTypesInactive244","x":{"type":"Property","value":"a"}}' --service e2e_test`
+    And the exit code should be 0
+    And I run `geonic models create '{"type":"MissingTypesCovered244","domain":"test","description":"active covered","isActive":true,"propertyDetails":{"x":{"ngsiType":"Property","valueType":"string","example":"a"}}}' --service e2e_test`
+    And the exit code should be 0
+    And I run `geonic entities create '{"id":"urn:ngsi-ld:MissingTypesCovered244:001","type":"MissingTypesCovered244","x":{"type":"Property","value":"a"}}' --service e2e_test`
+    And the exit code should be 0
+    When I run `geonic models missing-types --service e2e_test`
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the JSON output should have key "requireDataModel"
+    And the JSON output should have key "types"
+    And the JSON output should have key "scopeLimited"
+    And the JSON output should have key "truncated"
+    And the JSON output should have key "maxTypes"
+    And the JSON output array "types" should contain an object with "type" "MissingTypesOrphan244" and "reason" "missing"
+    And the JSON output array "types" should contain an object with "type" "MissingTypesInactive244" and "reason" "inactive"
+    And the JSON output array "types" should not contain an object with "type" "MissingTypesCovered244"
+
   @models-apply
   Scenario: Apply creates then reports unchanged or updated (#238)
     # valueType はサーバー正規化後の lowercase を使う。PascalCase の Number だと
