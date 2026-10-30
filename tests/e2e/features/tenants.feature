@@ -34,6 +34,33 @@ Feature: Admin tenant management
     Then the exit code should be 0
     And the output should contain "Tenant updated."
 
+  Scenario: Create a tenant with --cadde-enabled and --require-data-model
+    Given I am logged in as super admin
+    When I run `geonic admin tenants create '{"name":"test_tenant_cadde_01","description":"CADDE settings create"}' --cadde-enabled true --require-data-model true`
+    Then the exit code should be 0
+    And the output should contain "Tenant created."
+    And I run `geonic admin tenants list --format json`
+    And I save the ID from the JSON output where "name" is "test_tenant_cadde_01"
+    When I run `geonic admin tenants get $ID` replacing ID
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the JSON output path "settings.caddeEnabled" should be "true"
+    And the JSON output path "settings.requireDataModel" should be "true"
+
+  Scenario: Update a tenant with --cadde-enabled and --require-data-model
+    Given I am logged in as super admin
+    And I run `geonic admin tenants create '{"name":"test_tenant_cadde_02","description":"CADDE settings update"}'`
+    And I run `geonic admin tenants list --format json`
+    And I save the ID from the JSON output where "name" is "test_tenant_cadde_02"
+    When I run `geonic admin tenants update $ID '{}' --cadde-enabled true --require-data-model false` replacing ID
+    Then the exit code should be 0
+    And the output should contain "Tenant updated."
+    When I run `geonic admin tenants get $ID` replacing ID
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the JSON output path "settings.caddeEnabled" should be "true"
+    And the JSON output path "settings.requireDataModel" should be "false"
+
   Scenario: Delete a tenant
     Given I am logged in as super admin
     And I run `geonic admin tenants create '{"name":"test_tenant_04","description":"Tenant test_tenant_04"}'`
