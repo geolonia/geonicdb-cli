@@ -9,6 +9,7 @@
 
 ### 2026-10-31
 - **Feat**: `admin tenants create` / `update` に `--cadde-enabled <true|false>` と `--require-data-model <true|false>` を追加し、`settings.caddeEnabled` / `settings.requireDataModel` を専用フラグで設定できるようにした (closes #248, 本体 geolonia/geonicdb#3580 / #3478)。真偽値はリテラル `true` / `false` のみ受理 (#259)
+- **Feat**: `models missing-types` を追加した。`GET /custom-data-models/missing-types`（本体 geolonia/geonicdb#3477）を呼び、有効なデータモデルが無い生存エンティティ型を返す。ページネーション無し。`models create`/`update` の help に `typeIri` / `contextUrl` を追記した (closes #244) (#258)
 - **Feat**: `geonic auth platform-login` を追加し、現在の AWS IAM 認証で `POST /auth/platform-token` を SigV4 署名して 15 分の `platform_admin` トークンを取得・保存する (closes #243, 本体 geolonia/geonicdb#3495)。`--aws-profile` / `--aws-region` 対応。保存時に `refreshToken` / `clientId` / `clientSecret` を消し自動再認証を無効化。403 は「許可された IAM 呼び出し元ではない」（署名・region・資格情報不正の可能性を併記）。`saveConfigFile` は `config.json` を mode `0o600` で書き既存ファイルも chmod（`auth login` 等すべての保存経路に効く）。依存: `@aws-sdk/credential-providers` / `@smithy/signature-v4` / `@aws-crypto/sha256-js`（dynamic import） (#257)
 - **Docs**: `entities list`/`entities purge` の `--scope-q` ヘルプと README を本体 geolonia/geonicdb#3524 に揃え、AND (`;`) は括弧必須（例: `(/A;/B)`）、レベルは文字始まり必須（`/Madrid/1st` は拒否）と明記した (closes #246) (#255)
 - **Feat**: `admin tenants add-user` / `remove-user` / `users` と `admin users tenants` を追加し、既存ユーザーの複数テナントメンバーシップを CLI から追加・削除・一覧できるようにした (closes #247)。`--role` は本体 PUT と同じく `tenant_admin` / `user` のみ（省略時は本文なし＝サーバ既定 `user`）。`admin users create` の help に、既存ユーザーを別テナントへ加えるときは `add-user` を使う旨を追記 (#256)

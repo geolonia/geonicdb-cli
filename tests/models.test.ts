@@ -67,6 +67,127 @@ describe("models (custom-data-models) command", () => {
     });
   });
 
+  describe("missing-types (#244)", () => {
+    const missingTypesBody = {
+      requireDataModel: false,
+      types: [
+        { type: "OrphanSensor", reason: "missing" as const },
+        { type: "InactiveType", reason: "inactive" as const },
+      ],
+      scopeLimited: false,
+      truncated: false,
+      maxTypes: 1000,
+    };
+
+    it("calls rawRequest GET /custom-data-models/missing-types without params", async () => {
+      mockClient.rawRequest.mockResolvedValue(mockResponse(missingTypesBody));
+      await runCommand(program, ["custom-data-models", "missing-types"]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith(
+        "GET",
+        "/custom-data-models/missing-types",
+      );
+      expect(mockClient.rawRequest).toHaveBeenCalledTimes(1);
+      // Must not look like models list (fetchPaginatedList adds a params object).
+      expect(mockClient.rawRequest.mock.calls[0]).toHaveLength(2);
+      expect(mockClient.rawRequest).not.toHaveBeenCalledWith(
+        "GET",
+        "/custom-data-models",
+        expect.anything(),
+      );
+      expect(outputResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ data: missingTypesBody }),
+        "json",
+      );
+    });
+
+    it("works with models alias and forwards the full response shape", async () => {
+      const body = {
+        requireDataModel: true,
+        types: [{ type: "InactiveType", reason: "inactive" as const }],
+        scopeLimited: true,
+        truncated: true,
+        maxTypes: 1000,
+      };
+      mockClient.rawRequest.mockResolvedValue(mockResponse(body));
+      await runCommand(program, ["models", "missing-types"]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith(
+        "GET",
+        "/custom-data-models/missing-types",
+      );
+      expect(outputResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            requireDataModel: true,
+            types: [{ type: "InactiveType", reason: "inactive" }],
+            scopeLimited: true,
+            truncated: true,
+            maxTypes: 1000,
+          }),
+        }),
+        "json",
+      );
+    });
+
+    it("near-miss: does not call list path or attach pagination params", async () => {
+      mockClient.rawRequest.mockResolvedValue(mockResponse(missingTypesBody));
+      await runCommand(program, ["models", "missing-types"]);
+
+      const [method, path, options] = mockClient.rawRequest.mock.calls[0];
+      expect(method).toBe("GET");
+      expect(path).toBe("/custom-data-models/missing-types");
+      expect(path).not.toBe("/custom-data-models");
+      expect(options).toBeUndefined();
+      if (options && typeof options === "object" && "params" in options) {
+        throw new Error("missing-types must not pass pagination params");
+      }
+    });
+  });
+
+  describe("create/update help — typeIri / contextUrl (#244)", () => {
+    it("create help mentions typeIri and contextUrl (passthrough fields)", () => {
+      const create = program.commands
+        .find((c) => c.name() === "custom-data-models")
+        ?.commands.find((c) => c.name() === "create");
+      const help = create?.description() ?? "";
+      expect(help).toContain("typeIri");
+      expect(help).toContain("contextUrl");
+    });
+
+    it("update help mentions typeIri and contextUrl constraints", () => {
+      const update = program.commands
+        .find((c) => c.name() === "custom-data-models")
+        ?.commands.find((c) => c.name() === "update");
+      const help = update?.description() ?? "";
+      expect(help).toContain("typeIri");
+      expect(help).toContain("contextUrl");
+    });
+
+    it("near-miss: typeIri in create body is passed through unchanged (no CLI stripping)", async () => {
+      const modelData = {
+        type: "RoadRestriction",
+        domain: "transport",
+        description: "typed IRI",
+        typeIri: "https://datamodels.jp/ns/transportation/RoadRestriction",
+        propertyDetails: {
+          name: { ngsiType: "Property", valueType: "string", example: "x" },
+        },
+      };
+      vi.mocked(parseJsonInput).mockResolvedValue(modelData);
+      mockClient.rawRequest.mockResolvedValue(mockResponse({ type: "RoadRestriction" }, 201));
+
+      await runCommand(program, ["models", "create", JSON.stringify(modelData)]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("POST", "/custom-data-models", {
+        body: modelData,
+      });
+      expect(
+        (mockClient.rawRequest.mock.calls[0][2] as { body: Record<string, unknown> }).body.typeIri,
+      ).toBe("https://datamodels.jp/ns/transportation/RoadRestriction");
+    });
+  });
+
   describe("create", () => {
     it("parses JSON and posts via rawRequest", async () => {
       const modelData = { name: "TestModel", schema: {} };

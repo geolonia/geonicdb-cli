@@ -593,6 +593,7 @@ describe("help", () => {
     it("has expected subcommands", () => {
       expect(output).toContain("list");
       expect(output).toContain("get");
+      expect(output).toContain("missing-types");
       expect(output).toContain("create");
       expect(output).toContain("update");
       expect(output).toContain("delete");

@@ -181,6 +181,51 @@ Then("the JSON array length should be {int}", function (this: GdbWorld, expected
   assert.equal(arr.length, expected, `Expected JSON array length ${expected}, got ${arr.length}.\nstdout: ${this.lastResult.stdout}`);
 });
 
+Then(
+  /^the JSON output array "([^"]+)" should contain an object with "([^"]+)" "([^"]+)" and "([^"]+)" "([^"]+)"$/,
+  function (
+    this: GdbWorld,
+    arrayKey: string,
+    key1: string,
+    value1: string,
+    key2: string,
+    value2: string,
+  ) {
+    const json = extractJson(this.lastResult.stdout);
+    assert.ok(json !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);
+    const arr = json[arrayKey];
+    assert.ok(Array.isArray(arr), `Expected json.${arrayKey} to be an array.\nJSON: ${JSON.stringify(json)}`);
+    const found = (arr as Record<string, unknown>[]).some(
+      (item) =>
+        item != null &&
+        typeof item === "object" &&
+        String(item[key1]) === value1 &&
+        String(item[key2]) === value2,
+    );
+    assert.ok(
+      found,
+      `Expected json.${arrayKey} to contain { ${key1}: ${JSON.stringify(value1)}, ${key2}: ${JSON.stringify(value2)} }.\nJSON: ${JSON.stringify(json)}`,
+    );
+  },
+);
+
+Then(
+  /^the JSON output array "([^"]+)" should not contain an object with "([^"]+)" "([^"]+)"$/,
+  function (this: GdbWorld, arrayKey: string, key: string, value: string) {
+    const json = extractJson(this.lastResult.stdout);
+    assert.ok(json !== null, `Expected stdout to contain valid JSON.\nstdout: ${this.lastResult.stdout}`);
+    const arr = json[arrayKey];
+    assert.ok(Array.isArray(arr), `Expected json.${arrayKey} to be an array.\nJSON: ${JSON.stringify(json)}`);
+    const found = (arr as Record<string, unknown>[]).some(
+      (item) => item != null && typeof item === "object" && String(item[key]) === value,
+    );
+    assert.ok(
+      !found,
+      `Expected json.${arrayKey} NOT to contain { ${key}: ${JSON.stringify(value)} }.\nJSON: ${JSON.stringify(json)}`,
+    );
+  },
+);
+
 Then("the config should have key {string}", function (this: GdbWorld, key: string) {
   const config = this.readProfileConfig();
   assert.ok(key in config, `Expected config to have key "${key}". Config: ${JSON.stringify(config)}`);

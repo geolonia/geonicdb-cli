@@ -190,6 +190,39 @@ export function registerModelsCommand(program: Command): void {
     },
   ]);
 
+  // models missing-types — GET /custom-data-models/missing-types (GeonicDB #3477 / CLI #244)
+  const missingTypes = models
+    .command("missing-types")
+    .summary("List entity types with no active data model")
+    .description(
+      "List live entity types that have no active custom data model (GeonicDB extension).\n\n" +
+        "Calls GET /custom-data-models/missing-types. Different axis from `types list`\n" +
+        "(types that exist): this returns types whose model is missing or inactive\n" +
+        "(useful before enabling settings.requireDataModel). No pagination; the server may\n" +
+        "set truncated: true when the type cap is hit. type is the stored string (not compacted).\n" +
+        "If scopeLimited or truncated is true, types may be incomplete even when empty —\n" +
+        "do not treat that alone as proof that requireDataModel is safe to enable.",
+    )
+    .action(
+      withErrorHandler(async (_opts: unknown, cmd: Command) => {
+        const client = createClient(cmd);
+        const format = getFormat(cmd);
+        const response = await client.rawRequest("GET", "/custom-data-models/missing-types");
+        outputResponse(response, format);
+      }),
+    );
+
+  addExamples(missingTypes, [
+    {
+      description: "List types without an active data model (JSON)",
+      command: "geonic models missing-types",
+    },
+    {
+      description: "Same report in table format",
+      command: "geonic models missing-types --format table",
+    },
+  ]);
+
   // models create
   const create = models
     .command("create [json]")
@@ -210,7 +243,9 @@ export function registerModelsCommand(program: Command): void {
         "  Fields must be declared in propertyDetails with a scalar valueType.\n" +
         "  Duplicate entities are rejected with 409 AlreadyExists (constraint name in the message).\n" +
         "  A composite constraint matches an exact tuple: it rejects duplicate values, not overlapping\n" +
-        "  ranges (e.g. a 10:00-11:00 booking does not block a 10:30-11:30 booking on the same room/date).",
+        "  ranges (e.g. a 10:00-11:00 booking does not block a 10:30-11:30 booking on the same room/date).\n" +
+        "Optional typeIri (HTTP(S) URL): entity type IRI in the auto-generated @context (fixed at create; not combinable with contextUrl).\n" +
+        "Optional contextUrl: external JSON-LD @context URL (not combinable with typeIri).",
     )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
@@ -251,7 +286,9 @@ export function registerModelsCommand(program: Command): void {
         "JSON payload: only specified fields are updated.\n" +
         '  e.g. {"description": "Updated model"}\n\n' +
         "uniqueConstraints replaces the whole constraint list (send [] to remove all).\n" +
-        "Adding a constraint fails with 400 if existing entities already violate it.\n\n" +
+        "Adding a constraint fails with 400 if existing entities already violate it.\n" +
+        "typeIri cannot be changed after create (same value ok; omit to keep).\n" +
+        "contextUrl cannot be set on a model that has typeIri.\n\n" +
         "--api-dry-run sends PATCH ?dryRun=true (GeonicDB extension): the update is NOT\n" +
         "applied; the response is a conformance report for existing entities. Exit code is\n" +
         "non-zero when conformance.violating > 0. Distinct from the global --dry-run (curl).",
