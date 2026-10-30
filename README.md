@@ -749,7 +749,8 @@ geonic admin deployments update tenant-a.geonicdb.com \
   --secret geonicdb/tenant-a/mongodb-uri --clear-mongodb-uri
 
 # Pause writes → final data copy → retarget connection → resume (DB migrate/restore)
-# Patching the host you are connected through to read-only is refused (409) — run from another host.
+# Newly setting the host you are connected through to read-only is refused (409) —
+# run from another host. Re-PATCHing a row that is already read-only does not 409.
 geonic admin deployments update tenant-a.geonicdb.com --write-mode read-only
 # … final copy of the database …
 geonic admin deployments update tenant-a.geonicdb.com \
@@ -770,9 +771,9 @@ geonic admin deployments update tenant-a.geonicdb.com --write-mode normal
 
 **Hostnames are lowercased** by the server, so the stored row may differ in case from what you typed.
 
-**`--write-mode`**: `normal` (default) or `read-only`. Use `read-only` to stop writes before a final DB sync during migration/restore; switching back to `normal` is always allowed. Propagation upper bound is about 6 minutes (settings cache 30s + longest in-flight job 300s). A host in `read-only` rejects entity writes with `503` + `Retry-After`.
+**`--write-mode`**: `normal` (default) or `read-only`. Use `read-only` to stop writes before a final DB sync during migration/restore; switching back to `normal` is always allowed. Propagation upper bound is about 6 minutes (settings cache 30s + longest in-flight job 300s). A host in `read-only` rejects entity writes with `503` + `Retry-After`. Omitting `--write-mode` leaves the field unset in the request body (server keeps its current value / default).
 
-**Errors worth reading in full**: `400` for a reserved subdomain, a rejected plaintext URI, a row left with no connection source, or a malformed value; `409` for a duplicate hostname, a hostname shadowed by `DEFAULT_DEPLOYMENT_HOSTNAMES`, a concurrent modification, a refusal to delete/disable the row serving your own request, or a refusal to set that same host to `read-only` (run those from another hostname).
+**Errors worth reading in full**: `400` for a reserved subdomain, a rejected plaintext URI, a row left with no connection source, or a malformed value; `409` for a duplicate hostname, a hostname shadowed by `DEFAULT_DEPLOYMENT_HOSTNAMES`, a concurrent modification, a refusal to delete/disable the row serving your own request, or a refusal to **newly** set that same host to `read-only` (run those from another hostname; re-PATCHing a row that is already `read-only` does not 409).
 
 #### admin cadde
 

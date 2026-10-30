@@ -409,8 +409,9 @@ export function registerDeploymentsCommand(parent: Command): void {
     "Disabling the row that serves the current request is refused (409) — it would make",
     "  every API on that host, including this one, return 404. Run it from another host.",
     "--write-mode read-only pauses writes on that deployment (DB migrate/restore final sync).",
-    "  Patching the hostname you are connected through to read-only is refused (409) — run",
-    "  it from another host. Switching back to normal is always allowed.",
+    "  Newly setting the hostname you are connected through to read-only is refused (409) —",
+    "  run it from another host. Re-PATCHing a row that is already read-only does not 409.",
+    "  Switching back to normal is always allowed.",
     "  Propagation upper bound is the settings cache (30s) plus the longest in-flight job",
     "  (300s) — about 6 minutes before every warm instance observes the new mode.",
   ]);

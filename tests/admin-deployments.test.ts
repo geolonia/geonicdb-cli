@@ -330,6 +330,16 @@ describe("admin deployments commands", () => {
       },
     );
 
+    it("omits writeMode from the body when --write-mode is not given", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({}, 201));
+      await run([
+        "admin", "deployments", "create", "a.example.com",
+        "--database", "db_a", "--plan", "STANDARD", "--secret", "geonicdb/a/uri",
+      ]);
+      const body = vi.mocked(client.rawRequest).mock.calls[0][2]?.body as Record<string, unknown>;
+      expect(body).not.toHaveProperty("writeMode");
+    });
+
     it("rejects an unknown --write-mode without calling the server", async () => {
       await expect(
         run([
@@ -446,6 +456,14 @@ describe("admin deployments commands", () => {
         });
       },
     );
+
+    it("omits writeMode from the body when --write-mode is not given", async () => {
+      client.rawRequest.mockResolvedValue(mockResponse({}));
+      await run(["admin", "deployments", "update", "a.example.com", "--plan", "ENTERPRISE"]);
+      const body = vi.mocked(client.rawRequest).mock.calls[0][2]?.body as Record<string, unknown>;
+      expect(body).not.toHaveProperty("writeMode");
+      expect(body).toEqual({ defaultQuotaPlan: "ENTERPRISE" });
+    });
 
     it("rejects an unknown --write-mode without calling the server", async () => {
       await expect(
