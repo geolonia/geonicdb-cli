@@ -14,17 +14,29 @@ import type { Readable } from "node:stream";
  *
  * Supports JSON5 syntax (unquoted keys, single quotes, trailing commas).
  */
+/**
+ * Read stdin to the end as a string. Unlike `readFileSync(0)`, this waits for
+ * piped data that has not arrived yet instead of failing with EAGAIN.
+ */
+async function readStdin(): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk as Buffer);
+  }
+  return Buffer.concat(chunks).toString("utf-8");
+}
+
 export async function parseJsonInput(input?: string): Promise<unknown> {
   // 1. Explicit input
   if (input !== undefined) {
-    if (input === "-") return parseData(readFileSync(0, "utf-8"));
+    if (input === "-") return parseData(await readStdin());
     if (input.startsWith("@")) return parseData(readFileSync(input.slice(1), "utf-8"));
     return parseData(input);
   }
 
   // 2. Piped stdin (non-TTY)
   if (!process.stdin.isTTY) {
-    return parseData(readFileSync(0, "utf-8"));
+    return parseData(await readStdin());
   }
 
   // 3. Interactive mode (TTY)
