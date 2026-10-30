@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-10-31
-- **Feat**: `admin tenants create` / `update` に `--cadde-enabled <true|false>` と `--require-data-model <true|false>` を追加し、`settings.caddeEnabled` / `settings.requireDataModel` を専用フラグで設定できるようにした (closes #248, 本体 geolonia/geonicdb#3580 / #3478)。真偽値はリテラル `true` / `false` のみ受理
+- **Feat**: `admin tenants create` / `update` に `--cadde-enabled <true|false>` と `--require-data-model <true|false>` を追加し、`settings.caddeEnabled` / `settings.requireDataModel` を専用フラグで設定できるようにした (closes #248, 本体 geolonia/geonicdb#3580 / #3478)。真偽値はリテラル `true` / `false` のみ受理 (#259)
 - **Feat**: `admin tenants add-user` / `remove-user` / `users` と `admin users tenants` を追加し、既存ユーザーの複数テナントメンバーシップを CLI から追加・削除・一覧できるようにした (closes #247)。`--role` は本体 PUT と同じく `tenant_admin` / `user` のみ（省略時は本文なし＝サーバ既定 `user`）。`admin users create` の help に、既存ユーザーを別テナントへ加えるときは `add-user` を使う旨を追記 (#256)
 - **Feat**: `models apply` を追加した。GET で有無を見て無ければ POST、あれば `type` を除いて PATCH する idempotent upsert。結果は `created` / `updated` / `unchanged`（モデル未登録時に `--api-dry-run` を指定すると `would create`）。`.` / `..` は実行前に拒否する (closes #238) (#252)
 - **Docs**: `admin users create` の help に割り当て可能ロール `deployment_admin` を列挙し、`super_admin` を非推奨と明記した (closes #242, 本体 geolonia/geonicdb#3494)。同ファイルの `users update` に `isActive` は `activate`/`deactivate` を使う旨を追記し、例の偽ロール `admin` を `tenant_admin` に直した (本体 #3516) (#250)
