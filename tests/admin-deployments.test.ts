@@ -313,6 +313,48 @@ describe("admin deployments commands", () => {
       ]);
       expect(printInfo).toHaveBeenCalledWith("Routing caches are per-instance");
     });
+
+    // geonicdb#3412 / CLI #260: writeMode on create.
+    it.each(["normal", "read-only"] as const)(
+      "sends writeMode=%s when --write-mode is given",
+      async (mode) => {
+        client.rawRequest.mockResolvedValue(mockResponse({}, 201));
+        await run([
+          "admin", "deployments", "create", "a.example.com",
+          "--database", "db_a", "--plan", "STANDARD", "--secret", "geonicdb/a/uri",
+          "--write-mode", mode,
+        ]);
+        expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/deployments", {
+          body: expect.objectContaining({ writeMode: mode }),
+        });
+      },
+    );
+
+    it("rejects an unknown --write-mode without calling the server", async () => {
+      await expect(
+        run([
+          "admin", "deployments", "create", "a.example.com",
+          "--database", "db_a", "--plan", "STANDARD", "--secret", "s",
+          "--write-mode", "writable",
+        ]),
+      ).rejects.toThrow(/Must be one of: normal, read-only/);
+      expect(client.rawRequest).not.toHaveBeenCalled();
+    });
+
+    // Near-miss: hyphen omitted / wrong case — server enum is exact.
+    it.each(["readonly", "Read-Only", "NORMAL", "read_only", "read-only "])(
+      "rejects near-miss write-mode %j",
+      async (mode) => {
+        await expect(
+          run([
+            "admin", "deployments", "create", "a.example.com",
+            "--database", "db_a", "--plan", "STANDARD", "--secret", "s",
+            "--write-mode", mode,
+          ]),
+        ).rejects.toThrow(/Must be one of: normal, read-only/);
+        expect(client.rawRequest).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe("update", () => {
@@ -392,6 +434,35 @@ describe("admin deployments commands", () => {
       await run(["admin", "deployments", "update", "a.example.com", "--enable"]);
       expect(printInfo).toHaveBeenCalledWith("cache notice");
     });
+
+    // geonicdb#3412 / CLI #260: writeMode alone is a valid PATCH body (dry-run shape).
+    it.each(["normal", "read-only"] as const)(
+      "PATCHes { writeMode: %s } when only --write-mode is given",
+      async (mode) => {
+        client.rawRequest.mockResolvedValue(mockResponse({}));
+        await run(["admin", "deployments", "update", "a.example.com", "--write-mode", mode]);
+        expect(client.rawRequest).toHaveBeenCalledWith("PATCH", "/admin/deployments/a.example.com", {
+          body: { writeMode: mode },
+        });
+      },
+    );
+
+    it("rejects an unknown --write-mode without calling the server", async () => {
+      await expect(
+        run(["admin", "deployments", "update", "a.example.com", "--write-mode", "writable"]),
+      ).rejects.toThrow(/Must be one of: normal, read-only/);
+      expect(client.rawRequest).not.toHaveBeenCalled();
+    });
+
+    it.each(["readonly", "Read-Only", "NORMAL", "read_only"])(
+      "rejects near-miss write-mode %j on update",
+      async (mode) => {
+        await expect(
+          run(["admin", "deployments", "update", "a.example.com", "--write-mode", mode]),
+        ).rejects.toThrow(/Must be one of: normal, read-only/);
+        expect(client.rawRequest).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe("delete", () => {

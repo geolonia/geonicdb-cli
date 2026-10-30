@@ -747,10 +747,18 @@ geonic admin deployments update tenant-a.geonicdb.com --enable
 # Migrate a plaintext URI to a Secrets Manager reference
 geonic admin deployments update tenant-a.geonicdb.com \
   --secret geonicdb/tenant-a/mongodb-uri --clear-mongodb-uri
+
+# Pause writes → final data copy → retarget connection → resume (DB migrate/restore)
+# Patching the host you are connected through to read-only is refused (409) — run from another host.
+geonic admin deployments update tenant-a.geonicdb.com --write-mode read-only
+# … final copy of the database …
+geonic admin deployments update tenant-a.geonicdb.com \
+  --secret geonicdb/tenant-a/mongodb-uri-new
+geonic admin deployments update tenant-a.geonicdb.com --write-mode normal
 ```
 
 `list` supports `--enabled` / `--disabled` and `--limit` / `--offset`.
-`create` supports `--database`, `--plan`, `--secret`, `--mongodb-uri`, `--rate-limit-table`, `--disabled`, `--metadata`.
+`create` supports `--database`, `--plan`, `--secret`, `--mongodb-uri`, `--rate-limit-table`, `--disabled`, `--metadata`, `--write-mode` (`normal` | `read-only`).
 `update` supports the same fields plus `--enable` / `--disable` and `--clear-secret`, `--clear-mongodb-uri`, `--clear-rate-limit-table`, `--clear-metadata` (each sends an explicit `null`, which removes the field).
 `delete` requires confirmation; pass `--yes` in scripts.
 
@@ -762,7 +770,9 @@ geonic admin deployments update tenant-a.geonicdb.com \
 
 **Hostnames are lowercased** by the server, so the stored row may differ in case from what you typed.
 
-**Errors worth reading in full**: `400` for a reserved subdomain, a rejected plaintext URI, a row left with no connection source, or a malformed value; `409` for a duplicate hostname, a hostname shadowed by `DEFAULT_DEPLOYMENT_HOSTNAMES`, a concurrent modification, or a refusal to delete/disable the row serving your own request (run that from another hostname).
+**`--write-mode`**: `normal` (default) or `read-only`. Use `read-only` to stop writes before a final DB sync during migration/restore; switching back to `normal` is always allowed. Propagation upper bound is about 6 minutes (settings cache 30s + longest in-flight job 300s). A host in `read-only` rejects entity writes with `503` + `Retry-After`.
+
+**Errors worth reading in full**: `400` for a reserved subdomain, a rejected plaintext URI, a row left with no connection source, or a malformed value; `409` for a duplicate hostname, a hostname shadowed by `DEFAULT_DEPLOYMENT_HOSTNAMES`, a concurrent modification, a refusal to delete/disable the row serving your own request, or a refusal to set that same host to `read-only` (run those from another hostname).
 
 #### admin cadde
 
