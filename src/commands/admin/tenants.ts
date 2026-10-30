@@ -58,6 +58,19 @@ type TenantSettingsOpts = {
   requireDataModel?: string;
 };
 
+/**
+ * Validate boolean settings flags before parseJsonInput (interactive / stdin).
+ * Rejects near-miss values without waiting on JSON parsing.
+ */
+function validateBooleanSettingsFlags(opts: TenantSettingsOpts): void {
+  if (opts.caddeEnabled !== undefined) {
+    parseTrueFalse("cadde-enabled", opts.caddeEnabled);
+  }
+  if (opts.requireDataModel !== undefined) {
+    parseTrueFalse("require-data-model", opts.requireDataModel);
+  }
+}
+
 /** Merge all tenant settings CLI flags into body.settings. */
 function applyTenantSettingsFlags(
   body: Record<string, unknown>,
@@ -162,6 +175,7 @@ export function registerTenantsCommand(parent: Command): void {
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const opts = cmd.opts() as TenantSettingsOpts;
+        validateBooleanSettingsFlags(opts);
         const body = (await parseJsonInput(json as string | undefined)) as Record<string, unknown>;
         applyTenantSettingsFlags(body, opts);
         const client = createClient(cmd);
@@ -253,6 +267,7 @@ export function registerTenantsCommand(parent: Command): void {
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
           const opts = cmd.opts() as TenantSettingsOpts;
+          validateBooleanSettingsFlags(opts);
           const body = (await parseJsonInput(json as string | undefined)) as Record<string, unknown>;
           applyTenantSettingsFlags(body, opts);
           const client = createClient(cmd);

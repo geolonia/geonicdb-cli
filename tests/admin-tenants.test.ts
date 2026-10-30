@@ -356,6 +356,24 @@ describe("admin tenants commands", () => {
       }
       expect(client.rawRequest).not.toHaveBeenCalled();
     });
+
+    it("rejects invalid --cadde-enabled before parseJsonInput on create", async () => {
+      vi.mocked(parseJsonInput).mockImplementation(async () => {
+        throw new Error("parseJsonInput should not run for invalid flags");
+      });
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "admin",
+          "tenants",
+          "create",
+          "--cadde-enabled",
+          "yes",
+        ]),
+      ).rejects.toThrow(/--cadde-enabled must be true or false/);
+      expect(parseJsonInput).not.toHaveBeenCalled();
+      expect(client.rawRequest).not.toHaveBeenCalled();
+    });
   });
 
   describe("tenants update", () => {
@@ -632,6 +650,25 @@ describe("admin tenants commands", () => {
           ]),
         ).rejects.toThrow(/--require-data-model must be true or false/);
       }
+      expect(client.rawRequest).not.toHaveBeenCalled();
+    });
+
+    it("rejects invalid --require-data-model before parseJsonInput on update", async () => {
+      vi.mocked(parseJsonInput).mockImplementation(async () => {
+        throw new Error("parseJsonInput should not run for invalid flags");
+      });
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "admin",
+          "tenants",
+          "update",
+          "t1",
+          "--require-data-model",
+          "no",
+        ]),
+      ).rejects.toThrow(/--require-data-model must be true or false/);
+      expect(parseJsonInput).not.toHaveBeenCalled();
       expect(client.rawRequest).not.toHaveBeenCalled();
     });
   });
