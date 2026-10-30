@@ -47,7 +47,13 @@ export function createClient(cmd: Command): GdbClient {
   opts.url = validateUrl(opts.url);
   const cliOpts = cmd.optsWithGlobals() as GlobalOptions;
   const usingCliToken = !!cliOpts.token;
-  const usingCliApiKey = !!cliOpts.apiKey;
+  // Distinguish omitted flag (undefined) from explicit empty `--api-key ""`.
+  const usingCliApiKey = cliOpts.apiKey !== undefined;
+
+  if (usingCliApiKey && cliOpts.apiKey === "") {
+    printError("--api-key must not be empty.");
+    process.exit(1);
+  }
 
   if (usingCliToken && usingCliApiKey) {
     printError("Cannot use --token and --api-key together. Specify only one.");

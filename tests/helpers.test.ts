@@ -239,6 +239,18 @@ describe("helpers", () => {
       exitSpy.mockRestore();
     });
 
+    // near-miss: explicit empty --api-key must not fall back to a saved token.
+    it("rejects empty --api-key without falling back to saved token", () => {
+      saveConfig({ url: "http://localhost:3000", token: "saved-login-token" });
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+        throw new Error("process.exit");
+      });
+      expect(() => createClient(fakeCmd({ apiKey: "" }))).toThrow("process.exit");
+      expect(exitSpy).toHaveBeenCalledWith(1);
+      expect(printError).toHaveBeenCalledWith("--api-key must not be empty.");
+      exitSpy.mockRestore();
+    });
+
     it("throws when URL lacks protocol (via --url flag)", () => {
       expect(() => createClient(fakeCmd({ url: "localhost:3000" }))).toThrow(
         'Invalid URL: "localhost:3000". URL must start with http:// or https://.',
