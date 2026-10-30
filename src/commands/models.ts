@@ -60,6 +60,18 @@ function modelApplyConformanceHint(type: string): string {
 }
 
 /**
+ * Reject path-segment lookalikes that survive encodeURIComponent unchanged
+ * (`.` / `..`) and would otherwise resolve oddly in `/custom-data-models/{type}`.
+ * Returns an error message, or undefined when the type is acceptable for apply.
+ */
+export function modelApplyTypeError(type: string): string | undefined {
+  if (type === "." || type === "..") {
+    return `Model type must not be "." or ".." (got ${JSON.stringify(type)}).`;
+  }
+  return undefined;
+}
+
+/**
  * Re-throw PATCH 400 with a one-line dry-run hint. Other statuses / errors
  * propagate unchanged (do not infer "already exists" from message text).
  */
@@ -347,6 +359,12 @@ export function registerModelsCommand(program: Command): void {
         const type = body.type;
         if (typeof type !== "string" || type.length === 0) {
           printError('Model body must include a non-empty string "type" field.');
+          process.exitCode = 1;
+          return;
+        }
+        const typeErr = modelApplyTypeError(type);
+        if (typeErr) {
+          printError(typeErr);
           process.exitCode = 1;
           return;
         }

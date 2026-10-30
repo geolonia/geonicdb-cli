@@ -10,6 +10,7 @@ import { GdbClientError } from "../src/client.js";
 import {
   applyModelUpdateDryRunResult,
   isModelPatchUnchanged,
+  modelApplyTypeError,
   registerModelsCommand,
   rethrowModelApplyPatchError,
   stripTypeFromModelBody,
@@ -470,6 +471,19 @@ describe("models (custom-data-models) command", () => {
     });
   });
 
+  describe("modelApplyTypeError (#238)", () => {
+    it('rejects "." and ".."', () => {
+      expect(modelApplyTypeError(".")).toMatch(/\./);
+      expect(modelApplyTypeError("..")).toMatch(/\.\./);
+    });
+
+    it("near-miss: accepts ordinary and punctuation-bearing types", () => {
+      expect(modelApplyTypeError("Sensor")).toBeUndefined();
+      expect(modelApplyTypeError("a/b")).toBeUndefined();
+      expect(modelApplyTypeError("a?b")).toBeUndefined();
+    });
+  });
+
   describe("rethrowModelApplyPatchError (#238)", () => {
     it("appends dry-run hint on PATCH 400", () => {
       expect(() =>
@@ -716,6 +730,63 @@ describe("models (custom-data-models) command", () => {
       expect(printError).toHaveBeenCalledWith(expect.stringContaining('"type"'));
       expect(process.exitCode).toBe(1);
     });
+
+    it.each([".", ".."] as const)("rejects path-segment type %j before any request", async (badType) => {
+      process.exitCode = undefined;
+      const body = { ...modelBody, type: badType };
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+
+      await runCommand(program, ["models", "apply", JSON.stringify(body)]);
+
+      expect(mockClient.rawRequest).not.toHaveBeenCalled();
+      expect(printError).toHaveBeenCalledWith(expect.stringContaining(badType));
+      expect(process.exitCode).toBe(1);
+    });
+
+    it.each([
+      ["slash", "Type/With/Slash"],
+      ["question", "Type?Query"],
+      ["hash", "Type#Frag"],
+      ["space", "Type With Space"],
+    ] as const)(
+      "encodes %s characters in GET/PATCH paths",
+      async (_label, typeName) => {
+        const body = {
+          ...modelBody,
+          type: typeName,
+          description: "changed",
+        };
+        const existing = {
+          type: typeName,
+          domain: "iot",
+          description: "old",
+          propertyDetails: modelBody.propertyDetails,
+        };
+        vi.mocked(parseJsonInput).mockResolvedValue(body);
+        mockClient.rawRequest
+          .mockResolvedValueOnce(mockResponse(existing))
+          .mockResolvedValueOnce(mockResponse({ type: typeName }));
+
+        await runCommand(program, ["models", "apply", JSON.stringify(body)]);
+
+        const encoded = `/custom-data-models/${encodeURIComponent(typeName)}`;
+        expect(encoded).not.toBe(`/custom-data-models/${typeName}`);
+        expect(mockClient.rawRequest).toHaveBeenNthCalledWith(1, "GET", encoded);
+        expect(mockClient.rawRequest).toHaveBeenNthCalledWith(
+          2,
+          "PATCH",
+          encoded,
+          {
+            body: {
+              domain: "iot",
+              description: "changed",
+              propertyDetails: modelBody.propertyDetails,
+            },
+          },
+        );
+        expect(printOutput).toHaveBeenCalledWith({ type: typeName, result: "updated" }, "json");
+      },
+    );
 
     it("rejects combining --api-dry-run with global --dry-run", async () => {
       process.exitCode = undefined;
