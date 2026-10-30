@@ -189,6 +189,8 @@ For machine-to-machine authentication (CI/CD, scripts), use the OAuth Client Cre
 geonic auth login --client-credentials --client-id MY_ID --client-secret MY_SECRET
 ```
 
+A client-credentials token is an OAuth client principal: `/me` self-service endpoints (`api-keys`, `oauth-clients`, `policies`, `password`) return 403; `geonic me` (GET `/me`) still works.
+
 | Option | Description |
 |---|---|
 | `--client-credentials` | Use OAuth 2.0 Client Credentials flow |
@@ -230,7 +232,7 @@ Displays the current authenticated user, token expiry, and active profile.
 | `me oauth-clients regenerate-secret <clientId>` | Regenerate client secret |
 | `me oauth-clients delete <id>` | Delete an OAuth client |
 
-`me oauth-clients create` supports flag options: `--name`, `--policy`, `--save`. Use `--save` to store client credentials in config for automatic re-authentication.
+`me oauth-clients create` supports flag options: `--name`, `--policy`, `--save`. Use `--save` to store client credentials in config for automatic re-authentication. The saved token is an OAuth client principal — `/me` self-service (`api-keys`/`oauth-clients`/`policies`/`password`) returns 403; `geonic me` still works.
 
 `me oauth-clients update` supports: `--name`, `--description`, `--policy-id` (use `null` to unbind), `--active`, `--inactive`.
 
@@ -957,6 +959,8 @@ See the [admin policies](#admin-policies) section for details on the XACML autho
 ## Development
 
 Requires Node.js >= 20.
+
+E2E tests (`npm run test:e2e`) import the pinned `geonicdb` package, which currently requires Node.js >= 24.22.1. The CLI package itself still supports Node.js >= 20; use Node.js 24+ when running E2E locally (CI already runs E2E on Node.js 24).
 
 ```bash
 # Install dependencies

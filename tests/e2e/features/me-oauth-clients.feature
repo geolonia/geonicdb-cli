@@ -58,5 +58,6 @@ Feature: User self-service OAuth client management
     Given I am logged in
     And I run `geonic me oauth-clients create --name auto-reauth-bot --save`
     And I invalidate the current token keeping client credentials
-    When I run `geonic me oauth-clients list`
+    When I run `geonic me`
     Then the exit code should be 0
+    And the output should contain "\"principal\": \"oauth_client\""
