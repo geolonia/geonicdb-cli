@@ -4,6 +4,17 @@ import { parseJsonInput } from "../../input.js";
 import { printSuccess } from "../../output.js";
 import { addExamples, addNotes } from "../help.js";
 
+/** Ensure body.settings is a mutable plain object (preserve existing keys). */
+function ensureSettings(body: Record<string, unknown>): Record<string, unknown> {
+  const existing = body.settings;
+  const settings: Record<string, unknown> =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? { ...(existing as Record<string, unknown>) }
+      : {};
+  body.settings = settings;
+  return settings;
+}
+
 /**
  * Apply --allowed-origins flag to body.settings.allowedOrigins.
  * Empty string → []. Wildcard / max-length validation is left to the server.
@@ -17,13 +28,62 @@ function applyAllowedOriginsFlag(
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  const existing = body.settings;
-  const settings: Record<string, unknown> =
-    existing && typeof existing === "object" && !Array.isArray(existing)
-      ? { ...(existing as Record<string, unknown>) }
-      : {};
-  settings.allowedOrigins = origins;
-  body.settings = settings;
+  ensureSettings(body).allowedOrigins = origins;
+}
+
+/** Parse strict true/false for tenant settings boolean flags. */
+function parseTrueFalse(flagName: string, value: string): boolean {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(`--${flagName} must be true or false.`);
+}
+
+/**
+ * Apply a boolean settings flag (e.g. --cadde-enabled → settings.caddeEnabled).
+ * Only the literal strings "true" / "false" are accepted.
+ */
+function applyBooleanSettingsFlag(
+  body: Record<string, unknown>,
+  key: "caddeEnabled" | "requireDataModel",
+  raw: string | undefined,
+  flagName: string,
+): void {
+  if (raw === undefined) return;
+  ensureSettings(body)[key] = parseTrueFalse(flagName, raw);
+}
+
+type TenantSettingsOpts = {
+  allowedOrigins?: string;
+  caddeEnabled?: string;
+  requireDataModel?: string;
+};
+
+/**
+ * Validate boolean settings flags before parseJsonInput (interactive / stdin).
+ * Rejects near-miss values without waiting on JSON parsing.
+ */
+function validateBooleanSettingsFlags(opts: TenantSettingsOpts): void {
+  if (opts.caddeEnabled !== undefined) {
+    parseTrueFalse("cadde-enabled", opts.caddeEnabled);
+  }
+  if (opts.requireDataModel !== undefined) {
+    parseTrueFalse("require-data-model", opts.requireDataModel);
+  }
+}
+
+/** Merge all tenant settings CLI flags into body.settings. */
+function applyTenantSettingsFlags(
+  body: Record<string, unknown>,
+  opts: TenantSettingsOpts,
+): void {
+  applyAllowedOriginsFlag(body, opts);
+  applyBooleanSettingsFlag(body, "caddeEnabled", opts.caddeEnabled, "cadde-enabled");
+  applyBooleanSettingsFlag(
+    body,
+    "requireDataModel",
+    opts.requireDataModel,
+    "require-data-model",
+  );
 }
 
 export function registerTenantsCommand(parent: Command): void {
@@ -104,11 +164,20 @@ export function registerTenantsCommand(parent: Command): void {
       "--allowed-origins <origins>",
       "Comma-separated allowed origins for CORS (empty string = deny all, '*' = allow all)",
     )
+    .option(
+      "--cadde-enabled <true|false>",
+      "Enable or disable /cadde/** for this tenant (settings.caddeEnabled)",
+    )
+    .option(
+      "--require-data-model <true|false>",
+      "Require an active data model for entity writes (settings.requireDataModel)",
+    )
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-        const opts = cmd.opts() as { allowedOrigins?: string };
+        const opts = cmd.opts() as TenantSettingsOpts;
+        validateBooleanSettingsFlags(opts);
         const body = (await parseJsonInput(json as string | undefined)) as Record<string, unknown>;
-        applyAllowedOriginsFlag(body, opts);
+        applyTenantSettingsFlags(body, opts);
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const response = await client.rawRequest("POST", "/admin/tenants", {
@@ -128,6 +197,14 @@ export function registerTenantsCommand(parent: Command): void {
     "  or a subdomain wildcard 'https://*.example.com' (matches https://a.example.com and",
     "  https://a.b.example.com; does NOT match the apex https://example.com or a hyphenated",
     "  domain like https://evil-example.com; scheme and port must match exactly).",
+    "--cadde-enabled maps to settings.caddeEnabled (geonicdb #3580).",
+    "  true = opt-in; CADDE routes are reachable when CADDE is configured.",
+    "  false / unset = /cadde/** returns 403.",
+    "  Only the literals true and false are accepted.",
+    "--require-data-model maps to settings.requireDataModel (geonicdb #3478).",
+    "  true = entity writes require an active data model for every type.",
+    "  false / unset = skip model check (server default).",
+    "  Only the literals true and false are accepted.",
   ]);
 
   addExamples(create, [
@@ -155,6 +232,14 @@ export function registerTenantsCommand(parent: Command): void {
       description: "Restrict CORS allowed origins on creation",
       command: `geonic admin tenants create '{"name":"production"}' --allowed-origins "https://app.example.com,https://admin.example.com"`,
     },
+    {
+      description: "Enable CADDE routes for the new tenant",
+      command: `geonic admin tenants create '{"name":"cadde-tenant"}' --cadde-enabled true`,
+    },
+    {
+      description: "Require data models on entity writes",
+      command: `geonic admin tenants create '{"name":"strict"}' --require-data-model true`,
+    },
   ]);
 
   // tenants update
@@ -170,12 +255,21 @@ export function registerTenantsCommand(parent: Command): void {
       "--allowed-origins <origins>",
       "Comma-separated allowed origins for CORS (empty string = deny all, '*' = allow all)",
     )
+    .option(
+      "--cadde-enabled <true|false>",
+      "Enable or disable /cadde/** for this tenant (settings.caddeEnabled)",
+    )
+    .option(
+      "--require-data-model <true|false>",
+      "Require an active data model for entity writes (settings.requireDataModel)",
+    )
     .action(
       withErrorHandler(
         async (id: unknown, json: unknown, _opts: unknown, cmd: Command) => {
-          const opts = cmd.opts() as { allowedOrigins?: string };
+          const opts = cmd.opts() as TenantSettingsOpts;
+          validateBooleanSettingsFlags(opts);
           const body = (await parseJsonInput(json as string | undefined)) as Record<string, unknown>;
-          applyAllowedOriginsFlag(body, opts);
+          applyTenantSettingsFlags(body, opts);
           const client = createClient(cmd);
           const format = getFormat(cmd);
           const response = await client.rawRequest(
@@ -198,6 +292,14 @@ export function registerTenantsCommand(parent: Command): void {
     "  https://a.b.example.com; does NOT match the apex https://example.com or a hyphenated",
     "  domain like https://evil-example.com; scheme and port must match exactly).",
     "  Existing settings.* keys in JSON payload are preserved.",
+    "--cadde-enabled maps to settings.caddeEnabled (geonicdb #3580).",
+    "  true = opt-in; CADDE routes are reachable when CADDE is configured.",
+    "  false = /cadde/** returns 403.",
+    "  Only the literals true and false are accepted.",
+    "--require-data-model maps to settings.requireDataModel (geonicdb #3478).",
+    "  true = entity writes require an active data model for every type.",
+    "  false = skip model check.",
+    "  Only the literals true and false are accepted.",
   ]);
 
   addExamples(update, [
@@ -232,6 +334,18 @@ export function registerTenantsCommand(parent: Command): void {
     {
       description: "Deny all origins (empty array)",
       command: `geonic admin tenants update <tenant-id> --allowed-origins ""`,
+    },
+    {
+      description: "Enable CADDE routes for the tenant",
+      command: `geonic admin tenants update <tenant-id> '{}' --cadde-enabled true`,
+    },
+    {
+      description: "Disable CADDE routes (403 on /cadde/**)",
+      command: `geonic admin tenants update <tenant-id> '{}' --cadde-enabled false`,
+    },
+    {
+      description: "Require data models on entity writes",
+      command: `geonic admin tenants update <tenant-id> '{}' --require-data-model true`,
     },
   ]);
 
