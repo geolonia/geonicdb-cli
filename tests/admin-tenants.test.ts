@@ -54,6 +54,7 @@ vi.mock("../src/commands/help.js", () => ({
 import { createClient, getFormat, outputResponse } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
 import { printSuccess } from "../src/output.js";
+import { DryRunSignal, GdbClient } from "../src/client.js";
 import { registerTenantsCommand } from "../src/commands/admin/tenants.js";
 
 describe("admin tenants commands", () => {
@@ -482,7 +483,9 @@ describe("admin tenants commands", () => {
         undefined,
       );
       expect(outputResponse).toHaveBeenCalled();
-      expect(printSuccess).toHaveBeenCalledWith("User added to tenant.");
+      expect(printSuccess).toHaveBeenCalledWith(
+        "User added to tenant (or membership role updated).",
+      );
     });
 
     it("PUTs { role } when --role is set", async () => {
@@ -534,6 +537,35 @@ describe("admin tenants commands", () => {
         body: { role: "user" },
       });
     });
+
+    it("--dry-run prints PUT curl and does not call fetch or print success", async () => {
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      vi.mocked(createClient).mockReturnValue(
+        new GdbClient({ baseUrl: "http://example.test", dryRun: true }) as never,
+      );
+      const program = makeProgram();
+      await expect(
+        runCommand(program, [
+          "admin",
+          "tenants",
+          "add-user",
+          "t1",
+          "u1",
+          "--role",
+          "tenant_admin",
+          "--dry-run",
+        ]),
+      ).rejects.toThrow(DryRunSignal);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(printSuccess).not.toHaveBeenCalled();
+      const curl = String(logSpy.mock.calls[0]?.[0] ?? "");
+      expect(curl).toContain("-X PUT");
+      expect(curl).toContain("/admin/tenants/t1/users/u1");
+      expect(curl).toContain('"role":"tenant_admin"');
+      logSpy.mockRestore();
+      fetchSpy.mockRestore();
+    });
   });
 
   describe("tenants remove-user", () => {
@@ -553,6 +585,25 @@ describe("admin tenants commands", () => {
         "DELETE",
         "/admin/tenants/urn%3At%3A1/users/urn%3Au%3A2",
       );
+    });
+
+    it("--dry-run prints DELETE curl and does not call fetch or print success", async () => {
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const fetchSpy = vi.spyOn(globalThis, "fetch");
+      vi.mocked(createClient).mockReturnValue(
+        new GdbClient({ baseUrl: "http://example.test", dryRun: true }) as never,
+      );
+      const program = makeProgram();
+      await expect(
+        runCommand(program, ["admin", "tenants", "remove-user", "t1", "u1", "--dry-run"]),
+      ).rejects.toThrow(DryRunSignal);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(printSuccess).not.toHaveBeenCalled();
+      const curl = String(logSpy.mock.calls[0]?.[0] ?? "");
+      expect(curl).toContain("-X DELETE");
+      expect(curl).toContain("/admin/tenants/t1/users/u1");
+      logSpy.mockRestore();
+      fetchSpy.mockRestore();
     });
   });
 });

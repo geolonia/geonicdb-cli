@@ -338,10 +338,10 @@ export function registerTenantsCommand(parent: Command): void {
   // tenants add-user — add (or update role of) a user in a tenant
   const addUser = tenants
     .command("add-user <tenant-id> <user-id>")
-    .summary("Add a user to a tenant")
+    .summary("Add a user to a tenant (or update role)")
     .description(
-      "Add an existing user to a tenant (or update their membership role).\n\n" +
-        "Maps to PUT /admin/tenants/{tenantId}/users/{userId}.\n" +
+      "Add an existing user to a tenant, or update their membership role if already a member.\n\n" +
+        "Maps to PUT /admin/tenants/{tenantId}/users/{userId} (upsert: add or role update).\n" +
         "Role defaults to \"user\" when --role is omitted (server default).\n" +
         "Membership roles: tenant_admin, user\n" +
         "(deployment_admin / super_admin / platform_admin are not membership roles).",
@@ -366,7 +366,7 @@ export function registerTenantsCommand(parent: Command): void {
             body === undefined ? undefined : { body },
           );
           outputResponse(response, format);
-          printSuccess("User added to tenant.");
+          printSuccess("User added to tenant (or membership role updated).");
         },
       ),
     );
@@ -377,7 +377,7 @@ export function registerTenantsCommand(parent: Command): void {
       command: "geonic admin tenants add-user <tenant-id> <user-id>",
     },
     {
-      description: "Add a user as tenant_admin",
+      description: "Add a user as tenant_admin (or update an existing member's role)",
       command: "geonic admin tenants add-user <tenant-id> <user-id> --role tenant_admin",
     },
   ]);

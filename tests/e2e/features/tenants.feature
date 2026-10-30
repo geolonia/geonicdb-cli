@@ -68,11 +68,12 @@ Feature: Admin tenant management
     And I save the ID from the JSON output where "name" is "test_tenant_membership_02" as TENANT2
     When I run `geonic admin tenants add-user $TENANT2 $USER1 --role tenant_admin` replacing vars
     Then the exit code should be 0
-    And the output should contain "User added to tenant."
+    And the output should contain "User added to tenant (or membership role updated)."
     When I run `geonic admin tenants users $TENANT2` replacing vars
     Then the exit code should be 0
     And stdout should be valid JSON
     And the output should contain "membership01@example.com"
+    And the output should contain "tenant_admin"
     When I run `geonic admin users tenants $USER1` replacing vars
     Then the exit code should be 0
     And stdout should be valid JSON
@@ -80,3 +81,7 @@ Feature: Admin tenant management
     When I run `geonic admin tenants remove-user $TENANT2 $USER1` replacing vars
     Then the exit code should be 0
     And the output should contain "User removed from tenant."
+    When I run `geonic admin tenants users $TENANT2` replacing vars
+    Then the exit code should be 0
+    And stdout should be valid JSON
+    And the output should not contain "membership01@example.com"
