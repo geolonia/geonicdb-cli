@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-11-23
+- **Feat**: `admin users create` のメール招待と `admin users invite` / `invite-revoke` に対応し、配信失敗時に再送手順を案内 (#280)
+
 ## [0.27.0] - 2026-10-31
 
 ### 2026-10-31
