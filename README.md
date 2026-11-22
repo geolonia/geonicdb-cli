@@ -488,16 +488,18 @@ documents the hand-off into `geonic import`.
 
 Use `--input-format geojson --type <entityType>` to import a FeatureCollection
 from a file or stdin. Each feature becomes one NGSI-LD entity. Geometry maps to
-a `location` GeoProperty, and a null geometry omits `location`. The other
-properties become NGSI-LD Properties without inferring relationships or
-additional geometry. Property names must be valid attribute names, and
-`id`, `type`, `@context` and `location` are reserved.
+a `location` GeoProperty. Point, LineString, Polygon and their Multi variants are
+supported. A null geometry omits `location`. Non-null properties become NGSI-LD
+Properties. Null properties are omitted as missing values. Property names must
+be valid NGSI-LD attribute names, and system fields such as `id` and `scope`
+and the generated `location` attribute are reserved.
 
 IDs come from `Feature.id` or, with `--id-field <field>`, from the named
-property. The selected property is consumed as the ID. Absolute URI IDs are
-preserved. Other IDs are encoded as `urn:ngsi-ld:<entityType>:<id>`. The
-collection is loaded into memory and uses the regular batch import counts and
-error handling. Feature conversion failures use the 1-based feature index
+property. The selected property is consumed as the ID. NGSI-LD URNs with GeonicDB-compatible
+characters are preserved. Other IDs become `urn:ngsi-ld:<entityType>:<id>`. Generated
+ID components containing special characters use a `_b64_` prefix and Base64url.
+A repeated output ID is reported as an invalid feature. The collection is loaded
+into memory and uses the regular batch import counts and error handling. Feature conversion failures use the 1-based feature index
 in `--errors-log`. Server-rejected entities in `--errors-out` can be retried
 as normalized NDJSON.
 
