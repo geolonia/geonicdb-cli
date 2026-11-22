@@ -104,3 +104,28 @@ Feature: Temporal entity management
     When I run `geonic temporal entities list --aggr-methods avg`
     Then the exit code should be 1
     And stderr should contain "requires --aggr-period"
+
+  # ETSI TS 104 176 §6.4.7.3
+  @issue-275
+  Scenario: Request the first history page after a temporal offset
+    Given I am logged in
+    When I run `geonic temporal entities list --type Room --first-n 5 --offset-n 10 --dry-run`
+    Then the exit code should be 0
+    And the output should contain "firstN=5"
+    And the output should contain "offsetN=10"
+
+  @issue-275
+  Scenario: Replay a temporal POST query using a continuation URI
+    Given I am logged in
+    When I run `geonic temporal entityOperations query '{"entities":[{"type":"Room"}],"temporalQ":{"firstN":5}}' --follow '/ngsi-ld/v1/temporal/entityOperations/query?local=true&offsetN=5' --dry-run`
+    Then the exit code should be 0
+    And the output should contain "-X POST"
+    And the output should contain '"firstN":5'
+    And the output should contain "/temporal/entityOperations/query?local=true&offsetN=5"
+
+  @issue-275
+  Scenario: Reject a continuation for a different endpoint
+    Given I am logged in
+    When I run `geonic temporal entityOperations query '{"entities":[{"type":"Room"}]}' --follow '/ngsi-ld/v1/entityOperations/query?offsetN=5' --dry-run`
+    Then the exit code should be 1
+    And the output should contain "Continuation URI must target the same broker and endpoint"

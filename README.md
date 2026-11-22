@@ -555,16 +555,25 @@ Notes:
 | `temporal entities create [json]` | Create a temporal entity |
 | `temporal entities delete <id>` | Delete a temporal entity |
 
-Temporal entities list supports: `--time-rel`, `--time-at`, `--end-time-at`, `--time-property`, `--last-n`, `--order-by`, `--options`, `--aggr-methods`, `--aggr-period`, `--local` (`?local=true`). After geolonia/geonicdb#2290 (ETSI GS CIM 009 clause 5.7.4.4), a **too-wide** GET returns **400 BadRequestData** unless at least one of `--type`, non-system `--attrs`, non-system `--query`, or a geoquery is present — `--time-rel` / `--time-at` alone are not enough. Use `--local` for a local-scope scan.
+Temporal entities list supports: `--time-rel`, `--time-at`, `--end-time-at`, `--time-property`, `--first-n`, `--last-n`, `--offset-n`, `--order-by`, `--options`, `--aggr-methods`, `--aggr-period`, `--local` (`?local=true`). After geolonia/geonicdb#2290 (ETSI GS CIM 009 clause 5.7.4.4), a **too-wide** GET returns **400 BadRequestData** unless at least one of `--type`, non-system `--attrs`, non-system `--query`, or a geoquery is present — `--time-rel` / `--time-at` alone are not enough. Use `--local` for a local-scope scan.
 
-Temporal entities get supports: `--time-rel`, `--time-at`, `--end-time-at`, `--time-property`, `--last-n`, `--options`, `--aggr-methods`, `--aggr-period`.
+Temporal entities get supports: `--time-rel`, `--time-at`, `--end-time-at`, `--time-property`, `--first-n`, `--last-n`, `--offset-n`, `--options`, `--aggr-methods`, `--aggr-period`.
 
 `--time-property` selects which temporal property the time filter compares against (NGSI-LD `timeproperty`; ETSI clause 4.11): `observedAt` (default), `createdAt`, `modifiedAt`, or `deletedAt`. Unknown values are rejected by the server with `400 BadRequestData`.
 Temporal `--order-by` follows NGSI-LD v1.9.1 grammar (`name`, `name;desc`, composites like `a;asc,b;desc`). The server returns `400` for `dist-*`/`geo:distance` and nested paths like `a.b`; combining it with `--aggr-methods` is rejected by the CLI before a request is sent (aggregations are sorted by entity ID server-side).
 
 `--options` selects the NGSI-LD temporal representation (ETSI GS CIM 009 clause 6.3.12): `temporalValues` (alias `simplified`) for `[value, timestamp]` pairs, `aggregatedValues` for aggregations, `sysAttrs` (clause 6.3.11) to include `createdAt`/`modifiedAt` (and `expiresAt` where set). It maps to the NGSI-LD `options` query parameter — unrelated to the CLI's own `--format` (json/table). The CLI rejects the deterministic server-side `400`s before sending a request: only one of `temporalValues`/`aggregatedValues` may be present (clause 6.3.12); `aggregatedValues` requires `--aggr-methods`; and `--aggr-methods` / `--aggr-period` must be given together (e.g. `--aggr-methods avg --aggr-period PT1H` — a period alone would be silently ignored by the server, methods alone is a server 400).
 
-> **History truncation**: Without `--last-n`, the server caps the returned history to the **10 most recent instances per attribute** (default; geonicdb ≥ 0.17.0). When it does, the server returns an `NGSILD-Warning` header and the CLI echoes it as a `Warning:` line on **stderr** so truncation is never a silent drop. To retrieve more, set `--last-n` (**max 1000**) or narrow the window with `--time-at`/`--end-time-at` — with an explicit `--last-n` the server does not truncate, so no warning is emitted. The CLI surfaces whatever `NGSILD-Warning` the server sends, verbatim.
+With a GeonicDB broker implementing ETSI TS 104 176 §6.4.7.3, history starts with the earliest instances by default. Use `--first-n` (cap 30) or `--last-n` (cap 1000) to set the page size and direction. `--offset-n` skips history instances independently of entity pagination.
+
+Use `--show-links` to print available `intervalafter` and `intervalbefore` URIs to stderr. Repeat the same command with `--follow '<URI>'` to request a linked page. For POST, repeat the original JSON body (including `temporalQ`) and connection/context options. The CLI accepts continuation URIs for the same broker endpoint.
+
+```sh
+geonic temporal entities list --type Sensor --first-n 5 --show-links
+geonic temporal entities list --follow '/ngsi-ld/v1/temporal/entities?type=Sensor&firstN=5&offsetN=5' --show-links
+geonic temporal entityOperations query @query.json --show-links
+geonic temporal entityOperations query @query.json --follow '/ngsi-ld/v1/temporal/entityOperations/query?offsetN=5' --show-links
+```
 
 #### temporal entityOperations
 
