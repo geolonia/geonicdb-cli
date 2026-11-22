@@ -7,7 +7,7 @@ import { fingerprintsMatch } from "./input.js";
 import type { EntityRecord, FileFingerprint } from "./input.js";
 
 export type ImportMode = "upsert" | "replace";
-export type InputFormat = "ndjson" | "json";
+export type InputFormat = "ndjson" | "json" | "geojson";
 
 export interface ImporterOptions {
   mode: ImportMode;

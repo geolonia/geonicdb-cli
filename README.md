@@ -449,8 +449,7 @@ cat entities.ndjson | geonic import --dry-run
 
 #### CSV and other tabular formats
 
-`import` does **not** parse CSV (or GeoJSON). Convert to NGSI-LD entities first, then
-feed NDJSON or a JSON array into `import`.
+Convert CSV to normalized NGSI-LD entities first, then feed NDJSON or a JSON array into `import`.
 
 For catalog models on [datamodels.jp](https://datamodels.jp), use
 [`datamodels convert`](https://datamodels.jp/en/toolkit/convert) from
@@ -485,9 +484,38 @@ geonic import sites.json --input-format json --resume .import.ckpt
 Mapping choices and CSV tutorials live on the convert page above; this CLI only
 documents the hand-off into `geonic import`.
 
+#### GeoJSON FeatureCollections
+
+Use `--input-format geojson --type <entityType>` to import a FeatureCollection
+from a file or stdin. Each feature becomes one NGSI-LD entity. Geometry maps to
+a `location` GeoProperty, and a null geometry omits `location`. The other
+properties become NGSI-LD Properties without inferring relationships or
+additional geometry. Property names must be valid attribute names, and
+`id`, `type`, `@context` and `location` are reserved.
+
+IDs come from `Feature.id` or, with `--id-field <field>`, from the named
+property. The selected property is consumed as the ID. Absolute URI IDs are
+preserved. Other IDs are encoded as `urn:ngsi-ld:<entityType>:<id>`. The
+collection is loaded into memory and uses the regular batch import counts and
+error handling. Feature conversion failures use the 1-based feature index
+in `--errors-log`. Server-rejected entities in `--errors-out` can be retried
+as normalized NDJSON.
+
+For example, load the [Takamatsu AED dataset](https://opendata.takamatsu-fact.com/aed_location/data.geojson)
+as `AedLocation`. The source uses `#property` for its row IDs and has an empty
+column header. Remove the empty column before importing:
+
+```bash
+curl -fsSL 'https://opendata.takamatsu-fact.com/aed_location/data.geojson' |
+  jq 'del(.features[].properties[""])' |
+  geonic import --input-format geojson --type AedLocation --id-field '#property'
+```
+
 | Option | Description |
 |---|---|
-| `--input-format <fmt>` | `ndjson` (default, streamed) or `json` (a JSON array, loaded into memory) |
+| `--input-format <fmt>` | `ndjson` (default, streamed), `json` (a JSON array), or `geojson` (a FeatureCollection). JSON and GeoJSON are loaded into memory. |
+| `--type <entityType>` | Required NGSI-LD entity type for GeoJSON import |
+| `--id-field <field>` | Use this GeoJSON property as the ID instead of `Feature.id` |
 | `--mode <mode>` | `upsert` (merge, default) or `replace` |
 | `--batch-size <n>` | Entities per request (default 100 = safe on every plan; raise it up to your plan's batch limit — T30 500, T40 1,000, absolute max 1,000) |
 | `--max-bytes <n>` | Max request body bytes per chunk (default 1,000,000) |
