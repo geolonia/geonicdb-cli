@@ -7,6 +7,8 @@
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-11-23
+
 ### 2026-11-23
 - **Feat**: `entities attrs value` で属性の値を JSON として取得できるようにした (closes #267) (#283)
 - **Fix**: `geonic import` の再送で `Retry-After` を共有クールダウンと同じ最大60秒まで尊重する (closes #269) (#282)
@@ -456,7 +458,8 @@
 ### 2026-02-26
 - **Docs**: README にインストール手順・使い方・コマンドリファレンスを追加 (#1)
 
-[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.27.0...HEAD
+[Unreleased]: https://github.com/geolonia/geonicdb-cli/compare/v0.28.0...HEAD
+[0.28.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.27.0...v0.28.0
 [0.27.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.26.1...v0.27.0
 [0.26.1]: https://github.com/geolonia/geonicdb-cli/compare/v0.26.0...v0.26.1
 [0.26.0]: https://github.com/geolonia/geonicdb-cli/compare/v0.25.0...v0.26.0
