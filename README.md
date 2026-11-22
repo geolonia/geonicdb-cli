@@ -736,8 +736,12 @@ geonic admin tenants update <tenant-id> '{}' --require-data-model true
 | `admin users activate <id>` | Activate a user |
 | `admin users deactivate <id>` | Deactivate a user |
 | `admin users unlock <id>` | Unlock a user |
+| `admin users invite <id>` | Resend the password setup email |
+| `admin users invite-revoke <id>` | Revoke the outstanding password setup invitation |
 | `admin users reset-password <id>` | Issue a one-time temporary password and force a change on next login |
 | `admin users tenants <user-id>` | List tenants a user belongs to |
+
+To email a password setup link when creating a user, set `"delivery": "link"` in the JSON and omit both `password` and `--force-reset`. The recipient sets their password from the one-time link in the email. The create and resend responses report `invite.delivery` as `sent` or `failed`. On failure, check the recipient and mail settings (`MAIL_PROVIDER`, SES identity, and sandbox restrictions), then run `geonic admin users invite <id>`.
 
 #### admin policies
 
