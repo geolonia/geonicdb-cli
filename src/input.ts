@@ -13,6 +13,9 @@ import type { Readable } from "node:stream";
  * 3. No input + TTY stdin → interactive mode with brace-balanced auto-submit
  *
  * Supports JSON5 syntax (unquoted keys, single quotes, trailing commas).
+ * If allowMissing is set, implicit empty stdin or a TTY without an explicit
+ * input returns undefined. Explicit input (including '-') is still required
+ * to contain valid JSON.
  */
 /**
  * Read stdin to the end as a string. Unlike `readFileSync(0)`, this waits for
@@ -26,7 +29,10 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString("utf-8");
 }
 
-export async function parseJsonInput(input?: string): Promise<unknown> {
+export async function parseJsonInput(
+  input?: string,
+  { allowMissing = false }: { allowMissing?: boolean } = {},
+): Promise<unknown> {
   // 1. Explicit input
   if (input !== undefined) {
     if (input === "-") return parseData(await readStdin());
@@ -36,11 +42,13 @@ export async function parseJsonInput(input?: string): Promise<unknown> {
 
   // 2. Piped stdin (non-TTY)
   if (!process.stdin.isTTY) {
-    return parseData(await readStdin());
+    const text = await readStdin();
+    if (allowMissing && !text.trim()) return undefined;
+    return parseData(text);
   }
 
   // 3. Interactive mode (TTY)
-  return readInteractiveJson();
+  return allowMissing ? undefined : readInteractiveJson();
 }
 
 function parseData(text: string): unknown {
