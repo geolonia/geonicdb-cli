@@ -61,7 +61,7 @@ function parseData(text: string): unknown {
  * could not be parsed (the raw text is preserved either way).
  */
 export interface EntityRecord {
-  /** 1-based position: file line number for NDJSON, array index+1 for JSON arrays. */
+  /** 1-based position: file line number for NDJSON, index + 1 for JSON arrays and GeoJSON features. */
   lineNumber: number;
   raw: string;
   value?: unknown;
@@ -111,7 +111,7 @@ export function recordsFromArray(data: unknown): EntityRecord[] {
   }));
 }
 
-/** Cheap fingerprint to detect that a resumed input file is the same file. */
+/** Detect changes to a resumed input file or its entity mapping. */
 export interface FileFingerprint {
   size: number;
   mtimeMs: number;
@@ -121,7 +121,7 @@ export interface FileFingerprint {
 
 const FINGERPRINT_HEAD_BYTES = 65536;
 
-export function fileFingerprint(filePath: string): FileFingerprint {
+export function fileFingerprint(filePath: string, mapping?: string): FileFingerprint {
   const st = statSync(filePath);
   const len = Math.min(FINGERPRINT_HEAD_BYTES, st.size);
   const buf = Buffer.alloc(len);
@@ -138,10 +138,12 @@ export function fileFingerprint(filePath: string): FileFingerprint {
   } finally {
     closeSync(fd);
   }
+  const headHash = createHash("sha256").update(buf.subarray(0, read));
+  if (mapping !== undefined) headHash.update("\0").update(mapping);
   return {
     size: st.size,
     mtimeMs: st.mtimeMs,
-    headHash: createHash("sha256").update(buf.subarray(0, read)).digest("hex"),
+    headHash: headHash.digest("hex"),
   };
 }
 

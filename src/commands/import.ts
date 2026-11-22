@@ -1,6 +1,7 @@
 import { constants } from "node:fs";
 import { open } from "node:fs/promises";
 import { Command, InvalidArgumentError } from "commander";
+import { recordsFromGeoJson, type GeoJsonMapping } from "../geojson-import.js";
 import { createClient, resolveOptions, withErrorHandler } from "../helpers.js";
 import {
   fileFingerprint,
@@ -19,6 +20,8 @@ import { addExamples } from "./help.js";
 interface ImportCliOptions {
   async?: boolean;
   inputFormat: InputFormat;
+  type?: string;
+  idField?: string;
   mode: ImportMode;
   batchSize: number;
   maxBytes: number;
@@ -49,8 +52,8 @@ function parseMode(value: string): ImportMode {
 }
 
 function parseInputFormat(value: string): InputFormat {
-  if (value !== "ndjson" && value !== "json") {
-    throw new InvalidArgumentError("Must be 'ndjson' or 'json'.");
+  if (value !== "ndjson" && value !== "json" && value !== "geojson") {
+    throw new InvalidArgumentError("Must be 'ndjson', 'json' or 'geojson'.");
   }
   return value;
 }
@@ -66,6 +69,7 @@ async function* fromArray(records: EntityRecord[]): AsyncGenerator<EntityRecord>
 async function buildSource(
   fileArg: string | undefined,
   inputFormat: InputFormat,
+  mapping?: GeoJsonMapping,
 ): Promise<{ source: AsyncIterable<EntityRecord>; fingerprint?: FileFingerprint }> {
   const isStdin = fileArg === undefined || fileArg === "-";
   const path = fileArg?.startsWith("@") ? fileArg.slice(1) : fileArg;
@@ -75,12 +79,12 @@ async function buildSource(
     return { source: streamNdjsonFile(path!), fingerprint: fileFingerprint(path!) };
   }
 
-  // JSON array format — parsed fully into memory (not streaming).
+  // JSON arrays and GeoJSON collections are loaded into memory.
   const data = await parseJsonInput(isStdin ? "-" : `@${path}`);
-  const records = recordsFromArray(data);
+  const records = mapping ? recordsFromGeoJson(data, mapping) : recordsFromArray(data);
   return {
     source: fromArray(records),
-    fingerprint: isStdin ? undefined : fileFingerprint(path!),
+    fingerprint: isStdin ? undefined : fileFingerprint(path!, mapping && JSON.stringify(mapping)),
   };
 }
 
@@ -91,17 +95,20 @@ export function registerImportCommand(program: Command): void {
     .description(
       "Bulk-load NGSI-LD entities past the 29s API Gateway limit by chunking the input\n" +
         "into batch-upsert requests with retry, resume, and per-entity error reporting.\n\n" +
-        "Input: an NDJSON file (one entity per line, default) or a JSON array (--input-format json).\n" +
+        "Input: NDJSON (default), a JSON array, or a GeoJSON FeatureCollection.\n" +
         "Use '-' or a pipe for stdin (resume is not available for stdin).\n" +
         "NDJSON stdin has always been streamed. JSON-array stdin goes through readStdin()\n" +
         "in src/input.ts; #236 fixed that path so delayed producers no longer hit EAGAIN\n" +
         "from readFileSync(0) (Refs #235).\n\n" +
-        "CSV / GeoJSON are not parsed here. Convert to normalized NGSI-LD first, then import.\n" +
+        "For GeoJSON, specify --type and either provide Feature IDs or select a source property with --id-field.\n" +
+        "CSV requires conversion to normalized NGSI-LD.\n" +
         "For datamodels.jp catalog models, use `datamodels convert … --normalized` (default\n" +
         "convert output is key-values JSON, which batch upsert rejects) and pipe or file-feed\n" +
         "the JSON array with `--input-format json`. See README «CSV and other tabular formats».",
     )
-    .option("--input-format <fmt>", "Input format: ndjson (default) or json", parseInputFormat, "ndjson")
+    .option("--input-format <fmt>", "Input format: ndjson (default), json, or geojson", parseInputFormat, "ndjson")
+    .option("--type <type>", "NGSI-LD entity type for GeoJSON input")
+    .option("--id-field <field>", "Use this GeoJSON property as the feature ID")
     .option("--mode <mode>", "upsert (merge, default) or replace", parseMode, "upsert")
     // #190: the per-request cap is plan-dependent since geolonia/geonicdb#2082
     // (T0/T5 100, T30 500, T40 1,000; absolute max 1,000). The default stays 100
@@ -134,6 +141,9 @@ export function registerImportCommand(program: Command): void {
           printError("server does not accept keyValues on import");
           process.exit(1);
         }
+        if (cli.inputFormat !== "geojson" && (cli.type !== undefined || cli.idField !== undefined)) {
+          throw new Error("--type and --id-field require --input-format geojson.");
+        }
         if (cli.async) {
           if (resolved.context?.length) {
             throw new Error(
@@ -152,7 +162,17 @@ export function registerImportCommand(program: Command): void {
           process.exit(1);
         }
 
-        const { source, fingerprint } = await buildSource(file, cli.inputFormat);
+        let mapping: GeoJsonMapping | undefined;
+        if (cli.inputFormat === "geojson") {
+          const type = cli.type?.trim();
+          if (!type) throw new Error("--type is required with --input-format geojson.");
+          if (cli.idField !== undefined && !cli.idField.trim()) {
+            throw new Error("--id-field must not be empty.");
+          }
+          mapping = { type, idField: cli.idField };
+        }
+
+        const { source, fingerprint } = await buildSource(file, cli.inputFormat, mapping);
 
         if (cli.mode === "replace") {
           printWarning(
@@ -200,6 +220,10 @@ export function registerImportCommand(program: Command): void {
             `dry-run: would send ${result.planned ?? 0} entities in ${result.chunks} chunk(s) ` +
               `(batch-size=${cli.batchSize}, max-bytes=${cli.maxBytes}, mode=${cli.mode}).`,
           );
+          if (mapping && result.skipped > 0) {
+            printWarning(`Skipped ${result.skipped} invalid GeoJSON feature(s).`);
+            process.exitCode = 1;
+          }
           return;
         }
 
@@ -227,6 +251,10 @@ export function registerImportCommand(program: Command): void {
     {
       description: "Load a JSON array",
       command: "geonic import entities.json --input-format json",
+    },
+    {
+      description: "Import a GeoJSON FeatureCollection",
+      command: "geonic import locations.geojson --input-format geojson --type AedLocation --id-field sourceId",
     },
     {
       description: "Resumable load with error capture",

@@ -87,6 +87,16 @@ describe("fileFingerprint / fingerprintsMatch", () => {
     expect(fingerprintsMatch(fp1, { ...fp1, headHash: "different" })).toBe(false);
   });
 
+  it("includes the GeoJSON mapping in the resume fingerprint", () => {
+    const file = join(tmp, "features.geojson");
+    writeFileSync(file, '{"type":"FeatureCollection","features":[]}');
+    const mapping = '{"type":"AedLocation","idField":"sourceId"}';
+    const fingerprint = fileFingerprint(file, mapping);
+    expect(fingerprintsMatch(fingerprint, fileFingerprint(file, mapping))).toBe(true);
+    expect(fingerprintsMatch(fingerprint, fileFingerprint(file, '{"type":"AedLocation"}'))).toBe(false);
+    expect(fingerprintsMatch(fingerprint, fileFingerprint(file))).toBe(false);
+  });
+
   it("hashes an empty file without error", () => {
     const file = join(tmp, "empty.ndjson");
     writeFileSync(file, "");
