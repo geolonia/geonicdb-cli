@@ -100,6 +100,25 @@ describe("import command", () => {
     expect(opts.format).toBe("json");
   });
 
+  it.each([
+    [["-", "--async"], "--async requires an NDJSON file and --mode upsert."],
+    [["data.ndjson", "--async", "--mode", "replace"], "--async requires an NDJSON file and --mode upsert."],
+    [["data.json", "--async", "--input-format", "json"], "--async requires an NDJSON file and --mode upsert."],
+    [["data.ndjson", "--async", "--resume", "checkpoint"], "--resume is only supported by the synchronous import path."],
+  ])("rejects incompatible async import arguments %j", async (args, message) => {
+    await expect(runCommand(program, ["import", ...args])).rejects.toThrow(message);
+    expect(createClient).not.toHaveBeenCalled();
+    expect(ctorSpy).not.toHaveBeenCalled();
+  });
+
+  it("rejects async import with a context from the resolved profile or CLI options", async () => {
+    resolveOptionsMock.mockReturnValue({ context: ["https://example.org/context.jsonld"] });
+    await expect(runCommand(program, ["import", "data.ndjson", "--async"])).rejects.toThrow(
+      "--async requires any JSON-LD context to be embedded in the NDJSON records.",
+    );
+    expect(createClient).not.toHaveBeenCalled();
+  });
+
   it("rejects --resume with --mode replace", async () => {
     await expect(
       runCommand(program, ["import", "data.ndjson", "--resume", "ck", "--mode", "replace"]),

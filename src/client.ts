@@ -354,6 +354,8 @@ export class GdbClient {
     // write would fall under the normal clause 6.3.5 rule on the server, so a
     // prefix match here would withhold the @context it requires.
     if (resourcePath === `${this.getBasePath()}/jsonldContexts`) return body;
+    // Import job metadata is JSON for a GeonicDB extension, not a JSON-LD entity.
+    if (resourcePath === `${this.getBasePath()}/jobs/imports`) return body;
 
     const context = this.context ? toBodyContext(this.context) : NGSI_LD_CORE_CONTEXT;
     if (Array.isArray(body)) {

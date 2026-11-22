@@ -59,3 +59,8 @@ Feature: Import GeoJSON FeatureCollections
     Then the exit code should be 1
     And the output should contain "would send 1 entities"
     And the output should contain "Skipped 4 invalid GeoJSON feature(s)."
+
+  Scenario: Reject GeoJSON selectors on an async NDJSON import
+    When I run `geonic import --async --dry-run --type AedLocation`
+    Then the exit code should be 1
+    And the output should contain "--type and --id-field require --input-format geojson."
