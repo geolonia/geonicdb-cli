@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
-import type { IncomingHttpHeaders } from "node:http";
+import type { IncomingHttpHeaders, Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -10,6 +10,35 @@ import { expect, it } from "vitest";
 const run = promisify(execFile);
 const api = "/ngsi-ld/v1/jobs/imports";
 const input = '{"id":"urn:ngsi-ld:Room:1","type":"Room"}\n';
+
+async function runImportCli(server: Server, dir: string, file: string) {
+  await new Promise<void>((resolve, reject) =>
+    server.listen(0, "127.0.0.1", resolve).once("error", reject),
+  );
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Expected an HTTP port");
+  return run(
+    process.execPath,
+    [
+      "node_modules/tsx/dist/cli.mjs",
+      "src/index.ts",
+      "import",
+      file,
+      "--async",
+      "--no-color",
+      "--url",
+      `http://127.0.0.1:${address.port}`,
+      "--token",
+      "broker-token",
+      "--service",
+      "import-tenant",
+    ],
+    { env: { ...process.env, HOME: dir }, timeout: 10_000 },
+  ).then(
+    ({ stdout, stderr }) => ({ stdout, stderr, code: 0 }),
+    (err: { stdout: string; stderr: string; code: number | string }) => err,
+  );
+}
 
 it.each([
   { finalState: "succeeded", uploadStatus: 200, exitCode: 0 },
@@ -62,32 +91,7 @@ it.each([
     try {
       const file = join(dir, "entities.ndjson");
       await writeFile(file, input);
-      await new Promise<void>((resolve, reject) =>
-        server.listen(0, "127.0.0.1", resolve).once("error", reject),
-      );
-      const address = server.address();
-      if (!address || typeof address === "string") throw new Error("Expected an HTTP port");
-      const result = await run(
-        process.execPath,
-        [
-          "node_modules/tsx/dist/cli.mjs",
-          "src/index.ts",
-          "import",
-          file,
-          "--async",
-          "--no-color",
-          "--url",
-          `http://127.0.0.1:${address.port}`,
-          "--token",
-          "broker-token",
-          "--service",
-          "import-tenant",
-        ],
-        { env: { ...process.env, HOME: dir }, timeout: 10_000 },
-      ).then(
-        ({ stdout, stderr }) => ({ stdout, stderr, code: 0 }),
-        (err: { stdout: string; stderr: string; code: number | string }) => err,
-      );
+      const result = await runImportCli(server, dir, file);
 
       const output = result.stdout + result.stderr;
       expect(result.code, output).toBe(exitCode);
@@ -122,6 +126,111 @@ it.each([
           authorization: "Bearer broker-token",
           "ngsild-tenant": "import-tenant",
         });
+      }
+    } finally {
+      server.close();
+      server.closeAllConnections();
+      await rm(dir, { recursive: true, force: true });
+    }
+  },
+  15_000,
+);
+
+it.each([
+  { failedPart: 0, invalidCount: false, expectedMessage: "succeeded", expectedExitCode: 0 },
+  {
+    failedPart: 2,
+    invalidCount: false,
+    expectedMessage: "part 2 upload failed (HTTP 403)",
+    expectedExitCode: 1,
+  },
+  {
+    failedPart: 0,
+    invalidCount: true,
+    expectedMessage: "invalid multipart dimensions",
+    expectedExitCode: 1,
+  },
+])(
+  "streams numbered multipart ranges ($expectedMessage)",
+  async ({ failedPart, invalidCount, expectedMessage, expectedExitCode }) => {
+    const dir = await mkdtemp(join(tmpdir(), "geonic-import-parts-"));
+    const bytes = Buffer.from('{"id":"urn:ngsi-ld:Room:1","type":"Room","name":"東京"}\n');
+    const partSizeBytes = bytes.indexOf(Buffer.from("東京")) + 1;
+    const partCount = Math.ceil(bytes.length / partSizeBytes);
+    const requests: string[] = [];
+    const presignBodies: unknown[] = [];
+    const uploads: { headers: IncomingHttpHeaders; body: Buffer }[] = [];
+    const server = createServer(async (req, res) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk);
+      const body = Buffer.concat(chunks);
+      requests.push(`${req.method} ${req.url}`);
+      res.setHeader("Content-Type", "application/json");
+      if (req.url === api) {
+        res.writeHead(201).end(
+          JSON.stringify({
+            jobId: "multipart-job",
+            multipart: {
+              uploadId: "upload-1",
+              partCount: invalidCount ? partCount - 1 : partCount,
+              partSizeBytes,
+            },
+          }),
+        );
+      } else if (req.url === api + "/multipart-job/upload-parts") {
+        const presignBody = JSON.parse(body.toString()) as { partNumbers: number[] };
+        presignBodies.push(presignBody);
+        res.end(
+          JSON.stringify({
+            parts: presignBody.partNumbers.map((partNumber) => ({
+              partNumber,
+              upload: { url: `http://${req.headers.host}/part/${partNumber}?signature=secret` },
+            })),
+          }),
+        );
+      } else if (req.url?.startsWith("/part/")) {
+        uploads.push({ body, headers: req.headers });
+        res.writeHead(req.url === `/part/${failedPart}?signature=secret` ? 403 : 200).end();
+      } else if (req.url === api + "/multipart-job/start") {
+        res.writeHead(202).end("{}");
+      } else if (req.url === api + "/multipart-job") {
+        res.end(JSON.stringify({ state: "succeeded" }));
+      } else {
+        res.writeHead(404).end("{}");
+      }
+    });
+
+    try {
+      const file = join(dir, "entities.ndjson");
+      await writeFile(file, bytes);
+      const result = await runImportCli(server, dir, file);
+
+      const output = result.stdout + result.stderr;
+      expect(result.code, output).toBe(expectedExitCode);
+      expect(output).toContain(expectedMessage);
+      expect(output).not.toContain("signature=secret");
+      const lastPart = invalidCount ? 0 : failedPart || partCount;
+      const expectedNumbers = Array.from({ length: lastPart }, (_, index) => index + 1);
+      expect(presignBodies).toEqual(expectedNumbers.map((number) => ({ partNumbers: [number] })));
+      expect(requests).toEqual([
+        `POST ${api}`,
+        ...expectedNumbers.flatMap((number) => [
+          `POST ${api}/multipart-job/upload-parts`,
+          `PUT /part/${number}?signature=secret`,
+        ]),
+        ...(expectedExitCode
+          ? []
+          : [`POST ${api}/multipart-job/start`, `GET ${api}/multipart-job`]),
+      ]);
+      expect(uploads.map(({ body }) => body)).toEqual(
+        expectedNumbers.map((number) =>
+          bytes.subarray((number - 1) * partSizeBytes, number * partSizeBytes),
+        ),
+      );
+      for (const upload of uploads) {
+        expect(upload.headers["content-length"]).toBe(String(upload.body.length));
+        expect(upload.headers["content-type"]).toBeUndefined();
+        expect(upload.headers.authorization).toBeUndefined();
       }
     } finally {
       server.close();
