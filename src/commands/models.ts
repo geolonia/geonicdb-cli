@@ -250,11 +250,12 @@ export function registerModelsCommand(program: Command): void {
     .option("--source <url>", "Register a snapshot of a published GeonicDB model (sourceUrl)")
     .action(
       withErrorHandler(async (json: unknown, opts: { source?: string }, cmd: Command) => {
-        const input = opts.source !== undefined && json === undefined
-          ? {}
-          : await parseJsonInput(json as string | undefined);
-        let body = input;
-        if (opts.source !== undefined) {
+        let body: unknown;
+        if (opts.source === undefined) {
+          body = await parseJsonInput(json as string | undefined);
+        } else {
+          const parsed = await parseJsonInput(json as string | undefined, { allowMissing: true });
+          const input = parsed === undefined ? {} : parsed;
           if (typeof input !== "object" || input === null || Array.isArray(input)) {
             throw new Error("JSON payload must be an object when using --source.");
           }

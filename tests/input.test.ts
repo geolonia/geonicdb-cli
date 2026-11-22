@@ -147,6 +147,28 @@ describe("parseJsonInput", () => {
       }
     });
 
+    it("allows an empty implicit pipe when JSON is optional", async () => {
+      const realStdin = process.stdin;
+      Object.defineProperty(process, "stdin", { value: Readable.from(["  "]), configurable: true });
+      try {
+        await expect(parseJsonInput(undefined, { allowMissing: true })).resolves.toBeUndefined();
+      } finally {
+        Object.defineProperty(process, "stdin", { value: realStdin, configurable: true });
+      }
+    });
+
+    it("still rejects invalid or missing explicit pipe input when JSON is optional", async () => {
+      const realStdin = process.stdin;
+      try {
+        Object.defineProperty(process, "stdin", { value: Readable.from(["bad JSON"]), configurable: true });
+        await expect(parseJsonInput(undefined, { allowMissing: true })).rejects.toThrow();
+        Object.defineProperty(process, "stdin", { value: Readable.from([]), configurable: true });
+        await expect(parseJsonInput("-", { allowMissing: true })).rejects.toThrow();
+      } finally {
+        Object.defineProperty(process, "stdin", { value: realStdin, configurable: true });
+      }
+    });
+
     it("waits for piped data that arrives late instead of failing with EAGAIN", async () => {
       const slow = new Readable({ read() {} });
       const realStdin = process.stdin;

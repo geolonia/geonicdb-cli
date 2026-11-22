@@ -138,6 +138,14 @@ Feature: Custom data model management
     Then the exit code should be 0
     And stdout should contain "sourceUrl"
     And stdout should contain "https://models.example.org/sensor.json"
+    When I run `geonic models create --source https://models.example.org/sensor.json --dry-run` with stdin:
+      """
+      {"type":"Sensor","isActive":false}
+      """
+    Then the exit code should be 0
+    And stdout should contain '"type":"Sensor"'
+    And stdout should contain '"isActive":false'
+    And stdout should contain '"sourceUrl":"https://models.example.org/sensor.json"'
     When I run `geonic models refresh Sensor --api-dry-run --dry-run`
     Then the exit code should be 0
     And stdout should contain "/custom-data-models/Sensor/refresh?dryRun=true"

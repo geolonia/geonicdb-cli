@@ -610,7 +610,7 @@ After geolonia/geonicdb#2290 (ETSI GS CIM 009 clause 5.7.4.4), a **too-wide** PO
 | `custom-data-models update <id> [json]` | Update a model |
 | `custom-data-models delete <id>` | Delete a model |
 
-Use `geonic models create --source https://models.example.org/sensor.json` to register a snapshot of a published GeonicDB model. List and get show the server's `source` metadata for referenced models, including the URL, SHA-256 digest, and fetch time. `geonic models refresh Sensor --api-dry-run` previews the refresh on the server without updating the model. To print curl without sending a request, use the global `--dry-run` flag.
+Use `geonic models create --source https://models.example.org/sensor.json` to register a snapshot of a published GeonicDB model. You can also pass a JSON payload, including piped stdin, for optional settings such as `isActive`. List and get show the server's `source` metadata for referenced models, including the URL, SHA-256 digest, and fetch time. `geonic models refresh Sensor --api-dry-run` previews the refresh on the server without updating the model. To print curl without sending a request, use the global `--dry-run` flag.
 
 `models` is available as an alias for `custom-data-models`.
 

@@ -213,10 +213,11 @@ describe("models (custom-data-models) command", () => {
 
     it("registers a URL without requiring a JSON payload", async () => {
       const response = mockResponse(model, 201);
+      vi.mocked(parseJsonInput).mockResolvedValue(undefined);
       mockClient.rawRequest.mockResolvedValue(response);
       await runCommand(program, ["models", "create", "--source", source.url]);
 
-      expect(parseJsonInput).not.toHaveBeenCalled();
+      expect(parseJsonInput).toHaveBeenCalledWith(undefined, { allowMissing: true });
       expect(mockClient.rawRequest).toHaveBeenCalledWith("POST", "/custom-data-models", { body: { sourceUrl: source.url } });
       expect(outputResponse).toHaveBeenCalledWith(response, "json");
     });
