@@ -467,7 +467,10 @@ This path supports upsert with an HTTP(S) upload URL. Stdin, JSON arrays, replac
 synchronous batch/retry/resume/error flags are unavailable with `--async`. Embed any JSON-LD
 context in the NDJSON records. Clear the profile context and omit `--context` before running
 the command. Leave the source file unchanged during upload. The request timeout defaults to 60 seconds and the upload
-timeout to 30 minutes. An explicit `--timeout <ms>` overrides both.
+timeout to 30 minutes per PUT. An explicit `--timeout <ms>` overrides both.
+For files larger than 5 GiB on deployments that return a multipart upload, the CLI
+streams each part independently and starts the job only after all uploads succeed.
+The deployment's plan still limits the total size.
 
 #### CSV and other tabular formats
 
