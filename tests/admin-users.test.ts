@@ -268,20 +268,17 @@ describe("admin users commands", () => {
       expect(desc).not.toContain("tenantId is required");
     });
 
-    // #242: ASSIGNABLE_USER_ROLES includes deployment_admin; super_admin remains accepted but deprecated.
-    it("lists assignable roles including deployment_admin and marks super_admin deprecated", () => {
+    it("lists current assignable roles and the actors that can create them", () => {
       const program = makeProgram();
       const createCmd = program.commands
         .find((c) => c.name() === "admin")!
         .commands.find((c) => c.name() === "users")!
         .commands.find((c) => c.name() === "create")!;
       const desc = createCmd.description();
-      expect(desc).toContain("Roles: deployment_admin, tenant_admin, user");
-      expect(desc).toMatch(/super_admin.*deprecated/i);
-      // Near-miss: platform_admin is a principal role but not assignable via POST /admin/users.
-      expect(desc).not.toContain("platform_admin");
-      // Stale three-role line without deployment_admin must not remain.
-      expect(desc).not.toMatch(/Roles:\s*super_admin,\s*tenant_admin,\s*user\b/);
+      expect(desc.match(/^Roles: .*$/m)?.[0]).toBe("Roles: super_admin, tenant_admin, user");
+      expect(desc).toContain("platform_admin can create super_admin users.");
+      expect(desc).toContain("super_admin can create tenant_admin and user accounts.");
+      expect(desc).not.toContain("deployment_admin");
     });
 
     it("help steers existing-user multi-tenant add to tenants add-user", () => {
@@ -356,7 +353,7 @@ describe("admin users commands", () => {
       expect(roleExamples.length).toBeGreaterThan(0);
       for (const ex of roleExamples) {
         expect(ex.command).not.toMatch(/"role"\s*:\s*"admin"/);
-        expect(ex.command).toMatch(/"role"\s*:\s*"(deployment_admin|tenant_admin|user|super_admin)"/);
+        expect(ex.command).toMatch(/"role"\s*:\s*"(tenant_admin|user|super_admin)"/);
       }
     });
   });

@@ -150,8 +150,9 @@ export function registerUsersCommand(parent: Command): void {
         '    "role": "tenant_admin",\n' +
         '    "primaryTenantId": "<tenant-id>"\n' +
         "  }\n\n" +
-        "Roles: deployment_admin, tenant_admin, user\n" +
-        "(super_admin is deprecated but still accepted; prefer deployment_admin)\n" +
+        "Roles: super_admin, tenant_admin, user\n" +
+        "platform_admin can create super_admin users. super_admin can create tenant_admin and user accounts.\n" +
+        "tenant_admin can create user accounts in their own tenant.\n" +
         "primaryTenantId is required for tenant_admin and user roles.\n\n" +
         "To add an *existing* user to another tenant, do not re-run create\n" +
         "(that fails with \"User with email ... already exists\").\n" +
@@ -399,8 +400,8 @@ export function registerUsersCommand(parent: Command): void {
         "The temporary password is displayed once and cannot be retrieved again.\n" +
         "It expires after a fixed validity window (7 days by default). Existing\n" +
         "password-derived sessions are revoked; API keys and OAuth clients are kept.\n\n" +
-        "Permissions: super_admin can reset any user; tenant_admin can reset users\n" +
-        "in their own tenant.",
+        "Permissions: platform_admin can reset super_admin accounts; super_admin can reset\n" +
+        "tenant_admin and user accounts; tenant_admin can reset user accounts in their own tenant.",
     )
     .action(
       withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
