@@ -382,6 +382,7 @@ For safety, `entities purge` requires confirmation. In non-interactive contexts 
 |---|---|
 | `entities attrs list <entityId>` | List all attributes |
 | `entities attrs get <entityId> <attrName>` | Get a specific attribute |
+| `entities attrs value <entityId> <attrName>` | Get the attribute value as JSON. Supports `--dataset-id`, `--lang`, and `--type` |
 | `entities attrs add <entityId> [json]` | Add attributes |
 | `entities attrs update <entityId> <attrName> [json]` | Update an attribute |
 | `entities attrs delete <entityId> <attrName>` | Delete an attribute |
