@@ -100,6 +100,17 @@ describe("import command", () => {
     expect(opts.format).toBe("json");
   });
 
+  it.each([
+    ["-", "--async"],
+    ["data.ndjson", "--async", "--mode", "replace"],
+    ["data.json", "--async", "--input-format", "json"],
+    ["data.ndjson", "--async", "--resume", "checkpoint"],
+  ])("rejects incompatible async import arguments %s %s %s %s", async (...args) => {
+    await expect(runCommand(program, ["import", ...args])).rejects.toThrow();
+    expect(createClient).not.toHaveBeenCalled();
+    expect(ctorSpy).not.toHaveBeenCalled();
+  });
+
   it("rejects --resume with --mode replace", async () => {
     await expect(
       runCommand(program, ["import", "data.ndjson", "--resume", "ck", "--mode", "replace"]),
