@@ -8,7 +8,7 @@
 ## [Unreleased]
 
 ### 2026-11-23
-- **Feat**: `geonic import --async` で NDJSON のアップロード、ジョブ開始、完了ポーリングに対応 (Closes #270)。
+- **Feat**: `geonic import --async` で NDJSON のアップロード、ジョブ開始、完了ポーリングに対応 (closes #270) (#279)
 
 ## [0.27.0] - 2026-10-31
 
