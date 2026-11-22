@@ -448,6 +448,27 @@ cat entities.ndjson | geonic import --dry-run
 (sleep 1; cat entities.json) | geonic import --input-format json --dry-run
 ```
 
+#### Server-side import jobs
+
+On GeonicDB deployments with the import jobs API enabled, use a regular NDJSON file
+to upload directly to object storage and wait for the job result:
+
+```bash
+geonic import entities.ndjson --async
+geonic import entities.ndjson --async --dry-run
+```
+
+The CLI prints the job ID before uploading. The command exits successfully when the job
+reports `succeeded`. Partial failures, failed or cancelled jobs, and request errors produce
+a nonzero exit code. After interrupting the CLI, check the job with
+`GET /ngsi-ld/v1/jobs/imports/{jobId}` using the same tenant credentials.
+
+This path supports upsert with an HTTP(S) upload URL. Stdin, JSON arrays, replace mode, and
+synchronous batch/retry/resume/error flags are unavailable with `--async`. Embed any JSON-LD
+context in the NDJSON records. Clear the profile context and omit `--context` before running
+the command. Leave the source file unchanged during upload. The request timeout defaults to 60 seconds and the upload
+timeout to 30 minutes. An explicit `--timeout <ms>` overrides both.
+
 #### CSV and other tabular formats
 
 `import` does **not** parse CSV (or GeoJSON). Convert to NGSI-LD entities first, then

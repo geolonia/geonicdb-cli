@@ -1,3 +1,5 @@
+import { constants } from "node:fs";
+import { open } from "node:fs/promises";
 import { Command, InvalidArgumentError } from "commander";
 import { createClient, resolveOptions, withErrorHandler } from "../helpers.js";
 import {
@@ -8,12 +10,14 @@ import {
   streamNdjsonFrom,
 } from "../input.js";
 import type { EntityRecord, FileFingerprint } from "../input.js";
+import { runImportJob } from "../import-job.js";
 import { BulkImporter } from "../loader.js";
 import type { ImportMode, ImporterOptions, InputFormat } from "../loader.js";
 import { printError, printInfo, printSuccess, printWarning } from "../output.js";
 import { addExamples } from "./help.js";
 
 interface ImportCliOptions {
+  async?: boolean;
   inputFormat: InputFormat;
   mode: ImportMode;
   batchSize: number;
@@ -103,6 +107,7 @@ export function registerImportCommand(program: Command): void {
     // (T0/T5 100, T30 500, T40 1,000; absolute max 1,000). The default stays 100
     // so it works on every plan; the CLI does not hard-cap the value — the server
     // owns the limit and its 400 names the plan limit explicitly.
+    .option("--async", "Upload an NDJSON file and wait for a server-side import job (upsert only)")
     .option("--batch-size <n>", "Entities per request (default 100 = safe on every plan; plan limits: T0/T5 100, T30 500, T40 1,000; the server rejects values over your plan limit, absolute max 1,000)", parsePositiveInt, 100)
     .option("--max-bytes <n>", "Max request body bytes per chunk", parsePositiveInt, 1_000_000)
     .option("--concurrency <n>", "Concurrent requests (default 1 = sequential)", parsePositiveInt, 1)
@@ -128,6 +133,15 @@ export function registerImportCommand(program: Command): void {
         if (cli.keyValues) {
           printError("server does not accept keyValues on import");
           process.exit(1);
+        }
+        if (cli.async) {
+          if (resolved.context?.length) {
+            throw new Error(
+              "--async requires any JSON-LD context to be embedded in the NDJSON records. Remove --context or the profile's context setting.",
+            );
+          }
+          await runAsyncImport(file, cli, command, resolved.dryRun ?? false);
+          return;
         }
         if (cli.resume && cli.mode === "replace") {
           printError("--resume is only supported with --mode upsert (replace re-sends overwrite latest state).");
@@ -207,6 +221,10 @@ export function registerImportCommand(program: Command): void {
       command: "geonic import entities.ndjson",
     },
     {
+      description: "Load an NDJSON file through the import jobs API",
+      command: "geonic import entities.ndjson --async",
+    },
+    {
       description: "Load a JSON array",
       command: "geonic import entities.json --input-format json",
     },
@@ -229,6 +247,50 @@ export function registerImportCommand(program: Command): void {
         "npx @geolonia/datamodels@0.3.19 convert disaster/EvacuationSite jichitai-opendata-site sites.csv --normalized | geonic import --input-format json",
     },
   ]);
+}
+
+async function runAsyncImport(
+  file: string | undefined,
+  cli: ImportCliOptions,
+  command: Command,
+  dryRun: boolean,
+): Promise<void> {
+  if (!file || file === "-" || cli.inputFormat !== "ndjson" || cli.mode !== "upsert") {
+    throw new Error("--async requires an NDJSON file and --mode upsert.");
+  }
+
+  const batchOptions = [
+    "batchSize", "maxBytes", "concurrency", "retries", "continueOnError",
+    "resume", "errorsOut", "errorsLog", "bisect", "bisectMax",
+  ];
+  const incompatibleOption = batchOptions.find((name) => command.getOptionValueSource(name) === "cli");
+  if (incompatibleOption) {
+    const flag = command.options.find((option) => option.attributeName() === incompatibleOption)?.long;
+    throw new Error(`${flag} is only supported by the synchronous import path.`);
+  }
+
+  // A FIFO can block on open before stat can reject it. Check the handle that
+  // we will actually read so a pathname swap cannot bypass the file-type check.
+  const flags = constants.O_RDONLY | (constants.O_NONBLOCK ?? 0);
+  const source = await open(file.startsWith("@") ? file.slice(1) : file, flags);
+  try {
+    const stat = await source.stat();
+    if (!stat.isFile() || stat.size === 0) {
+      throw new Error("--async requires a non-empty regular NDJSON file.");
+    }
+    if (dryRun) {
+      printInfo(`dry-run: would upload ${stat.size} bytes and start an upsert import job.`);
+      return;
+    }
+
+    await runImportJob(createClient(command), source, stat.size, {
+      requestTimeoutMs: cli.timeout,
+      uploadTimeoutMs: command.getOptionValueSource("timeout") === "cli" ? cli.timeout : 30 * 60 * 1_000,
+      report: printInfo,
+    });
+  } finally {
+    await source.close();
+  }
 }
 
 function makeProgressReporter(verbose: boolean): ImporterOptions["onProgress"] {
