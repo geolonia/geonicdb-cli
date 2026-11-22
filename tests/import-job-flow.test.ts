@@ -37,14 +37,12 @@ it.each([
       });
       res.setHeader("Content-Type", "application/json");
       if (req.url === api) {
-        res
-          .writeHead(201)
-          .end(
-            JSON.stringify({
-              jobId: "job-1",
-              upload: { url: `http://${req.headers.host}/object?signature=secret` },
-            }),
-          );
+        res.writeHead(201).end(
+          JSON.stringify({
+            jobId: "job-1",
+            upload: { url: `http://${req.headers.host}/object?signature=secret` },
+          }),
+        );
       } else if (req.url === "/object?signature=secret") {
         res.writeHead(uploadStatus).end();
       } else if (req.url === api + "/job-1/start") {
@@ -132,4 +130,36 @@ it.each([
     }
   },
   15_000,
+);
+
+it.skipIf(process.platform === "win32")(
+  "rejects a FIFO with no writer without waiting",
+  async () => {
+    const dir = await mkdtemp(join(tmpdir(), "geonic-import-fifo-"));
+    try {
+      const file = join(dir, "entities.ndjson");
+      await run("mkfifo", [file]);
+      await expect(
+        run(
+          process.execPath,
+          [
+            "node_modules/tsx/dist/cli.mjs",
+            "src/index.ts",
+            "import",
+            file,
+            "--async",
+            "--dry-run",
+            "--no-color",
+          ],
+          { env: { ...process.env, HOME: dir }, timeout: 5_000 },
+        ),
+      ).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("--async requires a non-empty regular NDJSON file."),
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  },
+  8_000,
 );

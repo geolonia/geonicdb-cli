@@ -1,3 +1,4 @@
+import { constants } from "node:fs";
 import { open } from "node:fs/promises";
 import { Command, InvalidArgumentError } from "commander";
 import { createClient, resolveOptions, withErrorHandler } from "../helpers.js";
@@ -268,7 +269,10 @@ async function runAsyncImport(
     throw new Error(`${flag} is only supported by the synchronous import path.`);
   }
 
-  const source = await open(file.startsWith("@") ? file.slice(1) : file, "r");
+  // A FIFO can block on open before stat can reject it. Check the handle that
+  // we will actually read so a pathname swap cannot bypass the file-type check.
+  const flags = constants.O_RDONLY | (constants.O_NONBLOCK ?? 0);
+  const source = await open(file.startsWith("@") ? file.slice(1) : file, flags);
   try {
     const stat = await source.stat();
     if (!stat.isFile() || stat.size === 0) {
