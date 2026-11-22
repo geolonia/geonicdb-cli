@@ -203,6 +203,8 @@ A client-credentials token is an OAuth client principal: `/me` self-service endp
 
 `auth platform-login` signs `POST /auth/platform-token` with the current AWS credentials (SigV4 / `execute-api`) and saves the returned 15-minute `platform_admin` Bearer token. There is no refresh — re-run the command when it expires. Local servers without API Gateway IAM return 403.
 
+This token has limited platform permissions. Tenant management commands such as `geonic admin tenants list` return HTTP 403. Use a `super_admin` token from the target deployment to manage tenants.
+
 ```bash
 geonic auth platform-login --aws-region ap-northeast-1
 geonic auth platform-login --aws-profile geonic-ops --aws-region ap-northeast-1
@@ -358,7 +360,9 @@ geonic me oauth-clients update <client-id> --policy-id my-readonly
 | `entities delete <id>` | Delete an entity by ID |
 | `entities purge <selectors> [--keep\|--drop] --yes` | Purge entities/attributes by selector (destructive) |
 
-`entities list` supports filtering options: `--type`, `--id-pattern`, `--query`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`, `--local`, `--scope-q`.
+`entities list` supports filtering options: `--type`, `--id-pattern`, `--query` (alias `--q`), `--json-keys`, `--attrs`, `--georel`, `--geometry`, `--coords`, `--spatial-id`, `--limit`, `--offset`, `--order-by`, `--count`, `--local`, `--scope-q`.
+
+Use `--json-keys <a,b>` with `--query` to evaluate trailing paths in the listed attributes as opaque JSON. The flag is also available on `batch query`. If the batch JSON payload contains `jsonKeys`, the broker gives that field precedence.
 
 `--local` (`?local=true`) limits the request to local scope and exempts the too-wide query check, so a selector-less `geonic entities list --local` is allowed.
 

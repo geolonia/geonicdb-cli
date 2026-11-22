@@ -172,14 +172,18 @@ export function registerBatchCommand(program: Command): void {
       "--local",
       "Limit to local scope (?local=true). Exempts the too-wide query check",
     )
+    .option("--json-keys <a,b>", "Treat these attributes as opaque JSON when evaluating query paths")
     .action(
       withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const data = await parseJsonInput(json as string | undefined);
-        const params = cmd.opts().local ? { local: "true" } : undefined;
+        const { local, jsonKeys } = cmd.opts<{ local?: boolean; jsonKeys?: string }>();
+        const params: Record<string, string> = {};
+        if (local) params.local = "true";
+        if (jsonKeys) params.jsonKeys = jsonKeys;
 
-        const response = params
+        const response = Object.keys(params).length > 0
           ? await client.post("/entityOperations/query", data, params)
           : await client.post("/entityOperations/query", data);
         outputResponse(response, format);

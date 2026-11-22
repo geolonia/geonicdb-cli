@@ -8,8 +8,10 @@
 ## [Unreleased]
 
 ### 2026-11-23
-- **Docs**: 管理ユーザーとテナントメンバーシップのヘルプを4段階のロール体系に揃え、デプロイメント管理に必要なロールを `platform_admin` と明記した (closes #266) (#278)
+- **Feat**: `entities list` と `batch query` に `--json-keys` を追加し、NGSI-LD クエリのパス評価で指定属性を JSON として扱えるようにした (#277)。
 - **Feat**: `geonic import --async` で NDJSON のアップロード、ジョブ開始、完了ポーリングに対応 (closes #270) (#279)
+- **Docs**: 管理ユーザーとテナントメンバーシップのヘルプを4段階のロール体系に揃え、デプロイメント管理に必要なロールを `platform_admin` と明記した (closes #266) (#278)
+- **Docs**: `auth platform-login` で取得した `platform_admin` トークンではテナント管理ができないことを README に追記 (#276)
 
 ## [0.27.0] - 2026-10-31
 
