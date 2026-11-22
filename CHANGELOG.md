@@ -8,8 +8,11 @@
 ## [Unreleased]
 
 ### 2026-11-23
+- **Feat**: `entities attrs value` で属性の値を JSON として取得できるようにした (closes #267) (#283)
+- **Fix**: `geonic import` の再送で `Retry-After` を共有クールダウンと同じ最大60秒まで尊重する (closes #269) (#282)
+- **Feat**: `entities list` と `batch query` に `--json-keys` を追加し、NGSI-LD クエリのパス評価で指定属性を JSON として扱えるようにした (#277)。
 - **Docs**: 管理ユーザーとテナントメンバーシップのヘルプを4段階のロール体系に揃え、デプロイメント管理に必要なロールを `platform_admin` と明記した (closes #266) (#278)
-- **Feat**: `entities attrs value` で属性の値を JSON として取得できるようにした (#283)。
+- **Docs**: `auth platform-login` で取得した `platform_admin` トークンではテナント管理ができないことを README に追記 (#276)
 
 ## [0.27.0] - 2026-10-31
 
