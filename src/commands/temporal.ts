@@ -4,11 +4,13 @@ import {
   createClient,
   getFormat,
   outputResponse,
+  parseNonNegativeInt,
   parsePositiveInt,
   surfaceNgsiWarning,
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
+import { sanitizeServerText } from "../sanitize.js";
 import { addExamples } from "./help.js";
 
 /**
@@ -99,8 +101,49 @@ function buildRepresentationParams(cmdOpts: {
   return params;
 }
 
+function addContinuationOptions(cmd: Command): Command {
+  return cmd
+    .option("--show-links", "Print temporal continuation links to stderr")
+    .option("--follow <uri>", "Request a continuation URI returned by this endpoint");
+}
+
+function addHistoryOptions(cmd: Command): Command {
+  return addContinuationOptions(cmd)
+    .option("--first-n <n>", "Return earliest N instances per attribute (server cap 30)", parsePositiveInt)
+    .option("--last-n <n>", "Return latest N instances per attribute (server cap 1000)", parsePositiveInt)
+    .option("--offset-n <n>", "Skip N history instances per attribute", parseNonNegativeInt);
+}
+
+function buildHistoryParams(opts: { firstN?: number; lastN?: number; offsetN?: number }): Record<string, string> {
+  if (opts.firstN !== undefined && opts.lastN !== undefined) {
+    throw new Error("--first-n and --last-n cannot be combined.");
+  }
+  const params: Record<string, string> = {};
+  if (opts.firstN !== undefined) params.firstN = String(opts.firstN);
+  if (opts.lastN !== undefined) params.lastN = String(opts.lastN);
+  if (opts.offsetN !== undefined) params.offsetN = String(opts.offsetN);
+  return params;
+}
+
+function showTemporalLinks(headers: Headers | undefined): void {
+  const links = headers?.get("Link") ?? "";
+  // RFC 8288 link-values can contain commas inside the URI or quoted parameters.
+  for (const [, uri, params] of links.matchAll(/<([^>]+)>((?:[^",]|"(?:[^"\\]|\\.)*")*)/g)) {
+    if (sanitizeServerText(uri) !== uri) continue;
+    for (const [, name, quoted, token] of params.matchAll(/;\s*([^=;\s]+)(?:\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^;\s]+)))?/g)) {
+      if (name.toLowerCase() !== "rel") continue;
+      for (const relation of (quoted ?? token ?? "").toLowerCase().split(/\s+/)) {
+        if (relation === "intervalafter" || relation === "intervalbefore") {
+          console.error(relation + ": " + uri);
+        }
+      }
+      break;
+    }
+  }
+}
+
 function addTemporalListOptions(cmd: Command): Command {
-  return addRepresentationOptions(cmd)
+  return addHistoryOptions(addRepresentationOptions(cmd))
     .option("--type <type>", "Filter by entity type")
     .option("--attrs <a,b>", "Comma-separated list of attributes to include")
     .option("--query <q>", "NGSI query expression")
@@ -113,11 +156,6 @@ function addTemporalListOptions(cmd: Command): Command {
     .option(
       "--time-property <name>",
       "Temporal property to compare (observedAt, createdAt, modifiedAt, deletedAt; default observedAt)",
-    )
-    .option(
-      "--last-n <n>",
-      "Return last N instances per attribute (server default caps to 10; max 1000)",
-      parsePositiveInt,
     )
     .option("--limit <n>", "Maximum number of entities to return", parseInt)
     .option("--offset <n>", "Skip first N entities", parseInt)
@@ -154,7 +192,7 @@ function createListAction() {
     if (cmdOpts.timeProperty !== undefined) {
       params["timeproperty"] = cmdOpts.timeProperty;
     }
-    if (cmdOpts.lastN !== undefined) params["lastN"] = String(cmdOpts.lastN);
+    Object.assign(params, buildHistoryParams(cmdOpts));
     if (cmdOpts.limit !== undefined) params["limit"] = String(cmdOpts.limit);
     if (cmdOpts.offset !== undefined) params["offset"] = String(cmdOpts.offset);
     if (cmdOpts.orderBy) params["orderBy"] = cmdOpts.orderBy;
@@ -173,14 +211,18 @@ function createListAction() {
       );
     }
 
-    const response = await client.get("/temporal/entities", params);
+    const path = "/temporal/entities";
+    const response = cmdOpts.follow
+      ? await client.get(client.resolveContinuationPath(path, cmdOpts.follow))
+      : await client.get(path, params);
+    if (cmdOpts.showLinks) showTemporalLinks(response.headers);
     surfaceNgsiWarning(response.headers);
     outputResponse(response, format, cmdOpts.count);
   });
 }
 
 function addTemporalGetOptions(cmd: Command): Command {
-  return addRepresentationOptions(cmd)
+  return addHistoryOptions(addRepresentationOptions(cmd))
     .option("--attrs <a,b>", "Comma-separated list of attributes to include")
     .option("--time-rel <rel>", "Temporal relationship (before, after, between)")
     .option("--time-at <time>", "Temporal query start time (ISO 8601)")
@@ -188,11 +230,6 @@ function addTemporalGetOptions(cmd: Command): Command {
     .option(
       "--time-property <name>",
       "Temporal property to compare (observedAt, createdAt, modifiedAt, deletedAt; default observedAt)",
-    )
-    .option(
-      "--last-n <n>",
-      "Return last N instances per attribute (server default caps to 10; max 1000)",
-      parsePositiveInt,
     );
 }
 
@@ -213,13 +250,14 @@ function createGetAction() {
     if (cmdOpts.timeProperty !== undefined) {
       params["timeproperty"] = cmdOpts.timeProperty;
     }
-    if (cmdOpts.lastN !== undefined) params["lastN"] = String(cmdOpts.lastN);
+    Object.assign(params, buildHistoryParams(cmdOpts));
     Object.assign(params, buildRepresentationParams(cmdOpts));
 
-    const response = await client.get(
-      `/temporal/entities/${encodeURIComponent(String(id))}`,
-      params,
-    );
+    const path = `/temporal/entities/${encodeURIComponent(String(id))}`;
+    const response = cmdOpts.follow
+      ? await client.get(client.resolveContinuationPath(path, cmdOpts.follow))
+      : await client.get(path, params);
+    if (cmdOpts.showLinks) showTemporalLinks(response.headers);
     surfaceNgsiWarning(response.headers);
     outputResponse(response, format);
   });
@@ -271,10 +309,13 @@ function createQueryAction() {
     // aggregation flags (clause 6.3.18).
     if (cmdOpts.local) params.local = "true";
 
-    const response =
-      Object.keys(params).length > 0
-        ? await client.post("/temporal/entityOperations/query", body, params)
-        : await client.post("/temporal/entityOperations/query", body);
+    const path = "/temporal/entityOperations/query";
+    const response = cmdOpts.follow
+      ? await client.post(client.resolveContinuationPath(path, cmdOpts.follow), body)
+      : Object.keys(params).length > 0
+        ? await client.post(path, body, params)
+        : await client.post(path, body);
+    if (cmdOpts.showLinks) showTemporalLinks(response.headers);
     surfaceNgsiWarning(response.headers);
     outputResponse(response, format);
   });
@@ -432,7 +473,7 @@ export function registerTemporalCommand(program: Command): void {
         "Limit to local scope (?local=true). Exempts the too-wide query check",
       ),
   );
-  opsQuery.action(createQueryAction());
+  addContinuationOptions(opsQuery).action(createQueryAction());
 
   addExamples(opsQuery, [
     {
@@ -476,7 +517,7 @@ export function registerTemporalCommand(program: Command): void {
     .description("Delete a temporal entity (deprecated: use temporal entities delete)")
     .action(createDeleteAction());
 
-  addRepresentationOptions(
+  addContinuationOptions(addRepresentationOptions(
     temporal
       .command("query [json]", { hidden: true })
       .description("Query temporal entities (deprecated: use temporal entityOperations query)")
@@ -484,5 +525,5 @@ export function registerTemporalCommand(program: Command): void {
         "--local",
         "Limit to local scope (?local=true). Exempts the too-wide query check",
       ),
-  ).action(createQueryAction());
+  )).action(createQueryAction());
 }

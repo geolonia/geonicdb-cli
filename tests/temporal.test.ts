@@ -11,6 +11,7 @@ vi.mock("../src/helpers.js", async (importOriginal) => {
     withErrorHandler: (fn: (...args: unknown[]) => unknown) => fn,
     resolveOptions: vi.fn(),
     // Use the real parser so the `--last-n` option wiring is genuinely exercised.
+    parseNonNegativeInt: actual.parseNonNegativeInt,
     parsePositiveInt: actual.parsePositiveInt,
     surfaceNgsiWarning: vi.fn(),
   };
@@ -77,6 +78,24 @@ describe("temporal commands", () => {
         runCommand(program, ["temporal", "entities", "list", "--last-n", "0"]),
       ).rejects.toThrow(/positive integer/);
       expect(client.get).not.toHaveBeenCalled();
+    });
+
+    it("prints only temporal links on stderr when requested", async () => {
+      const headers = new Headers({
+        Link: '</context>; rel="http://www.w3.org/ns/json-ld#context", </page?offsetN=5>; rel="intervalafter", </page?offsetN=0>; title="Previous, earlier page"; rel=intervalbefore, </invalid\x1b>; rel="intervalafter"',
+      });
+      client.get.mockResolvedValue({ ...mockResponse([]), headers });
+      const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
+      try {
+        await runCommand(makeProgram(), ["temporal", "entities", "list", "--show-links"]);
+        expect(stderr.mock.calls).toEqual([
+          ["intervalafter: /page?offsetN=5"],
+          ["intervalbefore: /page?offsetN=0"],
+        ]);
+        expect(outputResponse).toHaveBeenCalled();
+      } finally {
+        stderr.mockRestore();
+      }
     });
 
     it("passes all filter options as params", async () => {
