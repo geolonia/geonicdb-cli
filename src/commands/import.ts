@@ -134,6 +134,11 @@ export function registerImportCommand(program: Command): void {
           process.exit(1);
         }
         if (cli.async) {
+          if (resolved.context?.length) {
+            throw new Error(
+              "--async requires any JSON-LD context to be embedded in the NDJSON records. Remove --context or the profile's context setting.",
+            );
+          }
           await runAsyncImport(file, cli, command, resolved.dryRun ?? false);
           return;
         }
