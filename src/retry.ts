@@ -12,6 +12,8 @@ export interface RetryOptions {
   retries: number;
   baseDelayMs?: number;
   maxDelayMs?: number;
+  /** Cap for a server-provided Retry-After. Defaults to maxDelayMs. */
+  maxRetryAfterMs?: number;
   onRetry?: (info: RetryInfo) => void;
   /** Injectable sleep for tests. */
   sleep?: (ms: number) => Promise<void>;
@@ -64,6 +66,7 @@ const defaultSleep = (ms: number): Promise<void> => new Promise((resolve) => set
 export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions): Promise<T> {
   const base = opts.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
   const max = opts.maxDelayMs ?? DEFAULT_MAX_DELAY_MS;
+  const maxRetryAfter = opts.maxRetryAfterMs ?? max;
   const sleep = opts.sleep ?? defaultSleep;
   const random = opts.random ?? Math.random;
 
@@ -74,7 +77,7 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions): Pr
     } catch (err) {
       if (attempt >= opts.retries || !isRetryableError(err)) throw err;
       attempt++;
-      const delay = computeDelay(err, attempt, base, max, random);
+      const delay = computeDelay(err, attempt, base, max, maxRetryAfter, random);
       opts.onRetry?.({ attempt, delayMs: delay, error: err });
       await sleep(delay);
     }
@@ -86,12 +89,13 @@ function computeDelay(
   attempt: number,
   base: number,
   max: number,
+  maxRetryAfter: number,
   random: () => number,
 ): number {
-  // Honor a server-provided Retry-After (429 or 503), always clamped to max so a
+  // Honor a server-provided Retry-After (429 or 503), clamped to the header-specific cap so a
   // hostile/buggy header can't stall the client for hours.
   if (err instanceof GdbClientError && err.retryAfterMs !== undefined) {
-    return Math.min(max, err.retryAfterMs);
+    return Math.min(maxRetryAfter, err.retryAfterMs);
   }
   // Exponential backoff with full-range jitter on the upper half.
   const exp = Math.min(max, base * 2 ** (attempt - 1));
