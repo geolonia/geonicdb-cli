@@ -229,7 +229,7 @@ function buildUpdateBody(opts: UpdateOptions): Record<string, unknown> {
 export function registerDeploymentsCommand(parent: Command): void {
   const deployments = parent
     .command("deployments")
-    .description("Manage deployment routing rows (hostname to MongoDB cluster). super_admin only");
+    .description("Manage deployment routing rows (hostname to MongoDB cluster). Requires platform_admin or the environment super admin.");
 
   // deployments list
   const list = deployments
