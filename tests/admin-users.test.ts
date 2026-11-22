@@ -55,7 +55,7 @@ vi.mock("../src/commands/help.js", () => ({
 import type { Command } from "commander";
 import { createClient, getFormat, outputResponse } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
-import { printSuccess, printTemporaryPasswordBox } from "../src/output.js";
+import { printSuccess, printTemporaryPasswordBox, printWarning } from "../src/output.js";
 import { addExamples } from "../src/commands/help.js";
 import { registerUsersCommand } from "../src/commands/admin/users.js";
 
@@ -132,6 +132,60 @@ describe("admin users commands", () => {
       expect(outputResponse).toHaveBeenCalled();
       expect(printSuccess).toHaveBeenCalledWith("User created.");
       expect(printTemporaryPasswordBox).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("password setup emails", () => {
+    it.each(["sent", "failed"] as const)("reports creation with delivery %s", async (delivery) => {
+      const body = { email: "user@example.com", role: "user", delivery: "link" };
+      const response = mockResponse({ id: "u2", invite: { delivery } }, 201);
+      vi.mocked(parseJsonInput).mockResolvedValue(body);
+      client.rawRequest.mockResolvedValue(response);
+      await runCommand(makeProgram(), ["admin", "users", "create", JSON.stringify(body)]);
+
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/users", { body });
+      expect(outputResponse).toHaveBeenCalledWith(response, "json");
+      expect(printSuccess).not.toHaveBeenCalled();
+      expect(printTemporaryPasswordBox).not.toHaveBeenCalled();
+      if (delivery === "failed") {
+        expect(printWarning).toHaveBeenCalledWith(expect.stringContaining("MAIL_PROVIDER, SES identity and sandbox restrictions"));
+      } else {
+        expect(printWarning).not.toHaveBeenCalled();
+      }
+    });
+
+    it("rejects combining emailed links with a temporary password request", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ delivery: "link" });
+      await expect(runCommand(makeProgram(), ["admin", "users", "create", "--force-reset", '{"delivery":"link"}']))
+        .rejects.toThrow(/cannot be combined/);
+      expect(client.rawRequest).not.toHaveBeenCalled();
+    });
+
+    it("resends and warns when the server reports a delivery failure", async () => {
+      const response = mockResponse({ userId: "urn:user:1", delivery: "failed" });
+      client.rawRequest.mockResolvedValue(response);
+      await runCommand(makeProgram(), ["admin", "users", "invite", "urn:user:1"]);
+
+      expect(client.rawRequest).toHaveBeenCalledWith("POST", "/admin/users/urn%3Auser%3A1/invite");
+      expect(outputResponse).toHaveBeenCalledWith(response, "json");
+      expect(printWarning).toHaveBeenCalledWith(expect.stringContaining("geonic admin users invite <id>"));
+      expect(printTemporaryPasswordBox).not.toHaveBeenCalled();
+    });
+
+    it("shows when no outstanding invitation was revoked", async () => {
+      const response = mockResponse({ userId: "u2", revoked: false });
+      client.rawRequest.mockResolvedValue(response);
+      await runCommand(makeProgram(), ["admin", "users", "invite-revoke", "u2"]);
+
+      expect(client.rawRequest).toHaveBeenCalledWith("DELETE", "/admin/users/u2/invite");
+      expect(outputResponse).toHaveBeenCalledWith(response, "json");
+      expect(printSuccess).not.toHaveBeenCalled();
+    });
+
+    it.each([".", ".."])("refuses relative path segment %s before revocation", async (id) => {
+      await expect(runCommand(makeProgram(), ["admin", "users", "invite-revoke", id]))
+        .rejects.toThrow(/User ID must not be/);
+      expect(client.rawRequest).not.toHaveBeenCalled();
     });
   });
 

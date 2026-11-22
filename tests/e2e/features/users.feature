@@ -78,3 +78,15 @@ Feature: Admin user management
     Then the exit code should be 0
     And the output should contain "Temporary password issued."
     And stdout should contain "temporaryPassword"
+
+  @issue-274
+  Scenario: Resend and revoke a set-password invitation
+    Given I am logged in as super admin
+    When I run `geonic admin users invite urn:user:274 --dry-run`
+    Then the exit code should be 0
+    And stdout should contain "-X POST"
+    And stdout should contain "/admin/users/urn%3Auser%3A274/invite"
+    When I run `geonic admin users invite-revoke urn:user:274 --dry-run`
+    Then the exit code should be 0
+    And stdout should contain "-X DELETE"
+    And stdout should contain "/admin/users/urn%3Auser%3A274/invite"
