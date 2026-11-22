@@ -8,7 +8,8 @@
 ## [Unreleased]
 
 ### 2026-11-23
-- **Feat**: temporal の `firstN` / `offsetN` と ETSI の履歴ページリンクに対応した (#275)。
+- **Docs**: 管理ユーザーとテナントメンバーシップのヘルプを4段階のロール体系に揃え、デプロイメント管理に必要なロールを `platform_admin` と明記した (closes #266) (#278)
+- **Feat**: temporal の `firstN` / `offsetN` と ETSI の履歴ページリンクに対応した (#284)。
 
 ## [0.27.0] - 2026-10-31
 
