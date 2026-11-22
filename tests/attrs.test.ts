@@ -5,7 +5,7 @@ import type { MockClient } from "./test-helpers.js";
 
 import { createClient, getFormat, outputResponse } from "../src/helpers.js";
 import { parseJsonInput } from "../src/input.js";
-import { printSuccess } from "../src/output.js";
+import { printOutput, printSuccess } from "../src/output.js";
 import { GdbClientError } from "../src/client.js";
 import { addAttrsSubcommands } from "../src/commands/attrs.js";
 
@@ -46,6 +46,22 @@ describe("attrs subcommand", () => {
       );
       expect(outputResponse).toHaveBeenCalledWith(expect.anything(), "json");
     });
+  });
+
+  describe("value", () => {
+    it.each([[""], [null], [false], [0], [[1, 2]], [{ nested: true }]])(
+      "prints the unwrapped JSON value %j",
+      async (value) => {
+        mockClient.get.mockResolvedValue(mockResponse(value));
+        await runCommand(program, ["attrs", "value", "urn:ngsi-ld:Sensor:001", "temperature"]);
+        expect(mockClient.get).toHaveBeenCalledWith(
+          "/entities/urn%3Angsi-ld%3ASensor%3A001/attrs/temperature/value",
+          {},
+          { Accept: "application/json" },
+        );
+        expect(printOutput).toHaveBeenCalledWith(value, "json");
+      },
+    );
   });
 
   describe("add", () => {

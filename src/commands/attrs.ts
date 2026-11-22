@@ -7,7 +7,7 @@ import {
   outputResponse,
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
-import { printSuccess } from "../output.js";
+import { printOutput, printSuccess } from "../output.js";
 import { addExamples } from "./help.js";
 
 export function addAttrsSubcommands(attrs: Command): void {
@@ -84,6 +84,44 @@ export function addAttrsSubcommands(attrs: Command): void {
       description: "Get an attribute in table format",
       command:
         "geonic entities attrs get urn:ngsi-ld:Sensor:001 location --format table",
+    },
+  ]);
+
+  const value = attrs
+    .command("value <entityId> <attrName>")
+    .description("Get the value of an attribute as JSON")
+    .option("--dataset-id <id>", "Select attribute instances by dataset ID")
+    .option("--lang <lang>", "Select a language for a LanguageProperty")
+    .option("--type <type>", "Select an attribute type")
+    .action(
+      withErrorHandler(async (
+        entityId: string,
+        attrName: string,
+        opts: { datasetId?: string; lang?: string; type?: string },
+        cmd: Command,
+      ) => {
+        if ([entityId, attrName].some((segment) => segment === "." || segment === "..")) {
+          throw new Error('Entity ID and attribute name cannot be "." or "..".');
+        }
+
+        const params: Record<string, string> = {};
+        if (opts.datasetId !== undefined) params.datasetId = opts.datasetId;
+        if (opts.lang !== undefined) params.lang = opts.lang;
+        if (opts.type !== undefined) params.type = opts.type;
+
+        const response = await createClient(cmd).get(
+          `/entities/${encodeURIComponent(entityId)}/attrs/${encodeURIComponent(attrName)}/value`,
+          params,
+          { Accept: "application/json" },
+        );
+        printOutput(response.data, "json");
+      }),
+    );
+
+  addExamples(value, [
+    {
+      description: "Get a temperature value",
+      command: "geonic entities attrs value urn:ngsi-ld:Sensor:001 temperature",
     },
   ]);
 
