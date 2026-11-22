@@ -260,6 +260,7 @@ export class BulkImporter {
     try {
       response = await withRetry(() => this.send(records), {
         retries: this.opts.retries,
+        maxRetryAfterMs: MAX_COOLDOWN_MS,
         sleep: this.sleep,
         random: this.random,
         onRetry: (info) => {

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { GdbClientError } from "../src/client.js";
+import { GdbClient, GdbClientError } from "../src/client.js";
 import { BulkImporter, chunkRecords } from "../src/loader.js";
 import type { ImporterOptions } from "../src/loader.js";
 import type { EntityRecord, FileFingerprint } from "../src/input.js";
@@ -240,6 +240,35 @@ describe("BulkImporter", () => {
     expect(readFileSync(errorsLog, "utf-8")).toContain("unmatched server error");
   });
 
+  it.each([
+    { retryAfter: "45", delayMs: 45_000 },
+    { retryAfter: undefined, delayMs: 375 },
+  ])("replays the same chunk after waiting $delayMs ms for HTTP 429", async ({ retryAfter, delayMs }) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const requests: Array<{ time: number; body: BodyInit | null | undefined }> = [];
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+      requests.push({ time: Date.now(), body: init?.body });
+      return requests.length === 1
+        ? new Response(null, { status: 429, headers: retryAfter ? { "Retry-After": retryAfter } : {} })
+        : new Response(null, { status: 204 });
+    });
+
+    try {
+      const importer = new BulkImporter(new GdbClient({ baseUrl: "http://localhost:3000" }), baseOpts({
+        sleep: async (ms) => { vi.setSystemTime(Date.now() + ms); },
+      }));
+      const result = await importer.run(fromArray(records(["urn:ngsi-ld:T:1"])));
+      expect(result.succeeded).toBe(1);
+      expect(requests.map(({ time }) => time)).toEqual([0, delayMs]);
+      expect(JSON.parse(String(requests[0].body))).toMatchObject([{ id: "urn:ngsi-ld:T:1", type: "T" }]);
+      expect(requests[1].body).toBe(requests[0].body);
+    } finally {
+      fetch.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   it("clamps a hostile Retry-After so no worker sleeps beyond the cooldown cap", async () => {
     // Fake clock so the injected sleep advances Date.now() (the cooldown loop
     // depends on time actually progressing).
@@ -265,7 +294,7 @@ describe("BulkImporter", () => {
         }),
       );
       await importer.run(fromArray(records(["a", "b"])));
-      // Retry backoff clamps at 30s; shared cooldown clamps at 60s. Nothing near 1e9.
+      // The Retry-After delay and the shared cooldown both cap at 60s.
       expect(Math.max(...delays)).toBeLessThanOrEqual(60_000);
     } finally {
       vi.useRealTimers();

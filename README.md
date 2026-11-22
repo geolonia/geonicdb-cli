@@ -529,6 +529,10 @@ curl -fsSL 'https://opendata.takamatsu-fact.com/aed_location/data.geojson' |
 | `--bisect` / `--bisect-max <n>` | On a `400`/`413` chunk, binary-split to isolate the offending entity |
 
 Notes:
+- On HTTP 429, import waits for the broker's `Retry-After` (up to 60 seconds per retry)
+  and resends the same chunk. If the header is missing or invalid, import uses exponential
+  backoff with jitter, starting at 250–500 ms and capped at 30 seconds. The retry count
+  is controlled by `--retries`.
 - **Batch size is plan-dependent** (geolonia/geonicdb#2082): T0/T5 plans allow 100 entities per
   batch request, T30 500, T40 1,000 (1,000 is also the absolute ceiling; a tenant-specific
   `maxBatchSize` quota overrides the plan value). The default `--batch-size 100` works on every
@@ -760,8 +764,12 @@ geonic admin tenants update <tenant-id> '{}' --require-data-model true
 | `admin users activate <id>` | Activate a user |
 | `admin users deactivate <id>` | Deactivate a user |
 | `admin users unlock <id>` | Unlock a user |
+| `admin users invite <id>` | Resend the password setup email |
+| `admin users invite-revoke <id>` | Revoke the outstanding password setup invitation |
 | `admin users reset-password <id>` | Issue a one-time temporary password and force a change on next login |
 | `admin users tenants <user-id>` | List tenants a user belongs to |
+
+To email a password setup link when creating a user, set `"delivery": "link"` in the JSON and omit both `password` and `--force-reset`. The recipient sets their password from the one-time link in the email. The create and resend responses report `invite.delivery` as `sent` or `failed`. On failure, check the recipient and mail settings (`MAIL_PROVIDER`, SES identity, and sandbox restrictions), then run `geonic admin users invite <id>`.
 
 #### admin policies
 

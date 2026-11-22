@@ -2,7 +2,7 @@ import type { Command } from "commander";
 import type { ClientResponse } from "../../types.js";
 import { withErrorHandler, createClient, getFormat, outputResponse, parseNonNegativeInt, fetchPaginatedList } from "../../helpers.js";
 import { parseJsonInput } from "../../input.js";
-import { printSuccess, printTemporaryPasswordBox } from "../../output.js";
+import { printSuccess, printTemporaryPasswordBox, printWarning } from "../../output.js";
 import { addExamples } from "../help.js";
 
 /** Response shape carrying a server-issued temporary password (geonicdb#1532). */
@@ -34,6 +34,32 @@ function emitTemporaryPassword(
     typeof response.data?.expiresAt === "string" ? response.data.expiresAt : undefined;
   printSuccess(successMessage);
   printTemporaryPasswordBox(temporaryPassword, expiresAt);
+}
+
+interface InviteDeliveryResponse {
+  invite?: { delivery?: "sent" | "failed" };
+  delivery?: "sent" | "failed";
+}
+
+function emitInviteDelivery(
+  response: ClientResponse<InviteDeliveryResponse>,
+  format: ReturnType<typeof getFormat>,
+): void {
+  outputResponse(response, format);
+  const delivery = response.data?.invite?.delivery ?? response.data?.delivery;
+  if (delivery === "failed") {
+    printWarning(
+      "Invitation email delivery failed. Check the recipient and mail settings (MAIL_PROVIDER, SES identity and sandbox restrictions), then resend with geonic admin users invite <id>.",
+    );
+  }
+}
+
+function invitePath(id: unknown): string {
+  const userId = String(id);
+  if (userId === "." || userId === "..") {
+    throw new Error('User ID must not be "." or "..".');
+  }
+  return `/admin/users/${encodeURIComponent(userId)}/invite`;
 }
 
 export function registerUsersCommand(parent: Command): void {
@@ -115,6 +141,8 @@ export function registerUsersCommand(parent: Command): void {
         "password: the user is forced to set a new password on their first login\n" +
         "(single-shot). In that mode do NOT provide a 'password' field (the server\n" +
         "generates it); the temporary password is displayed once.\n\n" +
+        'To email a one-time password setup link, set "delivery": "link" in the JSON.\n' +
+        "Omit password and --force-reset for link delivery.\n\n" +
         "JSON payload example:\n" +
         "  {\n" +
         '    "email": "user@example.com",\n' +
@@ -140,6 +168,16 @@ export function registerUsersCommand(parent: Command): void {
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const forceReset = Boolean(cmd.opts().forceReset);
+
+        const linkInvite = (body as { delivery?: unknown } | null)?.delivery === "link";
+        if (linkInvite) {
+          if (forceReset) {
+            throw new Error('--force-reset cannot be combined with "delivery": "link".');
+          }
+          const response = await client.rawRequest<InviteDeliveryResponse>("POST", "/admin/users", { body });
+          emitInviteDelivery(response, format);
+          return;
+        }
 
         if (!forceReset) {
           // 従来動作 (非破壊): JSON の password を直接設定し、強制変更なしで有効化する。
@@ -183,6 +221,10 @@ export function registerUsersCommand(parent: Command): void {
       command: `geonic admin users create --force-reset '{"email":"user@example.com","role":"user","primaryTenantId":"<tenant-id>"}'`,
     },
     {
+      description: "Create a user and email a one-time password setup link",
+      command: `geonic admin users create '{"email":"user@example.com","role":"user","primaryTenantId":"<tenant-id>","delivery":"link"}'`,
+    },
+    {
       description: "Create from a JSON file",
       command: "geonic admin users create @user.json",
     },
@@ -191,6 +233,28 @@ export function registerUsersCommand(parent: Command): void {
       command: "cat user.json | geonic admin users create",
     },
   ]);
+
+  users
+    .command("invite <id>")
+    .description("Resend a one-time password setup invitation by email")
+    .action(
+      withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
+        const client = createClient(cmd);
+        const response = await client.rawRequest<InviteDeliveryResponse>("POST", invitePath(id));
+        emitInviteDelivery(response, getFormat(cmd));
+      }),
+    );
+
+  users
+    .command("invite-revoke <id>")
+    .description("Revoke the outstanding password setup invitation")
+    .action(
+      withErrorHandler(async (id: unknown, _opts: unknown, cmd: Command) => {
+        const client = createClient(cmd);
+        const response = await client.rawRequest("DELETE", invitePath(id));
+        outputResponse(response, getFormat(cmd));
+      }),
+    );
 
   // users update
   const update = users
