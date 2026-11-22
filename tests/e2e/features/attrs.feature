@@ -48,3 +48,23 @@ Feature: Entity attribute management
     When I run `geonic entities attrs list urn:ngsi-ld:Room:A05`
     Then the exit code should be 0
     And the output should not contain "humidity"
+
+  # ETSI TS 104 176 clause 7.6.3.1
+  @issue-267
+  Scenario: Request only the value of an individual attribute
+    Given I am logged in
+    When I run `geonic entities attrs value urn:ngsi-ld:Room:A01 https://example.org/temperature --dataset-id urn:ngsi-ld:Dataset:1 --lang ja --type Property --dry-run`
+    Then the exit code should be 0
+    And the output should contain "/entities/urn%3Angsi-ld%3ARoom%3AA01/attrs/https%3A%2F%2Fexample.org%2Ftemperature/value"
+    And the output should contain "datasetId=urn%3Angsi-ld%3ADataset%3A1"
+    And the output should contain "lang=ja"
+    And the output should contain "type=Property"
+    And the output should contain "Accept: application/json"
+
+  @issue-267
+  Scenario: Omit optional attribute value selectors when absent
+    Given I am logged in
+    When I run `geonic entities attrs value urn:ngsi-ld:Room:A01 temperature --dry-run`
+    Then the exit code should be 0
+    And the output should contain "/attrs/temperature/value'"
+    And the output should not contain "datasetId="

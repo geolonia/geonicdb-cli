@@ -95,6 +95,19 @@ export class GdbClient {
     return "/ngsi-ld/v1";
   }
 
+  resolveContinuationPath(path: string, target: string): string {
+    const resourceUrl = new URL(this.buildUrl(`${this.getBasePath()}${path}`));
+    const continuation = new URL(target, resourceUrl);
+    if (
+      continuation.origin !== resourceUrl.origin ||
+      continuation.pathname !== resourceUrl.pathname ||
+      continuation.username || continuation.password || continuation.hash
+    ) {
+      throw new Error("Continuation URI must target the same broker and endpoint.");
+    }
+    return `${path}${continuation.search}`;
+  }
+
   private static readonly SENSITIVE_HEADERS = new Set(["authorization", "x-api-key"]);
   private static readonly SENSITIVE_BODY_KEYS = new Set([
     "password",

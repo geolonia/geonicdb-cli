@@ -24,6 +24,42 @@ describe("GdbClient", () => {
     vi.mocked(printWarning).mockClear();
   });
 
+  it("replays a temporal POST continuation with the same body and headers", async () => {
+    const client = new GdbClient({
+      baseUrl: "https://broker.example",
+      apiKey: "test-key",
+      service: "myTenant",
+      context: ["https://context.example/context.jsonld"],
+    });
+    const path = "/temporal/entityOperations/query";
+    const body = { entities: [{ type: "Sensor" }], temporalQ: { firstN: 5 } };
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response("[]"));
+    await client.post(path, body, { local: "true" });
+    await client.post(
+      client.resolveContinuationPath(path, "/ngsi-ld/v1/temporal/entityOperations/query?local=true&offsetN=5"),
+      body,
+    );
+
+    expect(fetch.mock.calls[1][0]).toBe(
+      "https://broker.example/ngsi-ld/v1/temporal/entityOperations/query?local=true&offsetN=5",
+    );
+    expect(fetch.mock.calls[1][1]).toEqual(fetch.mock.calls[0][1]);
+    expect(fetch.mock.calls[1][1]).toMatchObject({
+      method: "POST",
+      headers: { "X-Api-Key": "test-key", "NGSILD-Tenant": "myTenant" },
+    });
+  });
+
+  it.each([
+    "https://other.example/ngsi-ld/v1/temporal/entities?offsetN=5",
+    "/ngsi-ld/v1/entities?offsetN=5",
+  ])("rejects an unrelated history continuation %s", (target) => {
+    const client = new GdbClient({ baseUrl: "https://broker.example" });
+    expect(() => client.resolveContinuationPath("/temporal/entities", target)).toThrow(
+      "Continuation URI must target the same broker and endpoint.",
+    );
+  });
+
   it("constructs correct NGSI-LD headers", async () => {
     const client = new GdbClient({
       baseUrl: "http://localhost:3000",

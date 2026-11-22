@@ -8,12 +8,16 @@
 ## [Unreleased]
 
 ### 2026-11-23
+- **Feat**: `entities attrs value` で属性の値を JSON として取得できるようにした (closes #267) (#283)
 - **Fix**: `geonic import` の再送で `Retry-After` を共有クールダウンと同じ最大60秒まで尊重する (closes #269) (#282)
+- **Feat**: temporal の `firstN` / `offsetN` と ETSI の履歴ページリンクに対応した (closes #275) (#284)
 - **Feat**: `entities list` と `batch query` に `--json-keys` を追加し、NGSI-LD クエリのパス評価で指定属性を JSON として扱えるようにした (#277)。
 - **Docs**: 管理ユーザーとテナントメンバーシップのヘルプを4段階のロール体系に揃え、デプロイメント管理に必要なロールを `platform_admin` と明記した (closes #266) (#278)
+- **Feat**: `models create --source` で参照モデルを登録し、`models refresh` で再取得または変更をプレビューできるようにした。参照元メタデータは一覧・詳細で確認できる (#281)
 - **Docs**: `auth platform-login` で取得した `platform_admin` トークンではテナント管理ができないことを README に追記 (#276)
 - **Feat**: `geonic import` で GeoJSON FeatureCollection を指定のエンティティ型として取り込めるようにした (closes #240) (#286)
 - **Feat**: `admin users create` のメール招待と `admin users invite` / `invite-revoke` に対応し、配信失敗時に再送手順を案内 (#280)
+- **Test**: E2E の GeonicDB 開発依存を `9cf86fa711ca4dcff6e6ec94357c1bff16e5c2ef` に更新した (#285)。
 
 ## [0.27.0] - 2026-10-31
 
