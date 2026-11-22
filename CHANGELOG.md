@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-11-23
+- **Feat**: `entities list` と `batch query` に `--json-keys` を追加し、NGSI-LD クエリのパス評価で指定属性を JSON として扱えるようにした。
+
 ## [0.27.0] - 2026-10-31
 
 ### 2026-10-31

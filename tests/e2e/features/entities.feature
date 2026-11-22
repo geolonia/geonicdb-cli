@@ -303,3 +303,28 @@ Feature: Entity management
     And I run `geonic entities list --type Room`
     Then the exit code should be 0
     And the output should contain "Room:P171-4"
+
+  # ETSI GS CIM 009 clause 4.9 — https://cim.etsi.org/NGSI-LD/official/clause-4.html
+  @issue-264
+  Scenario: Entity list forwards JSON keys with the query expression
+    Given I am logged in
+    When I run `geonic entities list --type Building --q 'details[id]=="some-id"' --json-keys details,metadata --dry-run`
+    Then the exit code should be 0
+    And the output should contain "q=details%5Bid%5D%3D%3D%22some-id%22"
+    And the output should contain "jsonKeys=details%2Cmetadata"
+
+  @issue-264
+  Scenario: Entity list omits JSON keys without the option
+    Given I am logged in
+    When I run `geonic entities list --type Building --query 'details[id]=="some-id"' --dry-run`
+    Then the exit code should be 0
+    And the output should not contain "jsonKeys="
+
+  @issue-264
+  Scenario: Batch query forwards JSON keys and retains the local flag
+    Given I am logged in
+    When I run `geonic batch query '{"entities":[{"type":"Building"}],"q":"details[id]==123"}' --json-keys details --local --dry-run`
+    Then the exit code should be 0
+    And the output should contain "local=true"
+    And the output should contain "jsonKeys=details"
+    And the output should contain "details[id]==123"
