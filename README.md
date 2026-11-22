@@ -203,6 +203,8 @@ A client-credentials token is an OAuth client principal: `/me` self-service endp
 
 `auth platform-login` signs `POST /auth/platform-token` with the current AWS credentials (SigV4 / `execute-api`) and saves the returned 15-minute `platform_admin` Bearer token. There is no refresh — re-run the command when it expires. Local servers without API Gateway IAM return 403.
 
+This token has limited platform permissions. Tenant management commands such as `geonic admin tenants list` return HTTP 403. Use a `super_admin` token from the target deployment to manage tenants.
+
 ```bash
 geonic auth platform-login --aws-region ap-northeast-1
 geonic auth platform-login --aws-profile geonic-ops --aws-region ap-northeast-1

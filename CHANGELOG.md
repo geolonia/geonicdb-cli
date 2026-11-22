@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 2026-11-23
+- **Docs**: `auth platform-login` で取得した `platform_admin` トークンではテナント管理ができないことを README に追記 (#272)
+
 ## [0.27.0] - 2026-10-31
 
 ### 2026-10-31
