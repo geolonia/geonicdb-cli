@@ -4,6 +4,28 @@ Feature: Admin user management
   I want to manage users
   So that I can control access to the system
 
+  @issue-266
+  Scenario: User creation help shows current assignable roles
+    When I run `geonic admin users create --help`
+    Then the exit code should be 0
+    And the output should contain "Roles: super_admin, tenant_admin, user"
+    And the output should contain "platform_admin can create super_admin users"
+    And the output should not contain "deployment_admin"
+
+  @issue-266
+  Scenario: Tenant membership help shows only roles allowed for memberships
+    When I run `geonic admin tenants add-user --help`
+    Then the exit code should be 0
+    And the output should contain "tenant_admin or user"
+    And the output should not contain "deployment_admin"
+
+  @issue-266
+  Scenario: Password reset help shows which administrators can reset each role
+    When I run `geonic admin users reset-password --help`
+    Then the exit code should be 0
+    And the output should contain "platform_admin can reset super_admin accounts"
+    And the output should not contain "super_admin can reset any user"
+
   Scenario: List users
     Given I am logged in as super admin
     When I run `geonic admin users list`
