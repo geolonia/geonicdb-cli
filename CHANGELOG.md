@@ -15,6 +15,7 @@
 - **Feat**: `models create --source` で参照モデルを登録し、`models refresh` で再取得または変更をプレビューできるようにした。参照元メタデータは一覧・詳細で確認できる (#281)
 - **Docs**: `auth platform-login` で取得した `platform_admin` トークンではテナント管理ができないことを README に追記 (#276)
 - **Feat**: `admin users create` のメール招待と `admin users invite` / `invite-revoke` に対応し、配信失敗時に再送手順を案内 (#280)
+- **Test**: E2E の GeonicDB 開発依存を `9cf86fa711ca4dcff6e6ec94357c1bff16e5c2ef` に更新した (#285)。
 
 ## [0.27.0] - 2026-10-31
 
