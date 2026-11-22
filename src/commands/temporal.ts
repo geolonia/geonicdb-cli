@@ -10,6 +10,7 @@ import {
 } from "../helpers.js";
 import { parseJsonInput } from "../input.js";
 import { printSuccess } from "../output.js";
+import { sanitizeServerText } from "../sanitize.js";
 import { addExamples } from "./help.js";
 
 /**
@@ -126,8 +127,18 @@ function buildHistoryParams(opts: { firstN?: number; lastN?: number; offsetN?: n
 
 function showTemporalLinks(headers: Headers | undefined): void {
   const links = headers?.get("Link") ?? "";
-  for (const [, uri, relation] of links.matchAll(/<([^>]+)>;\s*rel="(intervalafter|intervalbefore)"/g)) {
-    console.error(`${relation}: ${uri}`);
+  // RFC 8288 link-values can contain commas inside the URI or quoted parameters.
+  for (const [, uri, params] of links.matchAll(/<([^>]+)>((?:[^",]|"(?:[^"\\]|\\.)*")*)/g)) {
+    if (sanitizeServerText(uri) !== uri) continue;
+    for (const [, name, quoted, token] of params.matchAll(/;\s*([^=;\s]+)(?:\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^;\s]+)))?/g)) {
+      if (name.toLowerCase() !== "rel") continue;
+      for (const relation of (quoted ?? token ?? "").toLowerCase().split(/\s+/)) {
+        if (relation === "intervalafter" || relation === "intervalbefore") {
+          console.error(relation + ": " + uri);
+        }
+      }
+      break;
+    }
   }
 }
 

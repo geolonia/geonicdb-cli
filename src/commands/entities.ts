@@ -29,6 +29,8 @@ export function registerEntitiesCommand(program: Command): void {
     .option("--type <type>", "Filter by entity type")
     .option("--id-pattern <pat>", "Filter by entity ID pattern (regex)")
     .option("--query <q>", "NGSI query expression")
+    .option("--q <q>", "Alias for --query")
+    .option("--json-keys <a,b>", "Treat these attributes as opaque JSON when evaluating query paths")
     .option("--attrs <a,b>", "Comma-separated list of attributes to include")
     .option("--georel <rel>", "Geo-relationship (e.g. near;maxDistance==1000; NGSIv2-style maxDistance:1000 is also accepted)")
     .option("--geometry <geo>", "Geometry type for geo-query (e.g. point)")
@@ -60,7 +62,9 @@ export function registerEntitiesCommand(program: Command): void {
 
         if (opts.type) params.type = String(opts.type);
         if (opts.idPattern) params.idPattern = String(opts.idPattern);
-        if (opts.query) params.q = String(opts.query);
+        const query = (typeof opts.q === "string" && opts.q.trim()) ? opts.q : opts.query;
+        if (query) params.q = String(query);
+        if (opts.jsonKeys) params.jsonKeys = String(opts.jsonKeys);
         if (opts.attrs) params.attrs = String(opts.attrs);
         if (opts.georel) params.georel = String(opts.georel);
         if (opts.geometry) params.geometry = String(opts.geometry);

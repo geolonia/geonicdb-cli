@@ -82,7 +82,7 @@ describe("temporal commands", () => {
 
     it("prints only temporal links on stderr when requested", async () => {
       const headers = new Headers({
-        Link: '</context>; rel="http://www.w3.org/ns/json-ld#context", </page?offsetN=5>; rel="intervalafter", </page?offsetN=0>; rel="intervalbefore"',
+        Link: '</context>; rel="http://www.w3.org/ns/json-ld#context", </page?offsetN=5>; rel="intervalafter", </page?offsetN=0>; title="Previous, earlier page"; rel=intervalbefore, </invalid\x1b>; rel="intervalafter"',
       });
       client.get.mockResolvedValue({ ...mockResponse([]), headers });
       const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
