@@ -713,6 +713,13 @@ geonic admin tenants update <tenant-id> '{}' --require-data-model true
 
 #### admin users
 
+| Caller role | Roles available when creating users |
+|---|---|
+| `platform_admin` (Geolonia operations) | `super_admin` |
+| `super_admin` (customer administrator) | `tenant_admin`, `user` |
+| `tenant_admin` | `user` in their own tenant |
+| `user` | None |
+
 | Subcommand | Description |
 |---|---|
 | `admin users list` | List all users |
@@ -787,7 +794,7 @@ Custom `tenant_admin` policies (priority 10–99) override the user defaults. Ta
 
 #### admin deployments
 
-Hostname → MongoDB cluster routing rows, used to isolate large tenants onto dedicated clusters. **super_admin only.**
+Hostname → MongoDB cluster routing rows, used to isolate large tenants onto dedicated clusters. Requires `platform_admin` or the environment super admin.
 
 | Subcommand | Description |
 |---|---|

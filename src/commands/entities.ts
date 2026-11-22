@@ -62,7 +62,7 @@ export function registerEntitiesCommand(program: Command): void {
 
         if (opts.type) params.type = String(opts.type);
         if (opts.idPattern) params.idPattern = String(opts.idPattern);
-        const query = opts.q ?? opts.query;
+        const query = (typeof opts.q === "string" && opts.q.trim()) ? opts.q : opts.query;
         if (query) params.q = String(query);
         if (opts.jsonKeys) params.jsonKeys = String(opts.jsonKeys);
         if (opts.attrs) params.attrs = String(opts.attrs);

@@ -314,10 +314,11 @@ Feature: Entity management
     And the output should contain "jsonKeys=details%2Cmetadata"
 
   @issue-264
-  Scenario: Entity list omits JSON keys without the option
+  Scenario: An empty --q alias preserves --query and does not add JSON keys
     Given I am logged in
-    When I run `geonic entities list --type Building --query 'details[id]=="some-id"' --dry-run`
+    When I run `geonic entities list --type Building --query 'details[id]=="some-id"' --q= --dry-run`
     Then the exit code should be 0
+    And the output should contain "q=details%5Bid%5D%3D%3D%22some-id%22"
     And the output should not contain "jsonKeys="
 
   @issue-264
