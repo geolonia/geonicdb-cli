@@ -457,8 +457,7 @@ export function registerTenantsCommand(parent: Command): void {
       "Add an existing user to a tenant, or update their membership role if already a member.\n\n" +
         "Maps to PUT /admin/tenants/{tenantId}/users/{userId} (upsert: add or role update).\n" +
         "Role defaults to \"user\" when --role is omitted (server default).\n" +
-        "Membership roles: tenant_admin, user\n" +
-        "(deployment_admin / super_admin / platform_admin are not membership roles).",
+        "Membership roles: tenant_admin, user.",
     )
     .option("--role <role>", "Membership role: tenant_admin or user (default: user)")
     .action(
