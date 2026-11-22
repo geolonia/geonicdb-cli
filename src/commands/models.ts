@@ -247,9 +247,22 @@ export function registerModelsCommand(program: Command): void {
         "Optional typeIri (HTTP(S) URL): entity type IRI in the auto-generated @context (fixed at create; not combinable with contextUrl).\n" +
         "Optional contextUrl: external JSON-LD @context URL (not combinable with typeIri).",
     )
+    .option("--source <url>", "Register a snapshot of a published GeonicDB model (sourceUrl)")
     .action(
-      withErrorHandler(async (json: unknown, _opts: unknown, cmd: Command) => {
-        const body = await parseJsonInput(json as string | undefined);
+      withErrorHandler(async (json: unknown, opts: { source?: string }, cmd: Command) => {
+        const input = opts.source !== undefined && json === undefined
+          ? {}
+          : await parseJsonInput(json as string | undefined);
+        let body = input;
+        if (opts.source !== undefined) {
+          if (typeof input !== "object" || input === null || Array.isArray(input)) {
+            throw new Error("JSON payload must be an object when using --source.");
+          }
+          if ("sourceUrl" in input && input.sourceUrl !== opts.source) {
+            throw new Error("--source and JSON sourceUrl must match when both are specified.");
+          }
+          body = { ...input, sourceUrl: opts.source };
+        }
         const client = createClient(cmd);
         const format = getFormat(cmd);
         const response = await client.rawRequest("POST", "/custom-data-models", { body });
@@ -264,6 +277,10 @@ export function registerModelsCommand(program: Command): void {
       command: `geonic models create '{"type":"Sensor","domain":"iot","description":"IoT Sensor","propertyDetails":{"temperature":{"ngsiType":"Property","valueType":"Number","example":25}}}'`,
     },
     {
+      description: "Register a snapshot of a published model",
+      command: "geonic models create --source https://models.example.org/sensor.json",
+    },
+    {
       description: "Create from a file",
       command: "geonic models create @model.json",
     },
@@ -274,6 +291,41 @@ export function registerModelsCommand(program: Command): void {
     {
       description: "Create with a composite unique constraint (one booking per slot)",
       command: `geonic models create '{"type":"RoomReservation","domain":"building","description":"Room reservation","propertyDetails":{"room":{"ngsiType":"Property","valueType":"string","example":"R1"},"date":{"ngsiType":"Property","valueType":"string","example":"2026-07-15"},"startTime":{"ngsiType":"Property","valueType":"string","example":"10:00"}},"uniqueConstraints":[{"name":"one-booking-per-slot","fields":["room","date","startTime"]}]}'`,
+    },
+  ]);
+
+  const refresh = models
+    .command("refresh <type>")
+    .summary("Refresh a model from its source URL")
+    .description(
+      "Refresh a referenced model from its registered source URL.\n\n" +
+        "Use --api-dry-run to have the server fetch the source and preview changes without updating the model. " +
+        "The global --dry-run flag prints curl without sending a request.",
+    )
+    .option("--api-dry-run", "Preview the refresh on the server without updating the model")
+    .action(
+      withErrorHandler(async (type: string, opts: { apiDryRun?: boolean }, cmd: Command) => {
+        const typeError = modelApplyTypeError(type);
+        if (typeError) throw new Error(typeError);
+
+        const client = createClient(cmd);
+        const response = await client.rawRequest(
+          "POST",
+          `/custom-data-models/${encodeURIComponent(type)}/refresh`,
+          opts.apiDryRun ? { params: { dryRun: "true" } } : undefined,
+        );
+        outputResponse(response, getFormat(cmd));
+      }),
+    );
+
+  addExamples(refresh, [
+    {
+      description: "Preview changes and existing entity conformance",
+      command: "geonic models refresh Sensor --api-dry-run",
+    },
+    {
+      description: "Refresh the stored snapshot",
+      command: "geonic models refresh Sensor",
     },
   ]);
 

@@ -130,3 +130,18 @@ Feature: Custom data model management
     And the output should contain "Model updated."
     When I run `geonic entities create '{"id":"urn:ngsi-ld:UcSlot:002","type":"UcSlot","code":{"type":"Property","value":"A1"}}' --service e2e_test`
     Then the exit code should be 0
+
+  @issue-265
+  Scenario: Send remote model registration and refresh preview requests
+    Given I am logged in as super admin
+    When I run `geonic models create --source https://models.example.org/sensor.json --dry-run`
+    Then the exit code should be 0
+    And stdout should contain "sourceUrl"
+    And stdout should contain "https://models.example.org/sensor.json"
+    When I run `geonic models refresh Sensor --api-dry-run --dry-run`
+    Then the exit code should be 0
+    And stdout should contain "/custom-data-models/Sensor/refresh?dryRun=true"
+    When I run `geonic --dry-run models refresh Sensor`
+    Then the exit code should be 0
+    And stdout should contain "/custom-data-models/Sensor/refresh"
+    And stdout should not contain "dryRun="

@@ -203,6 +203,73 @@ describe("models (custom-data-models) command", () => {
     });
   });
 
+  describe("referenced models", () => {
+    const source = {
+      url: "https://models.example.org/sensor.json",
+      sha256: "a".repeat(64),
+      fetchedAt: "2026-11-23T00:00:00.000Z",
+    };
+    const model = { type: "Sensor", source };
+
+    it("registers a URL without requiring a JSON payload", async () => {
+      const response = mockResponse(model, 201);
+      mockClient.rawRequest.mockResolvedValue(response);
+      await runCommand(program, ["models", "create", "--source", source.url]);
+
+      expect(parseJsonInput).not.toHaveBeenCalled();
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("POST", "/custom-data-models", { body: { sourceUrl: source.url } });
+      expect(outputResponse).toHaveBeenCalledWith(response, "json");
+    });
+
+    it("preserves the optional type hint and local settings", async () => {
+      const options = { type: "Sensor", isActive: false };
+      vi.mocked(parseJsonInput).mockResolvedValue(options);
+      mockClient.rawRequest.mockResolvedValue(mockResponse(model, 201));
+      await runCommand(program, ["models", "create", "--source", source.url, JSON.stringify(options)]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("POST", "/custom-data-models", {
+        body: { ...options, sourceUrl: source.url },
+      });
+    });
+
+    it("rejects a mismatched URL supplied via JSON", async () => {
+      vi.mocked(parseJsonInput).mockResolvedValue({ sourceUrl: "https://example.org/other.json" });
+      await expect(runCommand(program, ["models", "create", "--source", source.url, "{}"]))
+        .rejects.toThrow(/sourceUrl must match/);
+      expect(mockClient.rawRequest).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["list", [], [model]],
+      ["get", ["Sensor"], model],
+    ] as const)("passes through source metadata for %s in table format", async (subcommand, args, data) => {
+      vi.mocked(getFormat).mockReturnValue("table");
+      mockClient.rawRequest.mockResolvedValue(mockResponse(data));
+      await runCommand(program, ["models", subcommand, ...args]);
+
+      expect(outputResponse).toHaveBeenCalledWith(expect.objectContaining({ data }), "table");
+    });
+
+    it.each([
+      [[], undefined],
+      [["--api-dry-run"], { params: { dryRun: "true" } }],
+    ] as const)("posts refresh with flags %j", async (flags, options) => {
+      const type = "https://models.example.org/Sensor";
+      const response = mockResponse({ type, dryRun: flags.length > 0, changed: true, source });
+      mockClient.rawRequest.mockResolvedValue(response);
+      await runCommand(program, ["models", "refresh", type, ...flags]);
+
+      expect(mockClient.rawRequest).toHaveBeenCalledWith("POST", `/custom-data-models/${encodeURIComponent(type)}/refresh`, options);
+      expect(outputResponse).toHaveBeenCalledWith(response, "json");
+    });
+
+    it.each([".", ".."])("rejects relative model type %s", async (type) => {
+      await expect(runCommand(program, ["models", "refresh", type]))
+        .rejects.toThrow(/Model type must not be/);
+      expect(mockClient.rawRequest).not.toHaveBeenCalled();
+    });
+  });
+
   describe("create with uniqueConstraints (#136)", () => {
     it("passes uniqueConstraints through in the request body", async () => {
       const modelData = {
